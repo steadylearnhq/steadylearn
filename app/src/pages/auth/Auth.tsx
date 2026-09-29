@@ -1,4 +1,4 @@
-import { A, useLocation } from '@solidjs/router'
+import { A, useLocation, useSearchParams } from '@solidjs/router'
 import {
   autoSignIn,
   confirmResetPassword,
@@ -12,6 +12,7 @@ import {
 import { createEffect, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import Button from '../../components/Button'
 import Critter from '../../components/Critter'
+import { HOME, safeRedirect } from '../../components/RouteGuards'
 import { authMessage, errorName, user } from '../../lib/auth'
 import { theme, toggleTheme } from '../../lib/theme'
 import { usePageTitle } from '../../lib/title'
@@ -30,6 +31,9 @@ export default function Auth() {
   const location = useLocation()
   const mode = (): Mode => (location.pathname.startsWith('/signup') ? 'signup' : 'login')
   const isLogin = () => mode() === 'login'
+  // Set by RequireAuth when a signed-out visitor hits a members-only page.
+  const [params] = useSearchParams<{ redirect?: string }>()
+  const next = () => safeRedirect(params.redirect, HOME)
 
   const [step, setStep] = createSignal<Step>('form')
   // Whether the password field is choosing a new password rather than checking one.
@@ -559,7 +563,7 @@ export default function Auth() {
             <h1 class={`${styles.title} ${styles.doneTitle}`}>{doneCopy()[0]}</h1>
             <p class={styles.subtitle}>{doneCopy()[1]}</p>
             <div class={styles.doneActions}>
-              <Button variant="primary" size="lg" href="/catalog">
+              <Button variant="primary" size="lg" href={next()}>
                 {doneCopy()[2]}
               </Button>
               <Button variant="outline" size="lg" onClick={reset}>

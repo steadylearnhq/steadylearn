@@ -2,6 +2,7 @@ import { useNavigate } from '@solidjs/router'
 import { fetchAuthSession } from 'aws-amplify/auth'
 import { onMount } from 'solid-js'
 import Critter from '../../components/Critter'
+import { HOME } from '../../components/RouteGuards'
 import { usePageTitle } from '../../lib/title'
 import styles from './Auth.module.css'
 
@@ -9,6 +10,7 @@ import styles from './Auth.module.css'
  * Where Cognito's hosted UI lands after "Continue with Google". The OAuth
  * listener in lib/auth trades the code in the URL for tokens; fetchAuthSession
  * waits for that exchange, so awaiting it once tells us whether it worked.
+ * The hosted UI round trip drops ?redirect=, so this always lands on the dashboard.
  */
 export default function ExternalAuth() {
   usePageTitle('Signing in')
@@ -16,7 +18,7 @@ export default function ExternalAuth() {
 
   onMount(() => {
     fetchAuthSession()
-      .then((session) => navigate(session.tokens ? '/catalog' : '/login', { replace: true }))
+      .then((session) => navigate(session.tokens ? HOME : '/login', { replace: true }))
       .catch(() => navigate('/login', { replace: true }))
   })
 
