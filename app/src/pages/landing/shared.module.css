@@ -1,0 +1,74 @@
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.h2 {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -1.6px;
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 6px 0 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* Two-column section: a 420px intro beside the content. */
+.split {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 64px;
+  align-items: start;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Hairlines above and below that run the full viewport width. */
+.bleedRules {
+  position: relative;
+}
+
+.bleedRules::before,
+.bleedRules::after {
+  content: '';
+  position: absolute;
+  left: -100vw;
+  right: -100vw;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+.bleedRules::before {
+  top: 0;
+}
+
+.bleedRules::after {
+  bottom: 0;
+}
+
+@media (max-width: 1100px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+}
+
+@media (max-width: 720px) {
+  .h2 {
+    font-size: 32px;
+    letter-spacing: -1.2px;
+  }
+}

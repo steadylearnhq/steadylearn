@@ -1,0 +1,69 @@
+.cluster {
+  position: relative;
+  width: 520px;
+  height: 460px;
+  flex: none;
+}
+
+.link {
+  position: absolute;
+  height: 0;
+  border-top: 2px solid var(--stroke);
+  transform-origin: 0 0;
+}
+
+.linkDown {
+  border-top-style: dashed;
+  border-top-color: var(--line2);
+}
+
+.node {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.badge {
+  position: absolute;
+  top: -14px;
+  z-index: 1;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  background: var(--tomato);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  transform: rotate(4deg);
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.labelDown {
+  color: var(--accentText);
+}
+
+/* The diagram is drawn in fixed px; shrink it as a whole on small screens. */
+@media (max-width: 600px) {
+  .cluster {
+    zoom: 0.62;
+  }
+}
