@@ -4,7 +4,6 @@ package main
 // @version 1.0
 // @description Learning platform API for users, courses and progress
 
-// @host localhost:8080
 // @BasePath /
 // @schemes http https
 

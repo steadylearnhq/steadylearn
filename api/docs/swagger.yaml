@@ -47,7 +47,6 @@ definitions:
           Profile is filled in only when the request asks for it, because filling it
           in costs a call to the user pool.
     type: object
-host: localhost:8080
 info:
   contact: {}
   description: Learning platform API for users, courses and progress
