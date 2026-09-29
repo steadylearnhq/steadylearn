@@ -1,13 +1,25 @@
 import { A, useLocation } from '@solidjs/router'
+import {
+  autoSignIn,
+  confirmResetPassword,
+  confirmSignUp,
+  resendSignUpCode,
+  resetPassword,
+  signIn,
+  signInWithRedirect,
+  signUp,
+} from 'aws-amplify/auth'
 import { createEffect, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import Button from '../../components/Button'
 import Critter from '../../components/Critter'
+import { authMessage, errorName, user } from '../../lib/auth'
 import { theme, toggleTheme } from '../../lib/theme'
 import { usePageTitle } from '../../lib/title'
 import styles from './Auth.module.css'
 
 type Mode = 'login' | 'signup'
-type Outcome = Mode | 'google'
+/** `confirm` takes the sign-up code Cognito emails; `reset` takes a reset code and a new password. */
+type Step = 'form' | 'confirm' | 'reset'
 
 const MIN_PASSWORD = 8
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -19,18 +31,26 @@ export default function Auth() {
   const mode = (): Mode => (location.pathname.startsWith('/signup') ? 'signup' : 'login')
   const isLogin = () => mode() === 'login'
 
-  usePageTitle(() => (isLogin() ? 'Log in' : 'Sign up'))
+  const [step, setStep] = createSignal<Step>('form')
+  // Whether the password field is choosing a new password rather than checking one.
+  const newPw = () => (step() === 'form' ? !isLogin() : step() === 'reset')
+
+  usePageTitle(() =>
+    step() === 'confirm' ? 'Confirm your email' : step() === 'reset' ? 'Reset password' : isLogin() ? 'Log in' : 'Sign up',
+  )
 
   const [name, setName] = createSignal('')
   const [email, setEmail] = createSignal('')
   const [password, setPassword] = createSignal('')
   const [password2, setPassword2] = createSignal('')
+  const [code, setCode] = createSignal('')
   const [show, setShow] = createSignal(false)
   const [pwFocus, setPwFocus] = createSignal(false)
   const [tried, setTried] = createSignal(false)
   const [loading, setLoading] = createSignal(false)
-  const [done, setDone] = createSignal<Outcome | null>(null)
+  const [done, setDone] = createSignal<Mode | null>(null)
   const [notice, setNotice] = createSignal('')
+  const [failure, setFailure] = createSignal('')
   const [blink, setBlink] = createSignal(false)
 
   // Switching between log in and sign up keeps name and email, drops the rest.
@@ -38,10 +58,13 @@ export default function Auth() {
     on(
       mode,
       () => {
+        setStep('form')
         setTried(false)
         setNotice('')
+        setFailure('')
         setPassword('')
         setPassword2('')
+        setCode('')
       },
       { defer: true },
     ),
@@ -55,10 +78,11 @@ export default function Auth() {
       ? ''
       : !password()
         ? 'Enter a password.'
-        : !isLogin() && password().length < MIN_PASSWORD
+        : newPw() && password().length < MIN_PASSWORD
           ? `Use at least ${MIN_PASSWORD} characters.`
           : ''
   const nameErr = () => (tried() && !isLogin() && !name().trim() ? 'Enter your name.' : '')
+  const codeErr = () => (tried() && !code().trim() ? 'Enter the code from the email.' : '')
   const pw2Err = () =>
     tried() && !isLogin() && !pwErr() && password2() !== password()
       ? password2()
@@ -86,11 +110,7 @@ export default function Auth() {
 
   let mascot: HTMLDivElement | undefined
   let hop: Animation | undefined
-  let pending: number | undefined
-  onCleanup(() => {
-    hop?.cancel()
-    clearTimeout(pending)
-  })
+  onCleanup(() => hop?.cancel())
 
   const mascotRef = (el: HTMLDivElement) => {
     mascot = el
@@ -125,10 +145,12 @@ export default function Auth() {
     )
   }
 
-  // There is no auth backend yet: requests are simulated so the flow can be reviewed end to end.
-  const run = (outcome: Outcome) => {
+  // Runs one Cognito request with the mascot hopping. A thrown error becomes the
+  // message above the submit button; anything else is up to `task`.
+  const run = async (task: () => Promise<unknown>) => {
     setLoading(true)
     setNotice('')
+    setFailure('')
     if (mascot && motionOk()) {
       hop = mascot.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-10px)' }, { transform: 'translateY(0)' }], {
         duration: 360,
@@ -137,51 +159,136 @@ export default function Auth() {
         composite: 'add',
       })
     }
-    pending = window.setTimeout(() => {
+    try {
+      await task()
+    } catch (error) {
+      // Signed in in another tab while this one sat open: nothing is wrong.
+      if (errorName(error) === 'UserAlreadyAuthenticatedException') setDone('login')
+      else {
+        setFailure(authMessage(error))
+        shake()
+      }
+    } finally {
       hop?.cancel()
       setLoading(false)
-      setDone(outcome)
-    }, 900)
+    }
+  }
+
+  const username = () => email().trim()
+
+  const goTo = (next: Step, message: string) => {
+    setStep(next)
+    setTried(false)
+    setCode('')
+    setNotice(message)
+  }
+
+  // Cognito doesn't email a code when an unconfirmed account tries to log in, so ask for one.
+  const toConfirm = async () => {
+    await resendSignUpCode({ username: username() })
+    goTo('confirm', '')
+  }
+
+  const toReset = async () => {
+    await resetPassword({ username: username() })
+    setPassword('')
+    goTo('reset', '')
+  }
+
+  const logIn = async () => {
+    const { isSignedIn, nextStep } = await signIn({ username: username(), password: password() })
+    if (isSignedIn) return setDone('login')
+    if (nextStep.signInStep === 'CONFIRM_SIGN_UP') return toConfirm()
+    if (nextStep.signInStep === 'RESET_PASSWORD') return toReset()
+    // MFA or a forced password change: the pool isn't set up for either, so there is no screen for them.
+    setFailure('This account needs a sign-in step we don’t support yet.')
+  }
+
+  const register = async () => {
+    const { nextStep } = await signUp({
+      username: username(),
+      password: password(),
+      options: { userAttributes: { email: username(), name: name().trim() }, autoSignIn: true },
+    })
+    if (nextStep.signUpStep === 'CONFIRM_SIGN_UP') return goTo('confirm', '')
+    if (nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') await autoSignIn()
+    else await signIn({ username: username(), password: password() })
+    setDone('signup')
+  }
+
+  const confirm = async () => {
+    const { nextStep } = await confirmSignUp({ username: username(), confirmationCode: code().trim() })
+    // Sign-up arms auto sign-in; an unconfirmed login attempt doesn't, but its password is still here.
+    if (nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') await autoSignIn()
+    else await signIn({ username: username(), password: password() })
+    setDone('signup')
+  }
+
+  const saveNewPassword = async () => {
+    await confirmResetPassword({ username: username(), confirmationCode: code().trim(), newPassword: password() })
+    await logIn()
   }
 
   const submit = (e: SubmitEvent) => {
     e.preventDefault()
     if (loading()) return
     const ok =
-      emailOk() &&
-      password() &&
-      (isLogin() || (name().trim() && password().length >= MIN_PASSWORD && password2() === password()))
+      step() === 'confirm'
+        ? code().trim()
+        : step() === 'reset'
+          ? code().trim() && password().length >= MIN_PASSWORD
+          : emailOk() &&
+            password() &&
+            (isLogin() || (name().trim() && password().length >= MIN_PASSWORD && password2() === password()))
     if (!ok) {
       shake()
       setTried(true)
       return
     }
-    run(mode())
+    void run(step() === 'confirm' ? confirm : step() === 'reset' ? saveNewPassword : isLogin() ? logIn : register)
   }
 
-  const forgot = () =>
-    setNotice(
-      emailOk()
-        ? `If there’s an account for ${email().trim()}, a reset link is on its way.`
-        : 'Enter your email above and we’ll send a reset link.',
-    )
+  // The browser leaves for Cognito's hosted UI and comes back to /external-auth.
+  const google = () => !loading() && run(() => signInWithRedirect({ provider: 'Google' }))
+
+  const forgot = () => {
+    if (!emailOk()) {
+      setFailure('')
+      setNotice('Enter your email above and we’ll send a reset code.')
+      return
+    }
+    void run(toReset)
+  }
+
+  const resend = () =>
+    run(async () => {
+      if (step() === 'reset') await resetPassword({ username: username() })
+      else await resendSignUpCode({ username: username() })
+      setNotice('A new code is on its way.')
+    })
+
+  const back = () => {
+    goTo('form', '')
+    setFailure('')
+    setPassword('')
+    setPassword2('')
+  }
 
   const reset = () => {
     setDone(null)
-    setPassword('')
-    setPassword2('')
-    setTried(false)
+    back()
   }
+
+  const firstName = () => user()?.name.split(' ')[0]
 
   const doneCopy = () =>
     ({
-      login: ['Welcome back.', 'Picking up where you left off: 2.3 Sizing replicated storage.', 'Resume lesson →'],
-      signup: [
-        'You’re in.',
-        `We sent a confirmation link to ${email().trim() || 'your inbox'}. You can start your first lesson now.`,
-        'Start first lesson →',
+      login: [
+        firstName() ? `Welcome back, ${firstName()}.` : 'Welcome back.',
+        'Picking up where you left off: 2.3 Sizing replicated storage.',
+        'Resume lesson →',
       ],
-      google: ['Signed in with Google.', 'Your account is linked. Next time it’s one click.', 'Continue →'],
+      signup: ['You’re in.', 'Your email is confirmed. You can start your first lesson now.', 'Start first lesson →'],
     })[done() ?? 'login']
 
   const fieldClass = (err: string) => (err ? `${styles.input} ${styles.invalid}` : styles.input)
@@ -204,16 +311,26 @@ export default function Auth() {
                   <Critter kind="circle" hue={255} size={56} mood={mood()} fill="oklch(0.83 0.11 255)" />
                 </div>
                 <h1 class={styles.title}>
-                  {isLogin() ? 'Log in to' : 'Sign up for'} steadylearn<span class={styles.dot}>.</span>
+                  <Show
+                    when={step() === 'form'}
+                    fallback={step() === 'confirm' ? 'Check your email' : 'Set a new password'}
+                  >
+                    {isLogin() ? 'Log in to' : 'Sign up for'} steadylearn
+                  </Show>
+                  <span class={styles.dot}>.</span>
                 </h1>
                 <p class={styles.subtitle}>
-                  {isLogin()
-                    ? 'Pick up your lessons where you left them.'
-                    : 'Free to start. Your first lesson takes fifteen minutes.'}
+                  {step() === 'confirm'
+                    ? `We sent a code to ${username()}. Enter it to confirm your account.`
+                    : step() === 'reset'
+                      ? `If there’s an account for ${username()}, we sent it a code. Enter it with your new password.`
+                      : isLogin()
+                        ? 'Pick up your lessons where you left them.'
+                        : 'Free to start. Your first lesson takes fifteen minutes.'}
                 </p>
 
-                <Show when={isLogin()} fallback={<span class={styles.gap} />}>
-                  <button type="button" class={styles.google} onClick={() => !loading() && run('google')}>
+                <Show when={step() === 'form' && isLogin()} fallback={<span class={styles.gap} />}>
+                  <button type="button" class={styles.google} onClick={google}>
                     <GoogleIcon />
                     Continue with Google
                   </button>
@@ -225,7 +342,7 @@ export default function Auth() {
                 </Show>
 
                 <form class={styles.form} onSubmit={submit} noValidate>
-                  <Show when={!isLogin()}>
+                  <Show when={step() === 'form' && !isLogin()}>
                     <label class={styles.field}>
                       <span class={styles.label}>Name</span>
                       <input
@@ -246,6 +363,7 @@ export default function Auth() {
                     </label>
                   </Show>
 
+                  <Show when={step() === 'form'}>
                   <label class={styles.field}>
                     <span class={styles.label}>Email</span>
                     <input
@@ -264,13 +382,37 @@ export default function Auth() {
                       </span>
                     </Show>
                   </label>
+                  </Show>
 
+                  <Show when={step() !== 'form'}>
+                    <label class={styles.field}>
+                      <span class={styles.label}>Code</span>
+                      <input
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="one-time-code"
+                        placeholder="123456"
+                        class={fieldClass(codeErr())}
+                        value={code()}
+                        onInput={(e) => setCode(e.currentTarget.value)}
+                        aria-invalid={!!codeErr()}
+                        aria-describedby="auth-code-err"
+                      />
+                      <Show when={codeErr()}>
+                        <span id="auth-code-err" class={styles.error}>
+                          {codeErr()}
+                        </span>
+                      </Show>
+                    </label>
+                  </Show>
+
+                  <Show when={step() !== 'confirm'}>
                   <div class={styles.field}>
                     <span class={styles.labelRow}>
                       <label for="auth-password" class={styles.label}>
-                        Password
+                        {step() === 'reset' ? 'New password' : 'Password'}
                       </label>
-                      <Show when={isLogin()}>
+                      <Show when={step() === 'form' && isLogin()}>
                         <button type="button" class={styles.forgot} onClick={forgot}>
                           Forgot password?
                         </button>
@@ -280,8 +422,8 @@ export default function Auth() {
                       <input
                         id="auth-password"
                         type={show() ? 'text' : 'password'}
-                        autocomplete={isLogin() ? 'current-password' : 'new-password'}
-                        placeholder={isLogin() ? 'Your password' : `At least ${MIN_PASSWORD} characters`}
+                        autocomplete={newPw() ? 'new-password' : 'current-password'}
+                        placeholder={newPw() ? `At least ${MIN_PASSWORD} characters` : 'Your password'}
                         class={`${fieldClass(pwErr())} ${styles.passwordInput}`}
                         value={password()}
                         onInput={(e) => setPassword(e.currentTarget.value)}
@@ -305,7 +447,7 @@ export default function Auth() {
                         {pwErr()}
                       </span>
                     </Show>
-                    <Show when={!isLogin() && !pwErr() && password().length > 0}>
+                    <Show when={newPw() && !pwErr() && password().length > 0}>
                       <span
                         id="auth-pw-hint"
                         class={`${styles.hint} mono`}
@@ -317,8 +459,9 @@ export default function Auth() {
                       </span>
                     </Show>
                   </div>
+                  </Show>
 
-                  <Show when={!isLogin()}>
+                  <Show when={step() === 'form' && !isLogin()}>
                     <label class={styles.field}>
                       <span class={styles.label}>Repeat password</span>
                       <input
@@ -347,6 +490,12 @@ export default function Auth() {
                     </span>
                   </Show>
 
+                  <Show when={failure()}>
+                    <span class={styles.error} role="alert">
+                      {failure()}
+                    </span>
+                  </Show>
+
                   <Button
                     type="submit"
                     variant="primary"
@@ -354,22 +503,46 @@ export default function Auth() {
                     class={loading() ? `${styles.submit} ${styles.loading}` : styles.submit}
                     aria-disabled={loading()}
                   >
-                    {loading()
-                      ? isLogin()
-                        ? 'Logging in…'
-                        : 'Creating account…'
-                      : isLogin()
-                        ? 'Log in'
-                        : 'Create account'}
+                    {step() === 'confirm'
+                      ? loading()
+                        ? 'Confirming…'
+                        : 'Confirm email'
+                      : step() === 'reset'
+                        ? loading()
+                          ? 'Saving…'
+                          : 'Save and log in'
+                        : loading()
+                          ? isLogin()
+                            ? 'Logging in…'
+                            : 'Creating account…'
+                          : isLogin()
+                            ? 'Log in'
+                            : 'Create account'}
                   </Button>
                 </form>
 
-                <p class={styles.switch}>
-                  {isLogin() ? 'New to steadylearn?' : 'Already have an account?'}
-                  <A href={isLogin() ? '/signup' : '/login'}>{isLogin() ? 'Create an account' : 'Log in'}</A>
-                </p>
+                <Show
+                  when={step() === 'form'}
+                  fallback={
+                    <p class={styles.switch}>
+                      Didn’t get it?
+                      <button type="button" class={styles.linkButton} onClick={() => !loading() && resend()}>
+                        Send a new code
+                      </button>
+                      <span class={styles.spacer} />
+                      <button type="button" class={styles.linkButton} onClick={back}>
+                        ← Back
+                      </button>
+                    </p>
+                  }
+                >
+                  <p class={styles.switch}>
+                    {isLogin() ? 'New to steadylearn?' : 'Already have an account?'}
+                    <A href={isLogin() ? '/signup' : '/login'}>{isLogin() ? 'Create an account' : 'Log in'}</A>
+                  </p>
+                </Show>
 
-                <Show when={!isLogin()}>
+                <Show when={step() === 'form' && !isLogin()}>
                   <p class={styles.legal}>
                     By creating an account you agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
                   </p>

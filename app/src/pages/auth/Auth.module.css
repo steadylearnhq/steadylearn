@@ -277,3 +277,29 @@
   flex-wrap: wrap;
   gap: 10px;
 }
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--accentText);
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  color: var(--ink);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 15px;
+  color: var(--muted);
+}
