@@ -32,6 +32,7 @@ import (
 
 	_ "steadylearn-api/docs"
 	"steadylearn-api/src/api/health"
+	routes "steadylearn-api/src/api/v1"
 	"steadylearn-api/src/core"
 )
 
@@ -128,6 +129,8 @@ func newRouter() *gin.Engine {
 	health.RegisterHealthRoutes(engine)
 
 	engine.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	routes.RegisterV1Routes(engine)
 
 	return engine
 }
