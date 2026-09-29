@@ -1,111 +1,112 @@
+:root,
+[data-theme='light'] {
+  --paper: #fcfbf8;
+  --ink: #141311;
+  --muted: #6a665f;
+  --line: #ece9e3;
+  --line2: #ddd8ce;
+  --line3: #e6e2da;
+  --stripe: #f1eee8;
+  --hover: #f6f4ef;
+  --faint: #a9a49a;
+  --off: #b9b4ab;
+  --lock: #141311;
+  --glass: rgba(252, 251, 248, 0.93);
+  --scrim: rgba(20, 19, 17, 0.42);
+  --accentText: oklch(0.6 0.2 35);
+  --fill: #141311;
+  --bar: #141311;
+  --seg: #141311;
+  --onSeg: #fcfbf8;
+  --onFill: #fcfbf8;
+  --stroke: #141311;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --paper: #161513;
+  --ink: #eeebe5;
+  --muted: #a19c93;
+  --line: #2b2926;
+  --line2: #3a3733;
+  --line3: #35322e;
+  --stripe: #23211e;
+  --hover: #1f1d1b;
+  --faint: #6f6b64;
+  --off: #4a4742;
+  --lock: #3e3b37;
+  --glass: rgba(22, 21, 19, 0.93);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --accentText: oklch(0.72 0.17 35);
+  --fill: #34312d;
+  --bar: #a19c93;
+  --seg: #eeebe5;
+  --onSeg: #161513;
+  --onFill: #eeebe5;
+  --stroke: #4d4943;
+  color-scheme: dark;
+}
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  /* Theme-independent brand values */
+  --tomato: oklch(0.64 0.2 35);
+  --font-sans: 'Onest', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --page-max: 1440px;
+  --page-pad: 48px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
-@media (prefers-color-scheme: dark) {
+@media (max-width: 720px) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --page-pad: 20px;
   }
 }
 
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
+html,
+body {
   margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+body {
+  overflow-x: clip;
+  min-height: 100vh;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+a {
+  color: var(--accentText);
+}
+
+a:hover {
+  color: var(--ink);
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
 }

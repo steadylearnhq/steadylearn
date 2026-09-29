@@ -1,28 +1,20 @@
-## Usage
+# Steadylearn web app
+
+Solid + TypeScript, built with Vite.
+
+Requires Node 22.12 or newer (`.nvmrc` pins 24).
 
 ```bash
-$ npm install # or pnpm install or yarn install
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # type-check and build to dist/
+npm run preview  # serve the production build
 ```
 
-### Learn more on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs)
+## Layout
 
-## Available Scripts
-
-In the project directory, you can run:
-
-### `npm run dev`
-
-Runs the app in the development mode.<br>
-Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
-
-### `npm run build`
-
-Builds the app for production to the `dist` folder.<br>
-It correctly bundles Solid in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
-
-## Deployment
-
-Learn more about deploying your application with the [documentations](https://vite.dev/guide/static-deploy.html)
+- `src/index.css`: design tokens (light and dark themes) and base styles
+- `src/lib/`: app-wide state such as the theme
+- `src/components/`: shared UI (header, footer, buttons, critters, ChoiceBet)
+- `src/pages/landing/`: the public landing page, one file per section
+- `src/data/`: static content used by the pages
