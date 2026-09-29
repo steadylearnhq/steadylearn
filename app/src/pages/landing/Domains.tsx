@@ -1,10 +1,8 @@
 import { For } from 'solid-js'
 import Critter from '../../components/Critter'
-import { DOMAINS, coursesIn } from '../../data/catalog'
+import { DOMAINS, coursesIn, plural } from '../../data/catalog'
 import shared from './shared.module.css'
 import styles from './Domains.module.css'
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 export default function Domains() {
   return (
