@@ -90,6 +90,17 @@ body {
   min-height: 100vh;
 }
 
+/* Scrollbars are hidden everywhere, the page and scrolling panels alike;
+   wheel, touch and keyboard scrolling still work. The -webkit- rule covers
+   Safari before 18.2, which ignores scrollbar-width. */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
 a {
   color: var(--accentText);
 }
