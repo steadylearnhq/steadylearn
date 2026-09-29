@@ -88,7 +88,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create the local record for the authenticated Cognito user, seeding name and picture from the user pool. Idempotent.",
+                "description": "Create the local record for the authenticated Cognito user. Idempotent.",
                 "consumes": [
                     "application/json"
                 ],
@@ -108,15 +108,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "502": {
-                        "description": "Bad Gateway",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -188,70 +179,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update the authenticated user's display name",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Update current user",
-                "parameters": [
-                    {
-                        "description": "User fields to change",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/schemas.UpdateUserSchema"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/schemas.UserSchema"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
             }
         }
     },
@@ -278,17 +205,6 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "example": "ok"
-                }
-            }
-        },
-        "schemas.UpdateUserSchema": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 1,
-                    "example": "John Doe"
                 }
             }
         },
@@ -320,14 +236,6 @@ const docTemplate = `{
                 "id": {
                     "type": "string",
                     "example": "123e4567-e89b-12d3-a456-426614174000"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "John Doe"
-                },
-                "pictureUrl": {
-                    "type": "string",
-                    "example": "https://example.com/picture.png"
                 },
                 "profile": {
                     "description": "Profile is filled in only when the request asks for it, because filling it\nin costs a call to the user pool.",

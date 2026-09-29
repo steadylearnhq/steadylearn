@@ -13,7 +13,6 @@ func RegisterV1Routes(router *gin.Engine) {
 		userRoutes := v1.Group("/users")
 		{
 			userRoutes.GET("/me", middleware.RequireAuth(), controllers.GetCurrentUser)
-			userRoutes.PUT("/me", middleware.RequireAuth(), controllers.UpdateCurrentUser)
 			userRoutes.POST("", middleware.RequireAuth(), controllers.SetupUser)
 		}
 	}

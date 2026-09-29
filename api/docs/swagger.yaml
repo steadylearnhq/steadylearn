@@ -17,14 +17,6 @@ definitions:
         example: ok
         type: string
     type: object
-  schemas.UpdateUserSchema:
-    properties:
-      name:
-        example: John Doe
-        maxLength: 255
-        minLength: 1
-        type: string
-    type: object
   schemas.UserProfileSchema:
     properties:
       email:
@@ -47,12 +39,6 @@ definitions:
     properties:
       id:
         example: 123e4567-e89b-12d3-a456-426614174000
-        type: string
-      name:
-        example: John Doe
-        type: string
-      pictureUrl:
-        example: https://example.com/picture.png
         type: string
       profile:
         allOf:
@@ -117,8 +103,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create the local record for the authenticated Cognito user, seeding
-        name and picture from the user pool. Idempotent.
+      description: Create the local record for the authenticated Cognito user. Idempotent.
       produces:
       - application/json
       responses:
@@ -128,12 +113,6 @@ paths:
             $ref: '#/definitions/schemas.UserSchema'
         "401":
           description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "502":
-          description: Bad Gateway
           schema:
             additionalProperties:
               type: string
@@ -183,47 +162,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Get current user
-      tags:
-      - users
-    put:
-      consumes:
-      - application/json
-      description: Update the authenticated user's display name
-      parameters:
-      - description: User fields to change
-        in: body
-        name: payload
-        required: true
-        schema:
-          $ref: '#/definitions/schemas.UpdateUserSchema'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/schemas.UserSchema'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Update current user
       tags:
       - users
 schemes:
