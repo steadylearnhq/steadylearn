@@ -38,10 +38,10 @@ export default function Header() {
             <span class={styles.themeLabel}>{theme() === 'dark' ? 'Light' : 'Dark'}</span>
             <span class="visually-hidden"> theme</span>
           </button>
-          <Button variant="ghost" size="sm" class={styles.login}>
+          <Button variant="ghost" size="sm" class={styles.login} href="/login">
             Log in
           </Button>
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" href="/signup">
             Sign up free
           </Button>
         </div>

@@ -200,10 +200,10 @@ export default function CourseModal(props: CourseModalProps) {
               {props.course.isFree ? 'Free course. Sign up to start.' : 'Included with the subscription, $24/month.'}
             </span>
             <span class={styles.spacer} />
-            <Button variant="ghost" size="md">
+            <Button variant="ghost" size="md" href="/login">
               Log in
             </Button>
-            <Button variant="primary" size="md">
+            <Button variant="primary" size="md" href="/signup">
               Sign up to enroll →
             </Button>
           </div>

@@ -8,7 +8,7 @@ export default function ClosingCta() {
       <Critter kind="circle" hue={255} size={72} mood="happy" />
       <h2 class={styles.title}>Start with one lesson. It takes fifteen minutes.</h2>
       <div class={styles.actions}>
-        <Button variant="primary" size="lg">
+        <Button variant="primary" size="lg" href="/signup">
           Sign up free →
         </Button>
         <Button variant="outline" size="lg" href="/catalog">
