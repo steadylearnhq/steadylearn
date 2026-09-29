@@ -1,5 +1,6 @@
 import { useLocation } from '@solidjs/router'
-import { For } from 'solid-js'
+import { For, Show } from 'solid-js'
+import { authReady, signOut, user } from '../lib/auth'
 import { theme, toggleTheme } from '../lib/theme'
 import Button from './Button'
 import Logo from './Logo'
@@ -38,12 +39,31 @@ export default function Header() {
             <span class={styles.themeLabel}>{theme() === 'dark' ? 'Light' : 'Dark'}</span>
             <span class="visually-hidden"> theme</span>
           </button>
-          <Button variant="ghost" size="sm" class={styles.login} href="/login">
-            Log in
-          </Button>
-          <Button variant="primary" size="sm" href="/signup">
-            Sign up free
-          </Button>
+          {/* Nothing until the stored session is read, so a signed-in visitor never sees "Log in" flash. */}
+          <Show when={authReady()}>
+            <Show
+              when={user()}
+              fallback={
+                <>
+                  <Button variant="ghost" size="sm" class={styles.login} href="/login">
+                    Log in
+                  </Button>
+                  <Button variant="primary" size="sm" href="/signup">
+                    Sign up free
+                  </Button>
+                </>
+              }
+            >
+              {(u) => (
+                <>
+                  <span class={styles.userName}>{u().name}</span>
+                  <Button variant="outline" size="sm" onClick={() => void signOut()}>
+                    Log out
+                  </Button>
+                </>
+              )}
+            </Show>
+          </Show>
         </div>
       </div>
     </header>
