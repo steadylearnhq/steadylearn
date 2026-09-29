@@ -19,7 +19,7 @@ type UserProfileSchema struct {
 
 type UserSchema struct {
 	Id uuid.UUID `json:"id" example:"123e4567-e89b-12d3-a456-426614174000"`
-	// Profile is filled in only when the request asks for it, because filling it
-	// in costs a call to the user pool.
+	// Profile is filled in by the /me endpoint, which caches the call to the user
+	// pool that fills it, and left out of the plain reads of the local record.
 	Profile *UserProfileSchema `json:"profile,omitempty"`
 }

@@ -5,6 +5,7 @@ go 1.25.7
 require (
 	ariga.io/atlas-provider-gorm v0.6.1
 	github.com/MicahParks/keyfunc/v3 v3.8.2
+	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/aws/aws-sdk-go-v2 v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.4
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.74.0
@@ -162,6 +163,7 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.2 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelsql v0.3.2 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.8.1 // indirect
 	go.opencensus.io v0.24.0 // indirect

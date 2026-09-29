@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -65,24 +64,9 @@ type CognitoUserDetails struct {
 	ExternalProvider string
 }
 
-// cognitoDetailsTTL is how long a user pool lookup is reused. Names, pictures
-// and providers change approximately never, and the alternative is an AWS round
-// trip on every read of the profile.
-const cognitoDetailsTTL = 5 * time.Minute
-
 // cognitoCallTimeout bounds the lookup. Without it a stalled AWS call holds the
 // request goroutine open indefinitely.
 const cognitoCallTimeout = 5 * time.Second
-
-type cachedCognitoDetails struct {
-	details   CognitoUserDetails
-	expiresAt time.Time
-}
-
-// cognitoDetailsCache is process-local, so it is a per-instance saving rather
-// than a shared one. That is enough: it exists to collapse the repeated reads of
-// a single session, not to be a system of record.
-var cognitoDetailsCache sync.Map
 
 // cognitoIdentity is one entry of the identities attribute, which Cognito stores
 // as a JSON string rather than as structured data.
@@ -121,8 +105,8 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-// GetCognitoUserDetails fetches the user pool's view of the given sub. Results
-// are cached for cognitoDetailsTTL.
+// GetCognitoUserDetails fetches the user pool's view of the given sub. It is not
+// cached here: the services layer caches the user as a whole, in Redis.
 //
 // The lookup is a ListUsers filtered on sub rather than an AdminGetUser: a
 // federated user's pool username is their provider id ("google_1234..."), not
@@ -131,13 +115,6 @@ func firstNonEmpty(values ...string) string {
 func GetCognitoUserDetails(userID uuid.UUID) (CognitoUserDetails, error) {
 	if Cognito == nil {
 		return CognitoUserDetails{}, errors.New("cognito client not initialized")
-	}
-
-	if cached, ok := cognitoDetailsCache.Load(userID); ok {
-		entry := cached.(cachedCognitoDetails)
-		if time.Now().Before(entry.expiresAt) {
-			return entry.details, nil
-		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cognitoCallTimeout)
@@ -170,11 +147,6 @@ func GetCognitoUserDetails(userID uuid.UUID) (CognitoUserDetails, error) {
 	if picture := firstNonEmpty(attributes["picture"], attributes["picture_url"]); picture != "" {
 		details.PictureURL = &picture
 	}
-
-	cognitoDetailsCache.Store(userID, cachedCognitoDetails{
-		details:   details,
-		expiresAt: time.Now().Add(cognitoDetailsTTL),
-	})
 
 	return details, nil
 }

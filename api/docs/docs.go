@@ -125,7 +125,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get the currently authenticated user, optionally with the identity provider's profile attached. A 404 means the user has not been set up yet.",
+                "description": "Get the currently authenticated user with the identity provider's profile attached. Served from a cache for up to five minutes, so a change made in the user pool can take that long to show. A 404 means the user has not been set up yet.",
                 "consumes": [
                     "application/json"
                 ],
@@ -136,14 +136,6 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Get current user",
-                "parameters": [
-                    {
-                        "type": "boolean",
-                        "description": "Attach the identity provider's profile block. Costs one call to the user pool",
-                        "name": "profile",
-                        "in": "query"
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -238,7 +230,7 @@ const docTemplate = `{
                     "example": "123e4567-e89b-12d3-a456-426614174000"
                 },
                 "profile": {
-                    "description": "Profile is filled in only when the request asks for it, because filling it\nin costs a call to the user pool.",
+                    "description": "Profile is filled in by the /me endpoint, which caches the call to the user\npool that fills it, and left out of the plain reads of the local record.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/schemas.UserProfileSchema"

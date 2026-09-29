@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
@@ -62,8 +63,6 @@ func TestGetUserByIdNotSetUp(t *testing.T) {
 
 func TestGetUserProfile(t *testing.T) {
 	cognito := testutil.UseCognito(t)
-	// A fresh id per test also keeps core's Cognito details cache from
-	// answering for a user another test looked up.
 	userID := uuid.New()
 
 	cognito.On("ListUsers", mock.Anything, forSub(userID)).Return(poolUser(map[string]string{
@@ -92,4 +91,99 @@ func TestGetUserProfileReportsPoolFailure(t *testing.T) {
 
 	_, err := services.GetUserProfile(userID)
 	assert.ErrorIs(t, err, services.ErrIdentityProvider)
+}
+
+// setUpUser gives the test a user who has a local row, and a user pool that
+// answers for them once.
+func setUpUser(t *testing.T, cognito *testutil.MockCognito) uuid.UUID {
+	t.Helper()
+	userID := uuid.New()
+
+	_, err := services.SetupUser(context.Background(), userID)
+	require.NoError(t, err)
+
+	cognito.On("ListUsers", mock.Anything, forSub(userID)).Return(poolUser(map[string]string{
+		"email": "olena@example.com",
+		"name":  "Olena",
+	}), nil).Once()
+
+	return userID
+}
+
+func TestGetCurrentUserReadsThroughTheCache(t *testing.T) {
+	testutil.UseDB(t)
+	cognito := testutil.UseCognito(t)
+	cache := testutil.UseCache(t)
+	ctx := context.Background()
+	userID := setUpUser(t, cognito)
+
+	first, err := services.GetCurrentUser(ctx, userID)
+	require.NoError(t, err)
+	assert.Equal(t, userID, first.Id)
+	require.NotNil(t, first.Profile)
+	assert.Equal(t, "olena@example.com", first.Profile.Email)
+	assert.True(t, cache.Exists(services.CurrentUserCacheKey(userID)), "a miss stores the user")
+
+	// The user pool was told to answer once, so a second trip there fails the
+	// test: this one has to come from the cache.
+	second, err := services.GetCurrentUser(ctx, userID)
+	require.NoError(t, err)
+	assert.Equal(t, first, second)
+}
+
+func TestGetCurrentUserRefetchesAfterExpiry(t *testing.T) {
+	testutil.UseDB(t)
+	cognito := testutil.UseCognito(t)
+	cache := testutil.UseCache(t)
+	ctx := context.Background()
+	userID := setUpUser(t, cognito)
+
+	_, err := services.GetCurrentUser(ctx, userID)
+	require.NoError(t, err)
+
+	cache.FastForward(10 * time.Minute)
+	cognito.On("ListUsers", mock.Anything, forSub(userID)).Return(poolUser(map[string]string{
+		"email": "olena@example.com",
+		"name":  "Olena K.",
+	}), nil).Once()
+
+	user, err := services.GetCurrentUser(ctx, userID)
+	require.NoError(t, err)
+	assert.Equal(t, aws.String("Olena K."), user.Profile.Name, "an expired entry is fetched again")
+}
+
+func TestGetCurrentUserServesWithoutTheCache(t *testing.T) {
+	testutil.UseDB(t)
+	cognito := testutil.UseCognito(t)
+	cache := testutil.UseCache(t)
+	userID := setUpUser(t, cognito)
+
+	cache.Close()
+
+	user, err := services.GetCurrentUser(context.Background(), userID)
+	require.NoError(t, err, "an unreachable cache falls back to the source")
+	assert.Equal(t, userID, user.Id)
+	require.NotNil(t, user.Profile)
+}
+
+func TestGetCurrentUserDoesNotCacheFailures(t *testing.T) {
+	testutil.UseDB(t)
+	cognito := testutil.UseCognito(t)
+	cache := testutil.UseCache(t)
+	ctx := context.Background()
+
+	notSetUp := uuid.New()
+	_, err := services.GetCurrentUser(ctx, notSetUp)
+	assert.ErrorIs(t, err, services.ErrUserNotFound)
+	assert.False(t, cache.Exists(services.CurrentUserCacheKey(notSetUp)))
+
+	throttled := uuid.New()
+	_, err = services.SetupUser(ctx, throttled)
+	require.NoError(t, err)
+	cognito.On("ListUsers", mock.Anything, forSub(throttled)).
+		Return(nil, errors.New("throttled")).Once()
+
+	_, err = services.GetCurrentUser(ctx, throttled)
+	assert.ErrorIs(t, err, services.ErrIdentityProvider)
+	assert.False(t, cache.Exists(services.CurrentUserCacheKey(throttled)))
 }
