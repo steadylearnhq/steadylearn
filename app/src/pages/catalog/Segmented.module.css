@@ -44,3 +44,21 @@
   outline: 2px solid var(--accentText);
   outline-offset: 1px;
 }
+
+@media (max-width: 720px) {
+  .field {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Scroll sideways rather than overflow the page on narrow screens. */
+  .group {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .option {
+    padding: 0 8px;
+  }
+}

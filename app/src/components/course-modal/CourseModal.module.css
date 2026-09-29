@@ -48,8 +48,11 @@
 }
 
 .domain {
+  overflow: hidden;
   font-family: var(--font-mono);
   font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--muted);
 }
 
@@ -67,6 +70,7 @@
 }
 
 .position {
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--muted);
@@ -397,5 +401,11 @@
 
   .access {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .position {
+    display: none;
   }
 }

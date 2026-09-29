@@ -311,6 +311,7 @@
 
   .lede {
     font-size: 17px;
+    text-wrap: wrap;
   }
 
   .price {
