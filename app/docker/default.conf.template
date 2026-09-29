@@ -1,0 +1,25 @@
+# Rendered by the nginx image's entrypoint; only defined environment variables
+# (here, PORT) are substituted, so nginx's own $variables pass through.
+server {
+    listen ${PORT};
+    listen [::]:${PORT};
+    server_name _;
+
+    root /usr/share/nginx/html;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # Hashed by Vite, so they can be cached forever.
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # Client-side routes all resolve to the SPA shell, which must always be
+    # revalidated so a deploy is picked up on the next load.
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri /index.html;
+    }
+}

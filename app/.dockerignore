@@ -1,0 +1,22 @@
+# VCS and tooling
+.git
+.gitignore
+.claude
+.vscode
+.idea
+.DS_Store
+
+# Dependencies and build output are produced inside the image.
+node_modules
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Local config; runtime values come from the container's environment.
+.env
+.env.*
+*.local
+
+# Docker
+Dockerfile
+.dockerignore
