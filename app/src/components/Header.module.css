@@ -93,7 +93,25 @@
 }
 
 @media (max-width: 560px) {
+  .inner {
+    gap: 12px;
+  }
+
   .login {
     display: none;
+  }
+
+  .themeToggle {
+    width: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .themeLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 }

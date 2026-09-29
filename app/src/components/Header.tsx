@@ -32,7 +32,7 @@ export default function Header(props: { current: string }) {
         <div class={styles.actions}>
           <button type="button" class={styles.themeToggle} onClick={toggleTheme}>
             <span class={styles.themeIcon} aria-hidden="true" />
-            {theme() === 'dark' ? 'Light' : 'Dark'}
+            <span class={styles.themeLabel}>{theme() === 'dark' ? 'Light' : 'Dark'}</span>
             <span class="visually-hidden"> theme</span>
           </button>
           <Button variant="ghost" size="sm" class={styles.login}>
