@@ -4,6 +4,7 @@ import Header from './components/Header'
 import Catalog from './pages/catalog/Catalog'
 import Landing from './pages/landing/Landing'
 import NotFound from './pages/NotFound'
+import Pricing from './pages/pricing/Pricing'
 
 function Layout(props: RouteSectionProps) {
   return (
@@ -20,6 +21,7 @@ function App() {
     <Router root={Layout}>
       <Route path="/" component={Landing} />
       <Route path="/catalog" component={Catalog} />
+      <Route path="/pricing" component={Pricing} />
       <Route path="*" component={NotFound} />
     </Router>
   )
