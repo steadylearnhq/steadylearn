@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@solidjs/router": "^1.0.0",
+    "aws-amplify": "^6.22.1",
     "solid-js": "^1.9.15"
   },
   "devDependencies": {
