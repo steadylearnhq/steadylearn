@@ -11,6 +11,7 @@
 }
 
 .group {
+  position: relative;
   display: flex;
   gap: 1px;
   padding: 2px;
@@ -18,7 +19,25 @@
   border-radius: 9999px;
 }
 
+/* The selected pill, placed under the chosen option by Segmented.tsx. */
+.thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  border-radius: 9999px;
+  background: var(--seg);
+  pointer-events: none;
+}
+
+.thumb.animated {
+  transition:
+    transform 240ms cubic-bezier(0.2, 0, 0, 1),
+    width 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
 .option {
+  position: relative;
   height: 26px;
   padding: 0 10px;
   border: 0;
@@ -29,20 +48,29 @@
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  transition: color 240ms;
 }
 
 .option:hover {
   background: var(--hover);
 }
 
+/* The thumb is the selected option's background. */
 .option[aria-checked='true'] {
-  background: var(--seg);
+  background: transparent;
   color: var(--onSeg);
 }
 
 .option:focus-visible {
   outline: 2px solid var(--accentText);
   outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumb.animated,
+  .option {
+    transition: none;
+  }
 }
 
 @media (max-width: 720px) {
