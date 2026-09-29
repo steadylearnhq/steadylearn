@@ -1,13 +1,15 @@
-import { For, Show, createEffect, on, onCleanup, onMount } from 'solid-js'
+import { For, Match, Show, Switch, createEffect, createResource, on, onCleanup, onMount } from 'solid-js'
 import { Portal } from 'solid-js/web'
-import { DOMAIN_BY_ID, domainDot, formatHours, plural, type Course } from '../../data/catalog'
+import { domainDot, domainStyle, formatLength, levelLabel, plural, type Course, type Module } from '../../data/catalog'
 import { LESSON_STEPS, STEP_BY_KEY } from '../../data/lessonSteps'
+import { fetchCourse } from '../../lib/catalog'
 import Button from '../Button'
 import Critter from '../Critter'
 import styles from './CourseModal.module.css'
 
 type CourseModalProps = {
   course: Course
+  domainName: string
   position: string
   onClose: () => void
   onPrev: () => void
@@ -20,17 +22,24 @@ export default function CourseModal(props: CourseModalProps) {
   let dialog!: HTMLDivElement
   let body!: HTMLDivElement
 
-  const domain = () => DOMAIN_BY_ID[props.course.domain]
-  const hasSyllabus = () => props.course.modules.some((m) => m.lessons)
+  const domain = () => domainStyle(props.course.domain)
+
+  // Everything but the syllabus comes with the catalog, so the dialog opens
+  // at once and only the syllabus waits on the course's own request.
+  const [detail, { refetch }] = createResource(() => props.course.id, fetchCourse)
+  // While the next course loads, the resource still holds the previous one.
+  const syllabus = () =>
+    detail.state === 'ready' && detail().id === props.course.id ? detail().modules : undefined
+  const hasLessons = () => syllabus()?.some((m) => m.lessons) ?? false
 
   const kpis = () => [
-    { label: 'Level', value: props.course.level },
-    { label: 'Length', value: formatHours(props.course.hours) },
-    { label: 'Lessons', value: props.course.lessons },
+    { label: 'Level', value: levelLabel(props.course.level) },
+    { label: 'Length', value: formatLength(props.course.minutes) },
+    { label: 'Lessons', value: props.course.lessonCount },
     { label: 'Break-its', value: props.course.breakIts.length },
   ]
 
-  const moduleMeta = (m: Course['modules'][number]) =>
+  const moduleMeta = (m: Module) =>
     m.lessons
       ? `${plural(m.lessons.length, 'lesson')} · ${m.lessons.reduce((sum, l) => sum + l.minutes, 0)} min`
       : plural(m.lessonCount, 'lesson')
@@ -86,7 +95,7 @@ export default function CourseModal(props: CourseModalProps) {
           <div class={styles.head}>
             <div class={styles.bar}>
               <span class={styles.dot} style={{ background: domainDot(props.course.domain) }} />
-              <span class={styles.domain}>{domain().name}</span>
+              <span class={styles.domain}>{props.domainName}</span>
               <Show when={props.course.isNew}>
                 <span class={styles.badge}>new</span>
               </Show>
@@ -129,11 +138,32 @@ export default function CourseModal(props: CourseModalProps) {
               <div class={styles.sectionHead}>
                 <h3 class={styles.h3}>Syllabus</h3>
                 <span class={styles.small}>
-                  {plural(props.course.modules.length, 'module')}
-                  {hasSyllabus() ? '' : ' · lesson list after sign-up'}
+                  <Show when={syllabus()}>
+                    {(modules) => (
+                      <>
+                        {plural(modules().length, 'module')}
+                        {hasLessons() ? '' : ' · lesson list after sign-up'}
+                      </>
+                    )}
+                  </Show>
                 </span>
               </div>
-              <For each={props.course.modules}>
+              <Switch>
+                <Match when={detail.error}>
+                  <div class={styles.syllabusState} role="alert">
+                    <span>The syllabus didn't load.</span>
+                    <button type="button" class={styles.retry} onClick={() => void refetch()}>
+                      Try again
+                    </button>
+                  </div>
+                </Match>
+                <Match when={!syllabus()}>
+                  <div class={styles.syllabusState} aria-busy="true">
+                    Loading syllabus…
+                  </div>
+                </Match>
+              </Switch>
+              <For each={syllabus()}>
                 {(m, i) => (
                   <div class={styles.module}>
                     <div class={styles.moduleHead}>

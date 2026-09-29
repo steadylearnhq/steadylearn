@@ -1,11 +1,11 @@
 import { useSearchParams } from '@solidjs/router'
 import { createMemo } from 'solid-js'
-import { COURSES, DOMAIN_BY_ID, DOMAINS, LEVELS, type Course, type DomainId, type Level } from '../../data/catalog'
+import { LEVELS, type Catalog, type Course, type Level } from '../../data/catalog'
 
 export const LENGTHS = [
-  { id: 'short', label: '< 2 h', test: (h: number) => h < 2 },
-  { id: 'medium', label: '2–5 h', test: (h: number) => h >= 2 && h <= 5 },
-  { id: 'long', label: '> 5 h', test: (h: number) => h > 5 },
+  { id: 'short', label: '< 2 h', test: (m: number) => m < 120 },
+  { id: 'medium', label: '2–5 h', test: (m: number) => m >= 120 && m <= 300 },
+  { id: 'long', label: '> 5 h', test: (m: number) => m > 300 },
 ] as const
 
 export type LengthId = (typeof LENGTHS)[number]['id']
@@ -19,14 +19,16 @@ type CatalogParams = {
 
 /**
  * Catalog filters live in the URL (?domain=&level=&length=&q=) so filtered
- * views can be linked to, e.g. from the landing page's domain grid.
+ * views can be linked to, e.g. from the landing page's domain grid. The API
+ * returns the whole catalog, so filtering is done here and answers as you type.
  */
-export function useCatalogFilters() {
+export function useCatalogFilters(catalog: () => Catalog | undefined) {
   const [params, setParams] = useSearchParams<CatalogParams>()
 
-  const domain = (): DomainId | undefined =>
-    params.domain && params.domain in DOMAIN_BY_ID ? (params.domain as DomainId) : undefined
-  const level = (): Level | undefined => LEVELS.find((l) => l.toLowerCase() === params.level)
+  const courses = () => catalog()?.courses ?? []
+
+  const domain = () => catalog()?.domains.find((d) => d.id === params.domain)?.id
+  const level = (): Level | undefined => LEVELS.find((l) => l.id === params.level)?.id
   const length = () => LENGTHS.find((l) => l.id === params.length)
   const query = () => params.q ?? ''
 
@@ -36,12 +38,21 @@ export function useCatalogFilters() {
     return (
       (!domain() || c.domain === domain()) &&
       (!level() || c.level === level()) &&
-      (!length() || length()!.test(c.hours)) &&
+      (!length() || length()!.test(c.minutes)) &&
       (!q || haystack.includes(q))
     )
   }
 
-  const filtered = createMemo(() => COURSES.filter(matches))
+  const filtered = createMemo(() => courses().filter(matches))
+
+  const chips = createMemo(() => [
+    { id: undefined, label: 'All', count: courses().length },
+    ...(catalog()?.domains ?? []).map((d) => ({
+      id: d.id,
+      label: d.name,
+      count: courses().filter((c) => c.domain === d.id).length,
+    })),
+  ])
 
   const update = (patch: Partial<Record<keyof CatalogParams, string | undefined>>) =>
     setParams(patch, { replace: true, scroll: false })
@@ -52,15 +63,11 @@ export function useCatalogFilters() {
     length,
     query,
     filtered,
-    setDomain: (d: DomainId | undefined) => update({ domain: d }),
-    setLevel: (l: Level | undefined) => update({ level: l?.toLowerCase() }),
+    chips,
+    setDomain: (d: string | undefined) => update({ domain: d }),
+    setLevel: (l: Level | undefined) => update({ level: l }),
     setLength: (l: LengthId | undefined) => update({ length: l }),
     setQuery: (q: string) => update({ q: q || undefined }),
     clear: () => update({ domain: undefined, level: undefined, length: undefined, q: undefined }),
   }
 }
-
-export const DOMAIN_CHIPS = [
-  { id: undefined, label: 'All', count: COURSES.length },
-  ...DOMAINS.map((d) => ({ id: d.id, label: d.name, count: COURSES.filter((c) => c.domain === d.id).length })),
-]

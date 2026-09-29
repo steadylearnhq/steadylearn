@@ -1,14 +1,16 @@
 import { useSearchParams } from '@solidjs/router'
-import { courseById, type Course } from '../../data/catalog'
+import type { Course } from '../../data/catalog'
 
 /**
  * The open course lives in ?course=<id> so a course can be linked to directly.
- * `list` is the sequence prev/next steps through, e.g. the filtered catalog.
+ * `list` is the sequence prev/next steps through, e.g. the filtered catalog,
+ * and `all` is where the course is looked up, so a link to a course the
+ * filters hide still opens it.
  */
-export function useCourseModal(list: () => Course[]) {
+export function useCourseModal(list: () => Course[], all: () => Course[] = list) {
   const [params, setParams] = useSearchParams<{ course?: string }>()
 
-  const course = () => courseById(params.course)
+  const course = () => all().find((c) => c.id === params.course)
   const index = () => list().findIndex((c) => c.id === params.course)
 
   const show = (id: string | undefined) => setParams({ course: id }, { replace: true, scroll: false })

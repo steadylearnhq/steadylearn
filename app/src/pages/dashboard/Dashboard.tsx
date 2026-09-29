@@ -2,7 +2,7 @@ import { A } from '@solidjs/router'
 import { createSignal, For, Show } from 'solid-js'
 import Button from '../../components/Button'
 import Critter from '../../components/Critter'
-import { DOMAIN_BY_ID, domainDot, formatHours } from '../../data/catalog'
+import { domainDot, domainName, domainStyle, formatLength, levelLabel } from '../../data/catalog'
 import { BOARDS, CONTINUE, KPIS, RECOMMENDED, UP_NEXT } from '../../data/dashboard'
 import { user } from '../../lib/auth'
 import { usePageTitle } from '../../lib/title'
@@ -32,7 +32,7 @@ export default function Dashboard() {
 
   const [board, setBoard] = createSignal<'following' | 'all'>('following')
   const upNext = UP_NEXT
-  const upNextDomain = DOMAIN_BY_ID[upNext.course.domain]
+  const upNextDomain = domainStyle(upNext.course.domain)
 
   return (
     <main class={styles.page}>
@@ -85,7 +85,7 @@ export default function Dashboard() {
           <ul class={styles.continueList}>
             <For each={CONTINUE}>
               {(e) => {
-                const domain = DOMAIN_BY_ID[e.course.domain]
+                const domain = domainStyle(e.course.domain)
                 const finished = e.progress === 100
                 return (
                   <li class={styles.continueRow}>
@@ -166,7 +166,7 @@ export default function Dashboard() {
               <A href={courseHref(c.id)} class={styles.rec}>
                 <div class={styles.recMeta}>
                   <span class={styles.dot} style={{ background: domainDot(c.domain) }} />
-                  <span>{DOMAIN_BY_ID[c.domain].name}</span>
+                  <span>{domainName(c.domain)}</span>
                   <span class={styles.spacer} />
                   <Show when={c.isNew}>
                     <span class={styles.badge}>new</span>
@@ -175,9 +175,9 @@ export default function Dashboard() {
                 <span class={styles.recTitle}>{c.title}</span>
                 <span class={styles.recDescription}>{c.description}</span>
                 <div class={styles.recFacts}>
-                  <span class={styles.level}>{c.level}</span>
-                  <span>{formatHours(c.hours)}</span>
-                  <span>{c.lessons} lessons</span>
+                  <span class={styles.level}>{levelLabel(c.level)}</span>
+                  <span>{formatLength(c.minutes)}</span>
+                  <span>{c.lessonCount} lessons</span>
                   <span class={styles.breaks}>✕ {c.breakIts.length}</span>
                 </div>
               </A>

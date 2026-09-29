@@ -4,7 +4,7 @@ import Button from '../../components/Button'
 import CourseModal from '../../components/course-modal/CourseModal'
 import { useCourseModal } from '../../components/course-modal/useCourseModal'
 import Critter from '../../components/Critter'
-import { COURSES, DOMAINS, TOTAL_LESSONS, domainDot, formatHours, plural } from '../../data/catalog'
+import { COURSES, DOMAINS, TOTAL_LESSONS, domainDot, domainName, formatLength, plural } from '../../data/catalog'
 import { usePageTitle } from '../../lib/title'
 import styles from './Pricing.module.css'
 
@@ -35,7 +35,7 @@ const PLANS: Plan[] = [
       </Button>
     ),
     features: [
-      { label: FREE_COURSE.title, meta: `${plural(FREE_COURSE.lessons, 'lesson')} · ${formatHours(FREE_COURSE.hours)}` },
+      { label: FREE_COURSE.title, meta: `${plural(FREE_COURSE.lessonCount, 'lesson')} · ${formatLength(FREE_COURSE.minutes)}` },
       { label: 'Every lesson step in the course', meta: 'watch to bet' },
       { label: 'Calibration score', meta: 'for this course' },
       { label: 'Progress tracking' },
@@ -133,7 +133,7 @@ export default function Pricing() {
                     <span class={styles.badge}>free</span>
                   </Show>
                   <span>
-                    {c.lessons} lessons · {formatHours(c.hours)}
+                    {c.lessonCount} lessons · {formatLength(c.minutes)}
                   </span>
                 </span>
               </A>
@@ -146,6 +146,7 @@ export default function Pricing() {
         {(course) => (
           <CourseModal
             course={course()}
+            domainName={domainName(course().domain)}
             position={modal.position()}
             onClose={modal.close}
             onPrev={modal.prev}
