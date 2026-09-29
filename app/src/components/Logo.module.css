@@ -1,0 +1,18 @@
+.logo,
+.logo:hover {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sm,
+.sm:hover {
+  font-size: 16px;
+  letter-spacing: -0.4px;
+}
+
+.dot {
+  color: var(--tomato);
+}
