@@ -1,0 +1,99 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px 24px 24px;
+  border-left: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.card:hover {
+  color: var(--ink);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accentText);
+  outline-offset: -2px;
+}
+
+/* Row rule that runs the full viewport width. */
+.card::after {
+  content: '';
+  position: absolute;
+  left: -100vw;
+  right: -100vw;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+}
+
+.domain {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.badge {
+  padding: 1px 8px;
+  border-radius: 9999px;
+  background: var(--tomato);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.title {
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  transition: color 0.15s var(--ease);
+}
+
+.card:hover .title {
+  color: var(--accentText);
+}
+
+.description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.facts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.level {
+  color: var(--ink);
+}

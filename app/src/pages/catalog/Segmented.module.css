@@ -1,0 +1,46 @@
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.group {
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  border: 1.5px solid var(--line3);
+  border-radius: 9999px;
+}
+
+.option {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--hover);
+}
+
+.option[aria-checked='true'] {
+  background: var(--seg);
+  color: var(--onSeg);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--accentText);
+  outline-offset: 1px;
+}
