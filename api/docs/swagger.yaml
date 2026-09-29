@@ -1,9 +1,176 @@
 basePath: /
 definitions:
+  schemas.CatalogSchema:
+    properties:
+      courses:
+        items:
+          $ref: '#/definitions/schemas.CourseSummarySchema'
+        type: array
+      domains:
+        description: Domains are those with at least one course in the catalog, in
+          display order.
+        items:
+          $ref: '#/definitions/schemas.DomainSchema'
+        type: array
+    type: object
+  schemas.CourseSchema:
+    properties:
+      breakIts:
+        description: BreakIts are the failure modes the learner triggers in the simulations.
+        example:
+        - Lost write
+        - Stale read
+        - Split brain
+        items:
+          type: string
+        type: array
+      description:
+        example: Quorums, elections and leases, and the trade-offs behind each one.
+        type: string
+      domain:
+        example: dist
+        type: string
+      id:
+        example: replication-consensus
+        type: string
+      isFree:
+        example: false
+        type: boolean
+      isNew:
+        example: false
+        type: boolean
+      lessonCount:
+        example: 12
+        type: integer
+      level:
+        enum:
+        - foundational
+        - intermediate
+        - advanced
+        example: advanced
+        type: string
+      minutes:
+        description: |-
+          Minutes is the course's advertised length, which is more than the sum of
+          its lessons: it includes time spent in the simulations.
+        example: 198
+        type: integer
+      modules:
+        items:
+          $ref: '#/definitions/schemas.ModuleSchema'
+        type: array
+      title:
+        example: Replication & consensus
+        type: string
+    type: object
+  schemas.CourseSummarySchema:
+    properties:
+      breakIts:
+        description: BreakIts are the failure modes the learner triggers in the simulations.
+        example:
+        - Lost write
+        - Stale read
+        - Split brain
+        items:
+          type: string
+        type: array
+      description:
+        example: Quorums, elections and leases, and the trade-offs behind each one.
+        type: string
+      domain:
+        example: dist
+        type: string
+      id:
+        example: replication-consensus
+        type: string
+      isFree:
+        example: false
+        type: boolean
+      isNew:
+        example: false
+        type: boolean
+      lessonCount:
+        example: 12
+        type: integer
+      level:
+        enum:
+        - foundational
+        - intermediate
+        - advanced
+        example: advanced
+        type: string
+      minutes:
+        description: |-
+          Minutes is the course's advertised length, which is more than the sum of
+          its lessons: it includes time spent in the simulations.
+        example: 198
+        type: integer
+      title:
+        example: Replication & consensus
+        type: string
+    type: object
+  schemas.DomainSchema:
+    properties:
+      id:
+        example: dist
+        type: string
+      name:
+        example: Distributed systems
+        type: string
+    type: object
   schemas.HealthSchema:
     properties:
       status:
         example: ok
+        type: string
+    type: object
+  schemas.LessonSchema:
+    properties:
+      code:
+        description: |-
+          Code is the lesson's place in the syllabus: 2.3 is the third lesson of
+          the second module.
+        example: "2.3"
+        type: string
+      minutes:
+        example: 15
+        type: integer
+      steps:
+        example:
+        - watch
+        - read
+        - range
+        - bet
+        items:
+          enum:
+          - watch
+          - read
+          - build
+          - trace
+          - range
+          - bet
+          - break
+          - postmortem
+          type: string
+        type: array
+      title:
+        example: Sizing replicated storage
+        type: string
+    type: object
+  schemas.ModuleSchema:
+    properties:
+      lessonCount:
+        example: 4
+        type: integer
+      lessons:
+        description: |-
+          Lessons is null when the course keeps its syllabus private from visitors
+          who are not signed in.
+        items:
+          $ref: '#/definitions/schemas.LessonSchema'
+        type: array
+      title:
+        example: Quorums
         type: string
     type: object
   schemas.ReadinessSchema:
@@ -98,6 +265,62 @@ paths:
       summary: Readiness probe
       tags:
       - health
+  /v1/catalog:
+    get:
+      description: Every published course with the domains they belong to, in display
+        order. Public, and the same for every caller. Served from a cache for up to
+        ten minutes.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.CatalogSchema'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get the catalog
+      tags:
+      - catalog
+  /v1/courses/{id}:
+    get:
+      description: 'A published course with its syllabus, as a visitor who is not
+        signed in sees it: a course that keeps its syllabus private lists each module''s
+        lesson count, and null for its lessons. Served from a cache for up to ten
+        minutes.'
+      parameters:
+      - description: Course slug
+        example: replication-consensus
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.CourseSchema'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a course
+      tags:
+      - catalog
   /v1/users:
     post:
       consumes:

@@ -78,6 +78,83 @@
                 }
             }
         },
+        "/v1/catalog": {
+            "get": {
+                "description": "Every published course with the domains they belong to, in display order. Public, and the same for every caller. Served from a cache for up to ten minutes.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "catalog"
+                ],
+                "summary": "Get the catalog",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.CatalogSchema"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/courses/{id}": {
+            "get": {
+                "description": "A published course with its syllabus, as a visitor who is not signed in sees it: a course that keeps its syllabus private lists each module's lesson count, and null for its lessons. Served from a cache for up to ten minutes.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "catalog"
+                ],
+                "summary": "Get a course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "replication-consensus",
+                        "description": "Course slug",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.CourseSchema"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/users": {
             "post": {
                 "security": [
@@ -172,12 +249,227 @@
         }
     },
     "definitions": {
+        "schemas.CatalogSchema": {
+            "type": "object",
+            "properties": {
+                "courses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.CourseSummarySchema"
+                    }
+                },
+                "domains": {
+                    "description": "Domains are those with at least one course in the catalog, in display order.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.DomainSchema"
+                    }
+                }
+            }
+        },
+        "schemas.CourseSchema": {
+            "type": "object",
+            "properties": {
+                "breakIts": {
+                    "description": "BreakIts are the failure modes the learner triggers in the simulations.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Lost write",
+                        "Stale read",
+                        "Split brain"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Quorums, elections and leases, and the trade-offs behind each one."
+                },
+                "domain": {
+                    "type": "string",
+                    "example": "dist"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "replication-consensus"
+                },
+                "isFree": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "isNew": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "lessonCount": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "level": {
+                    "type": "string",
+                    "enum": [
+                        "foundational",
+                        "intermediate",
+                        "advanced"
+                    ],
+                    "example": "advanced"
+                },
+                "minutes": {
+                    "description": "Minutes is the course's advertised length, which is more than the sum of\nits lessons: it includes time spent in the simulations.",
+                    "type": "integer",
+                    "example": 198
+                },
+                "modules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.ModuleSchema"
+                    }
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Replication \u0026 consensus"
+                }
+            }
+        },
+        "schemas.CourseSummarySchema": {
+            "type": "object",
+            "properties": {
+                "breakIts": {
+                    "description": "BreakIts are the failure modes the learner triggers in the simulations.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Lost write",
+                        "Stale read",
+                        "Split brain"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Quorums, elections and leases, and the trade-offs behind each one."
+                },
+                "domain": {
+                    "type": "string",
+                    "example": "dist"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "replication-consensus"
+                },
+                "isFree": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "isNew": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "lessonCount": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "level": {
+                    "type": "string",
+                    "enum": [
+                        "foundational",
+                        "intermediate",
+                        "advanced"
+                    ],
+                    "example": "advanced"
+                },
+                "minutes": {
+                    "description": "Minutes is the course's advertised length, which is more than the sum of\nits lessons: it includes time spent in the simulations.",
+                    "type": "integer",
+                    "example": 198
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Replication \u0026 consensus"
+                }
+            }
+        },
+        "schemas.DomainSchema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "dist"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Distributed systems"
+                }
+            }
+        },
         "schemas.HealthSchema": {
             "type": "object",
             "properties": {
                 "status": {
                     "type": "string",
                     "example": "ok"
+                }
+            }
+        },
+        "schemas.LessonSchema": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Code is the lesson's place in the syllabus: 2.3 is the third lesson of\nthe second module.",
+                    "type": "string",
+                    "example": "2.3"
+                },
+                "minutes": {
+                    "type": "integer",
+                    "example": 15
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "watch",
+                            "read",
+                            "build",
+                            "trace",
+                            "range",
+                            "bet",
+                            "break",
+                            "postmortem"
+                        ]
+                    },
+                    "example": [
+                        "watch",
+                        "read",
+                        "range",
+                        "bet"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Sizing replicated storage"
+                }
+            }
+        },
+        "schemas.ModuleSchema": {
+            "type": "object",
+            "properties": {
+                "lessonCount": {
+                    "type": "integer",
+                    "example": 4
+                },
+                "lessons": {
+                    "description": "Lessons is null when the course keeps its syllabus private from visitors\nwho are not signed in.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.LessonSchema"
+                    }
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Quorums"
                 }
             }
         },
