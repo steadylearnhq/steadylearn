@@ -1,0 +1,279 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.themeToggle {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 5;
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid var(--line3);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.themeToggle:hover {
+  background: var(--hover);
+}
+
+.themeIcon {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--stroke);
+  background: linear-gradient(90deg, var(--ink) 50%, transparent 50%);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.mascot {
+  align-self: flex-start;
+  transform-origin: 50% 100%;
+}
+
+.title {
+  margin: 24px 0 0;
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.dot {
+  color: var(--tomato);
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.gap {
+  height: 28px;
+}
+
+.google {
+  margin-top: 28px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1.5px solid var(--stroke);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s var(--ease);
+}
+
+.google:hover {
+  background: var(--hover);
+}
+
+.divider {
+  margin: 24px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.divider > span:first-child,
+.divider > span:last-child {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.forgot {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.forgot:hover {
+  color: var(--ink);
+}
+
+.input {
+  height: 44px;
+  padding: 0 18px;
+  border: 1.5px solid var(--line3);
+  border-radius: 9999px;
+  background: transparent;
+  outline: 0;
+  font-size: 15px;
+  color: var(--ink);
+  transition: border-color 0.15s var(--ease);
+}
+
+.input::placeholder {
+  color: var(--faint);
+}
+
+.input:focus {
+  border-color: var(--ink);
+}
+
+.input.invalid {
+  border-color: var(--err);
+}
+
+.passwordWrap {
+  position: relative;
+  display: flex;
+}
+
+.passwordInput {
+  flex: 1;
+  min-width: 0;
+  padding-right: 64px;
+}
+
+.showToggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.showToggle:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.error {
+  font-size: 13px;
+  color: var(--err);
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.hintOk {
+  color: var(--ink);
+}
+
+.notice {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.submit {
+  margin-top: 6px;
+}
+
+.loading {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.switch {
+  margin: 20px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.switch a {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.legal {
+  margin: 28px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.wordmark {
+  margin-top: 12px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+
+.doneTitle {
+  margin-top: 28px;
+}
+
+.doneActions {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}

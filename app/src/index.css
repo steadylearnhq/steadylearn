@@ -14,6 +14,7 @@
   --glass: rgba(252, 251, 248, 0.93);
   --scrim: rgba(20, 19, 17, 0.42);
   --accentText: oklch(0.6 0.2 35);
+  --err: oklch(0.55 0.2 28);
   --fill: #141311;
   --bar: #141311;
   --seg: #141311;
@@ -38,6 +39,7 @@
   --glass: rgba(22, 21, 19, 0.93);
   --scrim: rgba(0, 0, 0, 0.6);
   --accentText: oklch(0.72 0.17 35);
+  --err: oklch(0.72 0.17 28);
   --fill: #34312d;
   --bar: #a19c93;
   --seg: #eeebe5;

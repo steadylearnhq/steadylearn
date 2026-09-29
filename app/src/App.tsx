@@ -1,6 +1,7 @@
 import { Route, Router, type RouteSectionProps } from '@solidjs/router'
 import Footer from './components/Footer'
 import Header from './components/Header'
+import Auth from './pages/auth/Auth'
 import Catalog from './pages/catalog/Catalog'
 import Landing from './pages/landing/Landing'
 import NotFound from './pages/NotFound'
@@ -18,11 +19,15 @@ function Layout(props: RouteSectionProps) {
 
 function App() {
   return (
-    <Router root={Layout}>
-      <Route path="/" component={Landing} />
-      <Route path="/catalog" component={Catalog} />
-      <Route path="/pricing" component={Pricing} />
-      <Route path="*" component={NotFound} />
+    <Router>
+      {/* Auth pages are standalone: no header or footer. */}
+      <Route path={['/login', '/signup']} component={Auth} />
+      <Route component={Layout}>
+        <Route path="/" component={Landing} />
+        <Route path="/catalog" component={Catalog} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="*" component={NotFound} />
+      </Route>
     </Router>
   )
 }
