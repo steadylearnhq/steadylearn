@@ -1,3 +1,4 @@
+import { useLocation } from '@solidjs/router'
 import { For } from 'solid-js'
 import { theme, toggleTheme } from '../lib/theme'
 import Button from './Button'
@@ -10,7 +11,9 @@ const NAV = [
   { label: 'Pricing', href: '/pricing' },
 ]
 
-export default function Header(props: { current: string }) {
+export default function Header() {
+  const location = useLocation()
+
   return (
     <header class={styles.header}>
       <div class={styles.inner}>
@@ -21,7 +24,7 @@ export default function Header(props: { current: string }) {
               <a
                 href={item.href}
                 class={styles.navItem}
-                aria-current={props.current === item.href ? 'page' : undefined}
+                aria-current={location.pathname === item.href ? 'page' : undefined}
               >
                 {item.label}
               </a>
