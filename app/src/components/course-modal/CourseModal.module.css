@@ -1,0 +1,401 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: var(--scrim);
+}
+
+.dialog {
+  width: 960px;
+  max-width: 100%;
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+}
+
+.dialog:focus {
+  outline: none;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 28px 32px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+}
+
+.domain {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.badge {
+  padding: 1px 8px;
+  border-radius: 9999px;
+  background: var(--tomato);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.position {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.iconButton,
+.close {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9999px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.iconButton {
+  border: 1.5px solid var(--line3);
+  background: transparent;
+  color: var(--ink);
+}
+
+.iconButton:hover {
+  background: var(--hover);
+}
+
+.close {
+  border: 0;
+  background: var(--fill);
+  color: var(--onFill);
+  font-size: 13px;
+}
+
+.iconButton:focus-visible,
+.close:focus-visible {
+  outline: 2px solid var(--accentText);
+  outline-offset: 2px;
+}
+
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+}
+
+.introText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+}
+
+.description {
+  max-width: 620px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 20px;
+  border-left: 1px solid var(--line);
+}
+
+.kpi:first-child {
+  padding-left: 32px;
+  border-left: 0;
+}
+
+.kpiLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.kpiValue {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.syllabus {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 28px 28px 32px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.small {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.module {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.moduleHead {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-top: 1.5px solid var(--stroke);
+}
+
+.moduleHead > :first-child {
+  font-size: 12px;
+}
+
+.moduleTitle {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.lesson {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 90px 52px;
+  gap: 10px;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px 0;
+  border-top: 1px solid var(--line);
+}
+
+.lesson > :first-child {
+  font-size: 12px;
+}
+
+.lessonTitle {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.glyphs {
+  display: flex;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.breakGlyph {
+  color: var(--tomato);
+}
+
+.duration {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 32px 28px 24px;
+  border-left: 1px solid var(--line);
+}
+
+.aside > .h3:first-child {
+  margin-bottom: 8px;
+}
+
+.breakList,
+.legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breakItem {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.legendTitle {
+  margin: 24px 0 8px;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend li {
+  display: flex;
+  gap: 10px;
+}
+
+.legendGlyph {
+  width: 18px;
+  color: var(--ink);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  border-top: 1px solid var(--line);
+}
+
+.access {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .scrim {
+    padding: 16px;
+  }
+
+  .dialog {
+    max-height: calc(100vh - 32px);
+  }
+
+  .head,
+  .foot {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpi:first-child,
+  .kpi:nth-child(3) {
+    padding-left: 20px;
+    border-left: 0;
+  }
+
+  .kpi:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .syllabus {
+    padding: 20px;
+  }
+
+  .aside {
+    padding: 20px;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .lesson {
+    grid-template-columns: 36px minmax(0, 1fr) 44px;
+  }
+
+  .glyphs {
+    display: none;
+  }
+
+  .foot {
+    flex-wrap: wrap;
+  }
+
+  .foot .spacer {
+    display: none;
+  }
+
+  .access {
+    width: 100%;
+  }
+}

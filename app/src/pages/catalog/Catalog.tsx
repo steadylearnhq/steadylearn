@@ -1,5 +1,7 @@
 import { useLocation } from '@solidjs/router'
 import { For, Show } from 'solid-js'
+import CourseModal from '../../components/course-modal/CourseModal'
+import { useCourseModal } from '../../components/course-modal/useCourseModal'
 import { COURSES, DOMAINS, LEVELS, domainDot, plural } from '../../data/catalog'
 import { usePageTitle } from '../../lib/title'
 import CourseCard from './CourseCard'
@@ -11,6 +13,7 @@ export default function Catalog() {
   usePageTitle('Catalog')
   const location = useLocation()
   const filters = useCatalogFilters()
+  const modal = useCourseModal(filters.filtered)
 
   // Opening a course keeps the current filters in the URL.
   const courseHref = (id: string) => {
@@ -91,6 +94,18 @@ export default function Catalog() {
       <section class={styles.grid}>
         <For each={filters.filtered()}>{(course) => <CourseCard course={course} href={courseHref(course.id)} />}</For>
       </section>
+
+      <Show when={modal.course()}>
+        {(course) => (
+          <CourseModal
+            course={course()}
+            position={modal.position()}
+            onClose={modal.close}
+            onPrev={modal.prev}
+            onNext={modal.next}
+          />
+        )}
+      </Show>
     </main>
   )
 }
