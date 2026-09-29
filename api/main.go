@@ -35,9 +35,9 @@ import (
 	"steadylearn-api/src/core"
 )
 
-// shutdownBudget bounds the whole graceful shutdown: draining HTTP and
-// flushing telemetry. Render sends SIGKILL 30s after SIGTERM, so this stays
-// under that.
+// shutdownBudget bounds the whole graceful shutdown: draining HTTP, closing
+// the cache and flushing telemetry. Render sends SIGKILL 30s after SIGTERM, so
+// this stays under that.
 const shutdownBudget = 25 * time.Second
 
 // fatal logs a boot-time failure through the OTel-bridged logger, flushes
@@ -72,6 +72,10 @@ func main() {
 		fatal(ctx, shutdown, "failed to initialize cognito", err)
 	}
 
+	if err := core.InitCache(); err != nil {
+		fatal(ctx, shutdown, "failed to initialize cache", err)
+	}
+
 	srv := &http.Server{
 		Addr:    ":" + core.Config.Port,
 		Handler: newRouter(),
@@ -94,6 +98,10 @@ func main() {
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.ErrorContext(shutdownCtx, "server shutdown failed", "error", err)
+	}
+
+	if err := core.CloseCache(); err != nil {
+		slog.ErrorContext(shutdownCtx, "cache shutdown failed", "error", err)
 	}
 
 	if err := shutdown(shutdownCtx); err != nil {

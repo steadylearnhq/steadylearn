@@ -10,6 +10,7 @@ import (
 type config struct {
 	Port               string
 	DatabaseUrl        string
+	RedisUrl           string
 	CORSAllowedOrigins string
 	CognitoRegion      string
 	CognitoUserPoolID  string
@@ -42,6 +43,7 @@ func LoadConfig() error {
 	}
 
 	Config.DatabaseUrl = os.Getenv("DATABASE_URL")
+	Config.RedisUrl = os.Getenv("REDIS_URL")
 	Config.CORSAllowedOrigins = os.Getenv("CORS_ALLOWED_ORIGINS")
 	Config.CognitoRegion = os.Getenv("COGNITO_REGION")
 	Config.CognitoUserPoolID = os.Getenv("COGNITO_USER_POOL_ID")
@@ -67,6 +69,10 @@ func LoadConfig() error {
 
 	if Config.DatabaseUrl == "" {
 		return errors.New("DATABASE_URL environment variable is not set")
+	}
+
+	if Config.RedisUrl == "" {
+		return errors.New("REDIS_URL environment variable is not set")
 	}
 
 	if Config.CognitoRegion == "" {

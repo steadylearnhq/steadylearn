@@ -6,6 +6,7 @@ services:
     environment:
       - PORT=8080
       - DATABASE_URL=postgres://postgres:password@db:5432/steadylearn?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
       - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4173
       - COGNITO_REGION=${COGNITO_REGION}
       - COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}
@@ -16,6 +17,8 @@ services:
       - DEPLOYMENT_ENVIRONMENT=local
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health/live"]
@@ -38,6 +41,21 @@ services:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d steadylearn"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - steadylearn-network
+
+  redis:
+    image: redis:7-alpine
+    # Only a cache lives here, and every key expires, so memory is capped and
+    # the least recently used keys go first instead of writes being refused.
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
