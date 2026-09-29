@@ -1,7 +1,8 @@
 import 'aws-amplify/auth/enable-oauth-listener'
 import { Amplify } from 'aws-amplify'
 import { fetchAuthSession, signOut as amplifySignOut } from 'aws-amplify/auth'
-import { Hub } from 'aws-amplify/utils'
+import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito'
+import { CookieStorage, Hub } from 'aws-amplify/utils'
 import { createRoot, createSignal } from 'solid-js'
 
 const list = (value?: string) =>
@@ -31,6 +32,13 @@ Amplify.configure({
     },
   },
 })
+
+// Tokens live in cookies rather than localStorage. Secure is only set over
+// https: Safari refuses Secure cookies on http://localhost, which would leave
+// local sessions unable to persist.
+cognitoUserPoolsTokenProvider.setKeyValueStorage(
+  new CookieStorage({ sameSite: 'lax', secure: window.location.protocol === 'https:' }),
+)
 
 export type User = { id: string; email: string; name: string }
 
