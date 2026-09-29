@@ -1,0 +1,81 @@
+basePath: /
+definitions:
+  schemas.HealthSchema:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
+  schemas.ReadinessSchema:
+    properties:
+      database:
+        example: ok
+        type: string
+      error:
+        type: string
+      status:
+        example: ok
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Learning platform API for users, courses and progress
+  title: SteadyLearn API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Reports that the process is serving requests. Checks no dependencies.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.HealthSchema'
+      summary: Health check
+      tags:
+      - health
+  /health/live:
+    get:
+      description: Reports that the process is alive. Always 200 while the server
+        is up, so a failure means the process should be restarted.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.HealthSchema'
+      summary: Liveness probe
+      tags:
+      - health
+  /health/ready:
+    get:
+      description: Reports whether the service can serve traffic, verifying the database
+        connection. Returns 503 when it is unavailable.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.ReadinessSchema'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/schemas.ReadinessSchema'
+      summary: Readiness probe
+      tags:
+      - health
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: 'Enter your Bearer token in the format: Bearer {token}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

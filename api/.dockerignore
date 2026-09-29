@@ -1,0 +1,26 @@
+# VCS and tooling
+.git
+.gitignore
+.github
+.claude
+.DS_Store
+
+# Secrets and local-only config
+.env
+.env.*
+env.sample
+
+# Docs and build tooling not needed to compile the API
+*.md
+Makefile
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Migrations are applied out of band, not from the app image
+atlas.hcl
+migrations
+cmd
+
+# Local build output
+steadylearn-api

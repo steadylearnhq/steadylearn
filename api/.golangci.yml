@@ -1,0 +1,46 @@
+version: "2"
+
+run:
+  go: "1.25"
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - misspell
+    - noctx
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - sloglint # enforces slog.*Context usage, see AGENTS.md
+  settings:
+    sloglint:
+      context: scope
+  exclusions:
+    generated: lax # skips swag-generated docs/docs.go
+    rules:
+      # The codebase uses Id/Url naming throughout and doesn't doc every
+      # exported symbol; keep the rest of revive but not these three rules.
+      - linters: [revive]
+        text: "^(exported|package-comments|var-naming): "
+
+formatters:
+  enable:
+    - gofumpt
+    - gci
+  settings:
+    gofumpt:
+      # the module path has no dot, so without this gofumpt treats our own
+      # imports as stdlib and wants them in the first group
+      module-path: steadylearn-api
+    gci:
+      # stdlib, third-party, this module, then blank (side-effect) imports
+      sections:
+        - standard
+        - default
+        - localmodule
+        - blank
+      custom-order: true
