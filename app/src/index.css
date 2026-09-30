@@ -114,6 +114,19 @@ input {
   font-family: inherit;
 }
 
+/* The page frame: header, page, then a footer held to the bottom of short pages. */
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pages centre themselves with auto margins, which in a flex column would
+   also shrink them to their content. */
+.shell > main {
+  width: 100%;
+}
+
 .mono {
   font-family: var(--font-mono);
 }

@@ -12,11 +12,11 @@ import Pricing from './pages/pricing/Pricing'
 
 function Layout(props: RouteSectionProps) {
   return (
-    <>
+    <div class="shell">
       <Header />
       {props.children}
       <Footer />
-    </>
+    </div>
   )
 }
 
