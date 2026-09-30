@@ -14,14 +14,20 @@
 .step {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
-  gap: 12px;
+  gap: 16px;
+  align-items: start;
   padding: 16px 0;
   border-top: 1px solid var(--line);
 }
 
-.glyph {
-  font-family: var(--font-mono);
-  font-size: 15px;
+.icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--hover);
   color: var(--ink);
 }
 

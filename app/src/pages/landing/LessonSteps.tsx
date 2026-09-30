@@ -1,4 +1,5 @@
 import { For } from 'solid-js'
+import StepIcon from '../../components/StepIcon'
 import { LESSON_STEPS } from '../../data/lessonSteps'
 import shared from './shared.module.css'
 import styles from './LessonSteps.module.css'
@@ -19,8 +20,8 @@ export default function LessonSteps() {
           <For each={LESSON_STEPS}>
             {(step) => (
               <li class={styles.step}>
-                <span class={styles.glyph} aria-hidden="true">
-                  {step.glyph}
+                <span class={styles.icon}>
+                  <StepIcon step={step.key} />
                 </span>
                 <div class={styles.text}>
                   <span class={styles.name}>{step.name}</span>
