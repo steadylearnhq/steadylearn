@@ -9,7 +9,7 @@ export default function ClosingCta() {
       <h2 class={styles.title}>Start with one lesson. It takes fifteen minutes.</h2>
       <div class={styles.actions}>
         <Button variant="primary" size="lg" href="/signup">
-          Sign up free →
+          Start for free →
         </Button>
         <Button variant="outline" size="lg" href="/catalog">
           Browse the catalog
