@@ -1,25 +1,25 @@
-.card {
+.row {
   position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 22px 24px 24px;
-  border-left: 1px solid var(--line);
+  align-items: center;
+  justify-content: space-between;
+  gap: 48px;
+  padding: 24px 0;
   color: var(--ink);
   text-decoration: none;
 }
 
-.card:hover {
+.row:hover {
   color: var(--ink);
 }
 
-.card:focus-visible {
+.row:focus-visible {
   outline: 2px solid var(--accentText);
   outline-offset: -2px;
 }
 
 /* Row rule that runs the full viewport width. */
-.card::after {
+.row::after {
   content: '';
   position: absolute;
   left: -100vw;
@@ -28,6 +28,19 @@
   height: 1px;
   background: var(--line);
   pointer-events: none;
+}
+
+/* The last row sits on the footer, whose top border closes the list. */
+.row:last-child::after {
+  display: none;
+}
+
+.main {
+  min-width: 0;
+  max-width: 880px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .meta {
@@ -48,10 +61,6 @@
   color: var(--muted);
 }
 
-.spacer {
-  flex: 1;
-}
-
 .badge {
   padding: 1px 8px;
   border-radius: 9999px;
@@ -62,32 +71,29 @@
 }
 
 .title {
-  font-size: 20px;
+  font-size: 24px;
   line-height: 1.15;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.6px;
   transition: color 0.15s var(--ease);
 }
 
-.card:hover .title {
+.row:hover .title {
   color: var(--accentText);
 }
 
 .description {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
   font-size: 14px;
   line-height: 1.5;
   color: var(--muted);
+  text-wrap: pretty;
 }
 
 .facts {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-top: 4px;
+  gap: 20px;
   font-family: var(--font-mono);
   font-size: 11px;
   white-space: nowrap;
@@ -96,4 +102,22 @@
 
 .level {
   color: var(--ink);
+}
+
+@media (max-width: 720px) {
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 20px 0;
+  }
+
+  .title {
+    font-size: 20px;
+    letter-spacing: -0.5px;
+  }
+
+  .facts {
+    gap: 14px;
+  }
 }

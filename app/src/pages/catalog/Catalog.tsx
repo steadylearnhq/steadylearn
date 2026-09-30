@@ -5,7 +5,7 @@ import { useCourseDrawer } from '../../components/course-drawer/useCourseDrawer'
 import { LEVELS, domainDot, plural } from '../../data/catalog'
 import { fetchCatalog } from '../../lib/catalog'
 import { usePageTitle } from '../../lib/title'
-import CourseCard from './CourseCard'
+import CourseRow from './CourseRow'
 import { LENGTHS, useCatalogFilters } from './filters'
 import Segmented from './Segmented'
 import styles from './Catalog.module.css'
@@ -116,9 +116,9 @@ export default function Catalog() {
         </Match>
       </Switch>
 
-      <section class={styles.grid}>
+      <section class={styles.list}>
         <For each={filters.filtered()}>
-          {(course) => <CourseCard course={course} domainName={domainName(course.domain)} href={courseHref(course.id)} />}
+          {(course) => <CourseRow course={course} domainName={domainName(course.domain)} href={courseHref(course.id)} />}
         </For>
       </section>
 

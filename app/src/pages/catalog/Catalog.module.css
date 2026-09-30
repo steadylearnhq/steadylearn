@@ -1,7 +1,7 @@
 .page {
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: 0 var(--page-pad) 72px;
+  padding: 0 var(--page-pad);
 }
 
 .head {
@@ -73,32 +73,24 @@
   display: none;
 }
 
-/* Filter bar with hairlines that run the full viewport width. */
+/* Filter bar on a tinted band, with hairlines, that runs the full viewport width. */
 .filters {
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 14px 0;
 }
 
-.filters::before,
-.filters::after {
+.filters::before {
   content: '';
   position: absolute;
-  left: -100vw;
-  right: -100vw;
-  height: 1px;
-  background: var(--line);
+  inset: 0 -100vw;
+  z-index: -1;
+  border-block: 1px solid var(--line);
+  background: var(--hover);
   pointer-events: none;
-}
-
-.filters::before {
-  top: 0;
-}
-
-.filters::after {
-  bottom: 0;
 }
 
 .chips {
@@ -123,8 +115,9 @@
   cursor: pointer;
 }
 
+/* The bar is already --hover, so hovering lifts to the page colour. */
 .chip:hover {
-  background: var(--hover);
+  background: var(--paper);
 }
 
 .chip[aria-checked='true'] {
@@ -196,39 +189,9 @@
   color: var(--ink);
 }
 
-/* Cards: vertical dividers between columns, none at the row edges. */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.grid > :nth-child(3n + 1) {
-  padding-left: 0;
-  border-left: 0;
-}
-
-.grid > :nth-child(3n) {
-  padding-right: 0;
-}
-
-@media (max-width: 1100px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .grid > :nth-child(n) {
-    padding: 22px 24px 24px;
-    border-left: 1px solid var(--line);
-  }
-
-  .grid > :nth-child(odd) {
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .grid > :nth-child(even) {
-    padding-right: 0;
-  }
+.list {
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 720px) {
@@ -243,14 +206,5 @@
 
   .count {
     margin-left: 0;
-  }
-
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .grid > :nth-child(n) {
-    padding: 22px 0 24px;
-    border-left: 0;
   }
 }

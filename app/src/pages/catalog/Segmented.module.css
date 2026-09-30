@@ -51,8 +51,9 @@
   transition: color 240ms;
 }
 
+/* Segmented sits on the catalog's --hover filter bar. */
 .option:hover {
-  background: var(--hover);
+  background: var(--paper);
 }
 
 /* The thumb is the selected option's background. */
