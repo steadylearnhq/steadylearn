@@ -50,19 +50,14 @@ export default function Header() {
             <span class={styles.themeLabel}>{theme() === 'dark' ? 'Light' : 'Dark'}</span>
             <span class="visually-hidden"> theme</span>
           </button>
-          {/* Nothing until the stored session is read, so a signed-in visitor never sees "Log in" flash. */}
+          {/* Nothing until the stored session is read, so a signed-in visitor never sees the sign-up button flash. */}
           <Show when={authReady()}>
             <Show
               when={user()}
               fallback={
-                <>
-                  <Button variant="ghost" size="sm" class={styles.login} href="/login">
-                    Log in
-                  </Button>
-                  <Button variant="primary" size="sm" href="/signup">
-                    Sign up free
-                  </Button>
-                </>
+                <Button variant="primary" size="sm" href="/signup">
+                  Start for free →
+                </Button>
               }
             >
               {(u) => (
