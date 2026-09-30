@@ -1,10 +1,7 @@
-import { A } from '@solidjs/router'
-import { For, Show, type JSX } from 'solid-js'
+import { For, type JSX } from 'solid-js'
 import Button from '../../components/Button'
-import CourseModal from '../../components/course-modal/CourseModal'
-import { useCourseModal } from '../../components/course-modal/useCourseModal'
 import Critter from '../../components/Critter'
-import { COURSES, DOMAINS, TOTAL_LESSONS, domainDot, domainName, formatLength, plural } from '../../data/catalog'
+import { COURSES, DOMAINS, TOTAL_LESSONS, formatLength, plural } from '../../data/catalog'
 import { usePageTitle } from '../../lib/title'
 import styles from './Pricing.module.css'
 
@@ -24,9 +21,9 @@ type Plan = {
 
 const PLANS: Plan[] = [
   {
-    name: 'Free',
+    name: 'Base',
     art: () => <Critter kind="die" hue={290} size={44} />,
-    price: '$0',
+    price: 'Free',
     period: 'forever',
     description: `The full ${FREE_COURSE.title} course: ${FREE_COURSE.description.charAt(0).toLowerCase()}${FREE_COURSE.description.slice(1)}`,
     cta: () => (
@@ -38,7 +35,6 @@ const PLANS: Plan[] = [
       { label: FREE_COURSE.title, meta: `${plural(FREE_COURSE.lessonCount, 'lesson')} · ${formatLength(FREE_COURSE.minutes)}` },
       { label: 'Every lesson step in the course', meta: 'watch to bet' },
       { label: 'Calibration score', meta: 'for this course' },
-      { label: 'Progress tracking' },
     ],
   },
   {
@@ -49,7 +45,7 @@ const PLANS: Plan[] = [
       </div>
     ),
     price: '$24',
-    period: 'per month',
+    period: 'per month, VAT included',
     description: 'Every course in the catalog, including the ones we release next.',
     cta: () => (
       <Button variant="primary" size="lg">
@@ -67,7 +63,6 @@ const PLANS: Plan[] = [
 
 export default function Pricing() {
   usePageTitle('Pricing')
-  const modal = useCourseModal(() => COURSES)
 
   return (
     <main class={styles.page}>
@@ -114,46 +109,6 @@ export default function Pricing() {
           )}
         </For>
       </section>
-
-      <section class={styles.includes}>
-        <div class={styles.includesHead}>
-          <h2 class={styles.h2}>What the subscription includes</h2>
-          <a href="/catalog" class={styles.more}>
-            Full catalog →
-          </a>
-        </div>
-        <div class={styles.courseList}>
-          <For each={COURSES}>
-            {(c) => (
-              <A href={`/pricing?course=${c.id}`} noScroll class={styles.courseRow}>
-                <span class={styles.dot} style={{ background: domainDot(c.domain) }} />
-                <span class={styles.courseTitle}>{c.title}</span>
-                <span class={styles.courseMeta}>
-                  <Show when={c.isFree}>
-                    <span class={styles.badge}>free</span>
-                  </Show>
-                  <span>
-                    {c.lessonCount} lessons · {formatLength(c.minutes)}
-                  </span>
-                </span>
-              </A>
-            )}
-          </For>
-        </div>
-      </section>
-
-      <Show when={modal.course()}>
-        {(course) => (
-          <CourseModal
-            course={course()}
-            domainName={domainName(course().domain)}
-            position={modal.position()}
-            onClose={modal.close}
-            onPrev={modal.prev}
-            onNext={modal.next}
-          />
-        )}
-      </Show>
     </main>
   )
 }
