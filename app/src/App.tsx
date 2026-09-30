@@ -9,6 +9,7 @@ import Dashboard from './pages/dashboard/Dashboard'
 import Landing from './pages/landing/Landing'
 import NotFound from './pages/NotFound'
 import Pricing from './pages/pricing/Pricing'
+import { Privacy, Terms } from './pages/legal/Legal'
 
 function Layout(props: RouteSectionProps) {
   return (
@@ -37,6 +38,9 @@ function App() {
         <Route component={RequireAuth}>
           <Route path="/dashboard" component={Dashboard} />
         </Route>
+        {/* Open to everyone: members need the terms as much as visitors do. */}
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={Privacy} />
         <Route path="*" component={NotFound} />
       </Route>
     </Router>

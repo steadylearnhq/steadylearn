@@ -10,8 +10,8 @@ export default function Footer() {
         <nav class={styles.links} aria-label="Footer">
           <a href="/catalog">Catalog</a>
           <a href="/pricing">Pricing</a>
-          <span>For teams</span>
-          <span>Privacy</span>
+          <a href="/terms">Terms &amp; Conditions</a>
+          <a href="/privacy">Privacy Policy</a>
         </nav>
       </div>
     </footer>

@@ -20,8 +20,9 @@
 
 .links {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
+  gap: 12px 24px;
 }
 
 .links a {

@@ -1,0 +1,169 @@
+.page {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 var(--page-pad) 72px;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 48px 0 40px;
+}
+
+.eyebrow,
+.updated {
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+
+.eyebrow {
+  font-size: 13px;
+}
+
+.updated {
+  font-size: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 64px;
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -2.6px;
+}
+
+.lede {
+  margin: 0;
+  max-width: 640px;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* Contents beside the sections, under a hairline that runs the full viewport width. */
+.body {
+  position: relative;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 760px);
+  gap: 80px;
+  align-items: start;
+}
+
+.body::before {
+  content: '';
+  position: absolute;
+  left: -100vw;
+  right: -100vw;
+  top: 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+.toc {
+  position: sticky;
+  top: 88px;
+  display: flex;
+  flex-direction: column;
+  padding-top: 24px;
+}
+
+.tocItem {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px;
+  padding: 6px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.tocItem:hover {
+  color: var(--ink);
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+}
+
+.section {
+  scroll-margin-top: 88px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+}
+
+/* The first section sits on the full-width hairline above. */
+.section:first-child {
+  border-top: 0;
+}
+
+.sectionNum {
+  padding-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.sectionText {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+@media (max-width: 960px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .toc {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .intro {
+    padding: 40px 0 32px;
+  }
+
+  .title {
+    font-size: 40px;
+    letter-spacing: -1.6px;
+  }
+
+  .lede {
+    font-size: 17px;
+  }
+
+  .section {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+}
