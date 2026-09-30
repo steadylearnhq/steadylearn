@@ -1,7 +1,7 @@
 import { useLocation } from '@solidjs/router'
 import { createResource, For, Match, Show, Switch } from 'solid-js'
-import CourseModal from '../../components/course-modal/CourseModal'
-import { useCourseModal } from '../../components/course-modal/useCourseModal'
+import CourseDrawer from '../../components/course-drawer/CourseDrawer'
+import { useCourseDrawer } from '../../components/course-drawer/useCourseDrawer'
 import { LEVELS, domainDot, plural } from '../../data/catalog'
 import { fetchCatalog } from '../../lib/catalog'
 import { usePageTitle } from '../../lib/title'
@@ -17,7 +17,7 @@ export default function Catalog() {
   // Reading an errored resource throws, so everything below reads this instead.
   const loaded = () => (catalog.state === 'ready' ? catalog() : undefined)
   const filters = useCatalogFilters(loaded)
-  const modal = useCourseModal(filters.filtered, () => loaded()?.courses ?? [])
+  const drawer = useCourseDrawer(filters.filtered, () => loaded()?.courses ?? [])
 
   const domainName = (id: string) => loaded()?.domains.find((d) => d.id === id)?.name ?? ''
 
@@ -122,15 +122,15 @@ export default function Catalog() {
         </For>
       </section>
 
-      <Show when={modal.course()}>
+      <Show when={drawer.course()}>
         {(course) => (
-          <CourseModal
+          <CourseDrawer
             course={course()}
             domainName={domainName(course().domain)}
-            position={modal.position()}
-            onClose={modal.close}
-            onPrev={modal.prev}
-            onNext={modal.next}
+            position={drawer.position()}
+            onClose={drawer.close}
+            onPrev={drawer.prev}
+            onNext={drawer.next}
           />
         )}
       </Show>

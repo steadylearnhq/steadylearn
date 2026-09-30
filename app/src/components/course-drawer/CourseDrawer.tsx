@@ -5,9 +5,10 @@ import { LESSON_STEPS, STEP_BY_KEY } from '../../data/lessonSteps'
 import { fetchCourse } from '../../lib/catalog'
 import Button from '../Button'
 import Critter from '../Critter'
-import styles from './CourseModal.module.css'
+import StepIcon from '../StepIcon'
+import styles from './CourseDrawer.module.css'
 
-type CourseModalProps = {
+type CourseDrawerProps = {
   course: Course
   domainName: string
   position: string
@@ -18,13 +19,14 @@ type CourseModalProps = {
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
 
-export default function CourseModal(props: CourseModalProps) {
-  let dialog!: HTMLDivElement
+/** A course's details in a panel that slides in from the right. */
+export default function CourseDrawer(props: CourseDrawerProps) {
+  let panel!: HTMLDivElement
   let body!: HTMLDivElement
 
   const domain = () => domainStyle(props.course.domain)
 
-  // Everything but the syllabus comes with the catalog, so the dialog opens
+  // Everything but the syllabus comes with the catalog, so the drawer opens
   // at once and only the syllabus waits on the course's own request.
   const [detail, { refetch }] = createResource(() => props.course.id, fetchCourse)
   // While the next course loads, the resource still holds the previous one.
@@ -48,19 +50,19 @@ export default function CourseModal(props: CourseModalProps) {
     const previousFocus = document.activeElement as HTMLElement | null
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    dialog.focus()
+    panel.focus()
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') return props.onClose()
       if (e.key === 'ArrowRight') return props.onNext()
       if (e.key === 'ArrowLeft') return props.onPrev()
       if (e.key !== 'Tab') return
-      // Keep keyboard focus inside the dialog.
-      const items = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)]
+      // Keep keyboard focus inside the drawer.
+      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)]
       if (!items.length) return
       const first = items[0]
       const last = items[items.length - 1]
-      if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
         e.preventDefault()
         last.focus()
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -84,11 +86,11 @@ export default function CourseModal(props: CourseModalProps) {
     <Portal>
       <div class={styles.scrim} onClick={props.onClose}>
         <div
-          ref={dialog}
-          class={styles.dialog}
+          ref={panel}
+          class={styles.panel}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="course-modal-title"
+          aria-labelledby="course-drawer-title"
           tabindex="-1"
           onClick={(e) => e.stopPropagation()}
         >
@@ -113,7 +115,7 @@ export default function CourseModal(props: CourseModalProps) {
             </div>
             <div class={styles.intro}>
               <div class={styles.introText}>
-                <h2 id="course-modal-title" class={styles.title}>
+                <h2 id="course-drawer-title" class={styles.title}>
                   {props.course.title}
                 </h2>
                 <span class={styles.description}>{props.course.description}</span>
@@ -176,11 +178,15 @@ export default function CourseModal(props: CourseModalProps) {
                         <div class={styles.lesson}>
                           <span class={styles.small}>{l.code}</span>
                           <span class={styles.lessonTitle}>{l.title}</span>
-                          <span class={styles.glyphs} aria-label={l.steps.map((s) => STEP_BY_KEY[s].legend).join(', ')}>
+                          <span
+                            class={styles.steps}
+                            role="img"
+                            aria-label={l.steps.map((s) => STEP_BY_KEY[s].legend).join(', ')}
+                          >
                             <For each={l.steps}>
                               {(s) => (
-                                <span classList={{ [styles.breakGlyph]: s === 'break' }} aria-hidden="true">
-                                  {STEP_BY_KEY[s].glyph}
+                                <span classList={{ [styles.breakStep]: s === 'break' }}>
+                                  <StepIcon step={s} size={16} stroke={2} />
                                 </span>
                               )}
                             </For>
@@ -215,9 +221,11 @@ export default function CourseModal(props: CourseModalProps) {
               <ul class={styles.legend}>
                 <For each={LESSON_STEPS}>
                   {(s) => (
-                    <li>
-                      <span class={styles.legendGlyph}>{s.glyph}</span>
-                      {s.legend}
+                    <li class={styles.legendItem}>
+                      <span class={styles.legendIcon}>
+                        <StepIcon step={s.key} size={20} stroke={1.8} />
+                      </span>
+                      {s.name}
                     </li>
                   )}
                 </For>
@@ -227,14 +235,11 @@ export default function CourseModal(props: CourseModalProps) {
 
           <div class={styles.foot}>
             <span class={styles.access}>
-              {props.course.isFree ? 'Free course. Sign up to start.' : 'Included with the subscription, $24/month.'}
+              {props.course.isFree ? 'Free course. Sign up to start.' : 'Included with the subscription.'}
             </span>
             <span class={styles.spacer} />
-            <Button variant="ghost" size="md" href="/login">
-              Log in
-            </Button>
             <Button variant="primary" size="md" href="/signup">
-              Sign up to enroll →
+              {props.course.isFree ? 'Start for free →' : 'Subscribe →'}
             </Button>
           </div>
         </div>

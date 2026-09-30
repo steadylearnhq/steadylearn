@@ -7,7 +7,7 @@ import type { Course } from '../../data/catalog'
  * and `all` is where the course is looked up, so a link to a course the
  * filters hide still opens it.
  */
-export function useCourseModal(list: () => Course[], all: () => Course[] = list) {
+export function useCourseDrawer(list: () => Course[], all: () => Course[] = list) {
   const [params, setParams] = useSearchParams<{ course?: string }>()
 
   const course = () => all().find((c) => c.id === params.course)
