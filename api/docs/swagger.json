@@ -109,7 +109,12 @@
         },
         "/v1/courses/{id}": {
             "get": {
-                "description": "A published course with its syllabus, as a visitor who is not signed in sees it: a course that keeps its syllabus private lists each module's lesson count, and null for its lessons. Served from a cache for up to ten minutes.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "A published course with its syllabus and the copy its page shows. The token is optional: without one, a course that keeps its syllabus private lists each module's lesson count and null for its lessons; a signed-in caller gets every lesson. Prerequisites name only courses in the catalog. Served from a cache for up to ten minutes.",
                 "produces": [
                     "application/json"
                 ],
@@ -132,6 +137,15 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/schemas.CourseSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "404": {
@@ -249,6 +263,24 @@
         }
     },
     "definitions": {
+        "schemas.BreakItSchema": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Get an acknowledged write to vanish"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Lost write"
+                },
+                "par": {
+                    "description": "Par is how many moves the break is expected to take, or null without one.",
+                    "type": "integer",
+                    "example": 4
+                }
+            }
+        },
         "schemas.CatalogSchema": {
             "type": "object",
             "properties": {
@@ -270,6 +302,17 @@
         "schemas.CourseSchema": {
             "type": "object",
             "properties": {
+                "assumes": {
+                    "description": "Assumes is the background the level takes for granted, or empty.",
+                    "type": "string",
+                    "example": "assumes basic networking"
+                },
+                "breakItDetails": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.BreakItSchema"
+                    }
+                },
                 "breakIts": {
                     "description": "BreakIts are the failure modes the learner triggers in the simulations.",
                     "type": "array",
@@ -324,6 +367,32 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/schemas.ModuleSchema"
+                    }
+                },
+                "outcomes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Size R and W for a given N and say what each choice costs"
+                    ]
+                },
+                "overview": {
+                    "description": "Overview leads the course's page; it is empty until the course has one.",
+                    "type": "string",
+                    "example": "How replicated systems agree on what \"latest\" means, and the specific ways that agreement breaks."
+                },
+                "prerequisites": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.PrerequisiteSchema"
+                    }
+                },
+                "requirements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.RequirementSchema"
                     }
                 },
                 "title": {
@@ -473,6 +542,21 @@
                 }
             }
         },
+        "schemas.PrerequisiteSchema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Id is the prerequisite's slug, a course in the catalog.",
+                    "type": "string",
+                    "example": "partitioning-rebalancing"
+                },
+                "optional": {
+                    "description": "Optional is a course worth taking first; one that is not is recommended.",
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
         "schemas.ReadinessSchema": {
             "type": "object",
             "properties": {
@@ -486,6 +570,19 @@
                 "status": {
                     "type": "string",
                     "example": "ok"
+                }
+            }
+        },
+        "schemas.RequirementSchema": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string",
+                    "example": "You know a request can time out even though the server applied it."
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Networks drop and reorder messages"
                 }
             }
         },

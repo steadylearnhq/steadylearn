@@ -61,6 +61,15 @@ func addCourse(t *testing.T, domain models.Domain, course models.Course) models.
 	for i := range course.BreakIts {
 		course.BreakIts[i].BaseModel = base()
 	}
+	for i := range course.Requirements {
+		course.Requirements[i].BaseModel = base()
+	}
+	for i := range course.Outcomes {
+		course.Outcomes[i].BaseModel = base()
+	}
+	for i := range course.Prerequisites {
+		course.Prerequisites[i].BaseModel = base()
+	}
 	for i := range course.Modules {
 		course.Modules[i].BaseModel = base()
 		for j := range course.Modules[i].Lessons {
@@ -180,7 +189,7 @@ func TestGetCourseWithPublicSyllabus(t *testing.T) {
 		},
 	})
 
-	course, err := services.GetCourse(context.Background(), "open")
+	course, err := services.GetCourse(context.Background(), "open", false)
 	require.NoError(t, err)
 
 	assert.Equal(t, "open", course.Id)
@@ -211,7 +220,7 @@ func TestGetCourseWithPrivateSyllabus(t *testing.T) {
 		},
 	})
 
-	course, err := services.GetCourse(context.Background(), "closed")
+	course, err := services.GetCourse(context.Background(), "closed", false)
 	require.NoError(t, err)
 
 	assert.Equal(t, 5, course.LessonCount)
@@ -221,6 +230,98 @@ func TestGetCourseWithPrivateSyllabus(t *testing.T) {
 	}, course.Modules, "modules and their counts, but no lessons")
 }
 
+func TestGetCourseForAMember(t *testing.T) {
+	useEmptyCatalog(t)
+	cache := testutil.UseCache(t)
+	ctx := context.Background()
+	dist := addDomain(t, "dist", 1)
+
+	addCourse(t, dist, models.Course{
+		Slug:        "closed",
+		PublishedAt: ago(time.Hour),
+		Modules:     []models.CourseModule{{Position: 1, Title: "One", Lessons: lessons(2)}},
+	})
+
+	visitor, err := services.GetCourse(ctx, "closed", false)
+	require.NoError(t, err)
+	member, err := services.GetCourse(ctx, "closed", true)
+	require.NoError(t, err)
+
+	assert.Nil(t, visitor.Modules[0].Lessons)
+	assert.Equal(t, []schemas.LessonSchema{
+		{Code: "1.1", Title: "Lesson", Minutes: 10, Steps: []string{}},
+		{Code: "1.2", Title: "Lesson", Minutes: 10, Steps: []string{}},
+	}, member.Modules[0].Lessons, "a member sees a private syllabus")
+	assert.True(t, cache.Exists(services.CourseCacheKey("closed", false)))
+	assert.True(t, cache.Exists(services.CourseCacheKey("closed", true)), "each view is cached on its own")
+}
+
+func TestGetCoursePageCopy(t *testing.T) {
+	useEmptyCatalog(t)
+	testutil.UseCache(t)
+	dist := addDomain(t, "dist", 1)
+	hidden := addDomain(t, "hidden", 2)
+
+	par := 4
+	recommended := addCourse(t, dist, models.Course{Slug: "recommended", Position: 2, PublishedAt: ago(time.Hour)})
+	optional := addCourse(t, dist, models.Course{Slug: "optional", Position: 3, PublishedAt: ago(time.Hour)})
+	draft := addCourse(t, dist, models.Course{Slug: "draft", Position: 4})
+	removed := addCourse(t, dist, models.Course{Slug: "removed", Position: 5, PublishedAt: ago(time.Hour)})
+	require.NoError(t, core.DB.Model(&removed).Update("deleted_at", time.Now()).Error)
+	orphaned := addCourse(t, hidden, models.Course{Slug: "orphaned", Position: 1, PublishedAt: ago(time.Hour)})
+	require.NoError(t, core.DB.Exec("UPDATE domains SET deleted_at = now() WHERE slug = 'hidden'").Error)
+
+	// Created out of order, so the order has to come from the positions.
+	addCourse(t, dist, models.Course{
+		Slug:        "full",
+		Position:    1,
+		PublishedAt: ago(time.Hour),
+		Overview:    "What this course is about.",
+		Assumes:     "assumes basic networking",
+		BreakIts: []models.CourseBreakIt{
+			{Position: 2, Name: "Unscored"},
+			{Position: 1, Name: "Scored", Description: "Break it", Par: &par},
+		},
+		Requirements: []models.CourseRequirement{
+			{Position: 2, Title: "Second"},
+			{Position: 1, Title: "First", Detail: "Why"},
+		},
+		Outcomes: []models.CourseOutcome{{Position: 2, Statement: "Later"}, {Position: 1, Statement: "Sooner"}},
+		Prerequisites: []models.CoursePrerequisite{
+			{Position: 5, PrerequisiteId: optional.Id, Optional: true},
+			{Position: 1, PrerequisiteId: recommended.Id},
+			{Position: 2, PrerequisiteId: draft.Id},
+			{Position: 3, PrerequisiteId: removed.Id},
+			{Position: 4, PrerequisiteId: orphaned.Id},
+		},
+	})
+	addCourse(t, dist, models.Course{Slug: "bare", Position: 6, PublishedAt: ago(time.Hour)})
+
+	course, err := services.GetCourse(context.Background(), "full", false)
+	require.NoError(t, err)
+
+	assert.Equal(t, "What this course is about.", course.Overview)
+	assert.Equal(t, "assumes basic networking", course.Assumes)
+	assert.Equal(t, []schemas.RequirementSchema{{Title: "First", Detail: "Why"}, {Title: "Second", Detail: ""}}, course.Requirements)
+	assert.Equal(t, []string{"Sooner", "Later"}, course.Outcomes)
+	assert.Equal(t, []schemas.BreakItSchema{
+		{Name: "Scored", Description: "Break it", Par: &par},
+		{Name: "Unscored", Description: "", Par: nil},
+	}, course.BreakItDetails)
+	assert.Equal(t, []schemas.PrerequisiteSchema{
+		{Id: "recommended", Optional: false},
+		{Id: "optional", Optional: true},
+	}, course.Prerequisites, "only prerequisites that are in the catalog")
+
+	bare, err := services.GetCourse(context.Background(), "bare", false)
+	require.NoError(t, err)
+	assert.Empty(t, bare.Overview)
+	assert.Equal(t, []schemas.RequirementSchema{}, bare.Requirements, "empty lists, not null")
+	assert.Equal(t, []string{}, bare.Outcomes)
+	assert.Equal(t, []schemas.BreakItSchema{}, bare.BreakItDetails)
+	assert.Equal(t, []schemas.PrerequisiteSchema{}, bare.Prerequisites)
+}
+
 func TestGetCourseNotInCatalog(t *testing.T) {
 	useEmptyCatalog(t)
 	cache := testutil.UseCache(t)
@@ -228,9 +329,11 @@ func TestGetCourseNotInCatalog(t *testing.T) {
 	addCourse(t, dist, models.Course{Slug: "draft"})
 
 	for _, slug := range []string{"missing", "draft"} {
-		_, err := services.GetCourse(context.Background(), slug)
-		require.ErrorIs(t, err, services.ErrCourseNotFound, slug)
-		assert.False(t, cache.Exists(services.CourseCacheKey(slug)), "a miss is not cached")
+		for _, member := range []bool{false, true} {
+			_, err := services.GetCourse(context.Background(), slug, member)
+			require.ErrorIs(t, err, services.ErrCourseNotFound, slug)
+			assert.False(t, cache.Exists(services.CourseCacheKey(slug, member)), "a miss is not cached")
+		}
 	}
 }
 
@@ -265,7 +368,7 @@ func TestGetCourseServesWithoutTheCache(t *testing.T) {
 
 	cache.Close()
 
-	course, err := services.GetCourse(context.Background(), "uncached")
+	course, err := services.GetCourse(context.Background(), "uncached", false)
 	require.NoError(t, err, "an unreachable cache falls back to the database")
 	assert.Equal(t, "uncached", course.Id)
 }
@@ -285,21 +388,32 @@ func TestSeededCatalog(t *testing.T) {
 	for _, d := range catalog.Domains {
 		domains[d.Id] = true
 	}
+	listed := map[string]bool{}
+	for _, c := range catalog.Courses {
+		listed[c.Id] = true
+	}
 
 	for _, summary := range catalog.Courses {
 		assert.True(t, domains[summary.Domain], "%s is in a listed domain", summary.Id)
 		assert.NotEmpty(t, summary.BreakIts, summary.Id)
 
-		course, err := services.GetCourse(ctx, summary.Id)
+		course, err := services.GetCourse(ctx, summary.Id, true)
 		require.NoError(t, err, summary.Id)
 		assert.Equal(t, summary, course.CourseSummarySchema, summary.Id)
+
+		names := make([]string, len(course.BreakItDetails))
+		for i, b := range course.BreakItDetails {
+			names[i] = b.Name
+		}
+		assert.Equal(t, summary.BreakIts, names, "%s: the page describes the break-its the catalog lists", summary.Id)
+		for _, p := range course.Prerequisites {
+			assert.True(t, listed[p.Id], "%s: prerequisite %s is in the catalog", summary.Id, p.Id)
+		}
 
 		total := 0
 		for _, m := range course.Modules {
 			total += m.LessonCount
-			if m.Lessons != nil {
-				assert.Len(t, m.Lessons, m.LessonCount, "%s: %s", summary.Id, m.Title)
-			}
+			assert.Len(t, m.Lessons, m.LessonCount, "%s: a member sees every lesson of %s", summary.Id, m.Title)
 		}
 		assert.Equal(t, summary.LessonCount, total, summary.Id)
 	}
