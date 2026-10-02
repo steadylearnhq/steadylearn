@@ -1,5 +1,5 @@
 import type { CritterKind } from '../components/Critter'
-import type { CourseEnrollment } from '../lib/enrollments'
+import type { CourseEnrollment, Enrollment } from '../lib/enrollments'
 import type { LessonStepKey } from './lessonSteps'
 
 export type DomainId = 'dist' | 'db' | 'comp' | 'crypto' | 'ml' | 'prob'
@@ -68,6 +68,8 @@ export type Course = {
 export type Catalog = {
   domains: Domain[]
   courses: Course[]
+  /** The member's own, sent only when they are signed in and have some. */
+  enrollments?: Enrollment[]
 }
 
 export type Lesson = {

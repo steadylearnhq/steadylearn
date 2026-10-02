@@ -83,14 +83,19 @@ export const user = store.user
 export const authReady = store.ready
 export const signOut = () => amplifySignOut()
 
-/** The session's access token for the API, refreshed by Amplify when it has expired; undefined when signed out. */
-export async function accessToken(): Promise<string | undefined> {
+/** The signed-in member's id and access token for the API, refreshed by Amplify when it has expired; undefined when signed out. */
+export async function session(): Promise<{ userId: string; token: string } | undefined> {
   try {
-    return (await fetchAuthSession()).tokens?.accessToken.toString()
+    const token = (await fetchAuthSession()).tokens?.accessToken
+    const sub = token?.payload.sub
+    return token && sub ? { userId: sub, token: token.toString() } : undefined
   } catch {
     return undefined
   }
 }
+
+/** The session's access token for the API; undefined when signed out. */
+export const accessToken = async () => (await session())?.token
 
 // Amplify throws plain Errors whose `name` is the Cognito exception. The
 // message is AWS prose, so it is matched on the name and reworded here.
