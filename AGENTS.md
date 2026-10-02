@@ -209,7 +209,8 @@ from the diff.
 AWS Cognito JWT via `Authorization: Bearer <token>`. The middleware validates the
 token against the pool's JWKS and stores the `sub` claim under the Gin context key
 `user_id`. The user's id **is** the Cognito sub; `POST /v1/users` creates the local
-row on first login. `GET /v1/catalog` and `GET /v1/courses/:id` are public;
+row, and so does enrolling in a course (`PUT /v1/courses/:id/enrollment`), since
+the app does not call setup. `GET /v1/catalog` and `GET /v1/courses/:id` are public;
 the course takes an optional token (`OptionalAuth`), and a signed-in caller
 gets every lesson of its syllabus.
 
