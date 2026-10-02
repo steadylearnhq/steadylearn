@@ -82,4 +82,8 @@ type CourseSchema struct {
 	BreakItDetails []BreakItSchema      `json:"breakItDetails"`
 	Prerequisites  []PrerequisiteSchema `json:"prerequisites"`
 	Modules        []ModuleSchema       `json:"modules"`
+	// Enrollment is the caller's own, with the lessons they have completed. It
+	// is sent only to a signed-in caller who is enrolled in the course, and is
+	// never cached with the rest.
+	Enrollment *CourseEnrollmentSchema `json:"enrollment,omitempty"`
 }

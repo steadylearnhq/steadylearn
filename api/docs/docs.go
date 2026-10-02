@@ -117,7 +117,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "A published course with its syllabus and the copy its page shows. The token is optional: without one, a course that keeps its syllabus private lists each module's lesson count and null for its lessons; a signed-in caller gets every lesson. Prerequisites name only courses in the catalog. Served from a cache for up to ten minutes.",
+                "description": "A published course with its syllabus and the copy its page shows. The token is optional: without one, a course that keeps its syllabus private lists each module's lesson count and null for its lessons; a signed-in caller gets every lesson, and their enrollment in the course when they have one. Prerequisites name only courses in the catalog. The course is served from a cache for up to ten minutes; the enrollment never is.",
                 "produces": [
                     "application/json"
                 ],
@@ -179,7 +179,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "The caller's enrollment in a course in the catalog, with its progress and the codes of the lessons they have completed, in syllabus order. A 404 means the course is not in the catalog or the caller is not enrolled in it.",
+                "description": "The caller's enrollment in a course in the catalog, with its progress and the codes of the lessons they have completed, in syllabus order. A 404 means the course is not in the catalog or the caller is not enrolled in it. Superseded by the enrollment GET /v1/courses/{id} returns; kept until the app reads that one.",
                 "produces": [
                     "application/json"
                 ],
@@ -187,6 +187,7 @@ const docTemplate = `{
                     "enrollments"
                 ],
                 "summary": "Get my enrollment in a course",
+                "deprecated": true,
                 "parameters": [
                     {
                         "type": "string",
@@ -754,6 +755,14 @@ const docTemplate = `{
                 "domain": {
                     "type": "string",
                     "example": "dist"
+                },
+                "enrollment": {
+                    "description": "Enrollment is the caller's own, with the lessons they have completed. It\nis sent only to a signed-in caller who is enrolled in the course, and is\nnever cached with the rest.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.CourseEnrollmentSchema"
+                        }
+                    ]
                 },
                 "id": {
                     "type": "string",

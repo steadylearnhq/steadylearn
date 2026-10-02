@@ -212,7 +212,7 @@ token against the pool's JWKS and stores the `sub` claim under the Gin context k
 row, and so does enrolling in a course (`PUT /v1/courses/:id/enrollment`), since
 the app does not call setup. `GET /v1/catalog` and `GET /v1/courses/:id` are public;
 the course takes an optional token (`OptionalAuth`), and a signed-in caller
-gets every lesson of its syllabus.
+gets every lesson of its syllabus and, when enrolled, their enrollment in it.
 
 ### Key Patterns
 
