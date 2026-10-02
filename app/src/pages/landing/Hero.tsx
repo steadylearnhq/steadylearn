@@ -14,7 +14,7 @@ export default function Hero() {
           watch, read, build, trace and estimate, then bet on what you actually remember.
         </p>
         <div class={styles.actions}>
-          <Button variant="primary" size="lg" href="/signup">
+          <Button variant="primary" size="lg" href="/login">
             Start free →
           </Button>
           <Button variant="outline" size="lg" href="/catalog">

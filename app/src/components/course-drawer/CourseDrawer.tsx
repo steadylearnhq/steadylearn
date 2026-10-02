@@ -238,7 +238,7 @@ export default function CourseDrawer(props: CourseDrawerProps) {
               {props.course.isFree ? 'Free course. Sign up to start.' : 'Included with the subscription.'}
             </span>
             <span class={styles.spacer} />
-            <Button variant="primary" size="md" href="/signup">
+            <Button variant="primary" size="md" href={props.course.isFree ? '/login' : '/signup'}>
               {props.course.isFree ? 'Start for free →' : 'Subscribe →'}
             </Button>
           </div>

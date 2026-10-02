@@ -27,7 +27,7 @@ const PLANS: Plan[] = [
     period: 'forever',
     description: `The full ${FREE_COURSE.title} course: ${FREE_COURSE.description.charAt(0).toLowerCase()}${FREE_COURSE.description.slice(1)}`,
     cta: () => (
-      <Button variant="outline" size="lg">
+      <Button variant="outline" size="lg" href="/login">
         Start the free course
       </Button>
     ),

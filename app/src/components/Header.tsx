@@ -55,7 +55,7 @@ export default function Header() {
             <Show
               when={user()}
               fallback={
-                <Button variant="primary" size="sm" href="/signup">
+                <Button variant="primary" size="sm" href="/login">
                   Start for free →
                 </Button>
               }
