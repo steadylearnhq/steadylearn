@@ -5,7 +5,6 @@ import { useCourseDrawer } from '../../components/course-drawer/useCourseDrawer'
 import { LEVELS, domainDot, plural, type Course } from '../../data/catalog'
 import { user } from '../../lib/auth'
 import { fetchCatalog } from '../../lib/catalog'
-import { fetchEnrollments } from '../../lib/enrollments'
 import { usePageTitle } from '../../lib/title'
 import CourseCard from './CourseCard'
 import CourseRow from './CourseRow'
@@ -16,17 +15,14 @@ import styles from './Catalog.module.css'
 export default function Catalog() {
   usePageTitle('Catalog')
   const location = useLocation()
-  const [catalog, { refetch }] = createResource(fetchCatalog)
+  // Asked again on signing in or out, since a member's catalog carries their enrollments.
+  const [catalog, { refetch }] = createResource(() => user()?.id ?? 'visitor', () => fetchCatalog())
   // Reading an errored resource throws, so everything below reads this instead.
   const loaded = () => (catalog.state === 'ready' ? catalog() : undefined)
   // Members see the courses as cards with their progress, open each on its own
   // page rather than in the drawer, and can hide the ones they're enrolled in.
   const member = () => !!user()
-  const [enrollments] = createResource(() => user()?.id, fetchEnrollments)
-  // Until the enrollments load, or if they fail to, the cards show no progress.
-  const progress = createMemo(
-    () => new Map((enrollments.state === 'ready' ? enrollments() : []).map((e) => [e.courseId, e.progress])),
-  )
+  const progress = createMemo(() => new Map((loaded()?.enrollments ?? []).map((e) => [e.courseId, e.progress])))
   const progressOf = (id: string) => (member() ? progress().get(id) : undefined)
   const enrolled = (c: Course) => progressOf(c.id) !== undefined
   const filters = useCatalogFilters(loaded, enrolled)
