@@ -1,0 +1,59 @@
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*.sw?
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Environment files; api/env.sample and app/.env.example are the committed templates
+.env
+.env*.local
+*.local
+*.pem
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- api/ (Go) ---
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directory (unused with Go modules)
+/api/vendor
+
+# Compiled application binary
+/api/steadylearn-api
+/api/build
+
+# Generated swagger docs (api/docs) are committed on purpose: main.go imports
+# the docs package, so the project would not build from a clean clone without it.
+
+# --- app/ (Vite) ---
+node_modules
+/app/dist
+/app/dist-ssr
+*.tsbuildinfo
