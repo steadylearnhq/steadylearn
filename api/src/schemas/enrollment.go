@@ -14,3 +14,12 @@ type EnrollmentSchema struct {
 	// down, so 100 means every lesson is done.
 	Progress int `json:"progress" example:"50"`
 }
+
+// CourseEnrollmentSchema is the caller's enrollment in one course, with which
+// of its lessons they have completed.
+type CourseEnrollmentSchema struct {
+	EnrollmentSchema
+	// CompletedLessons are the codes of the lessons the caller has completed,
+	// as the course's syllabus numbers them, in syllabus order.
+	CompletedLessons []string `json:"completedLessons" example:"1.1,1.2"`
+}

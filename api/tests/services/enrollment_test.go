@@ -64,6 +64,7 @@ func TestEnroll(t *testing.T) {
 	assert.Equal(t, "course", enrollment.CourseId)
 	assert.Zero(t, enrollment.LessonsDone)
 	assert.Zero(t, enrollment.Progress)
+	assert.Equal(t, []string{}, enrollment.CompletedLessons, "an empty list, not null")
 	assert.WithinDuration(t, time.Now(), enrollment.EnrolledAt, time.Minute)
 
 	_, err = services.GetUserById(ctx, userId)
@@ -103,20 +104,22 @@ func TestCompleteLesson(t *testing.T) {
 	require.NoError(t, err)
 
 	steps := []struct {
-		code     string
-		done     int
-		progress int
+		code      string
+		done      int
+		progress  int
+		completed []string
 	}{
-		{"1.2", 1, 33},
-		{"1.2", 1, 33}, // completing again is a no-op
-		{"2.1", 2, 66}, // rounded down
-		{"1.1", 3, 100},
+		{"1.2", 1, 33, []string{"1.2"}},
+		{"1.2", 1, 33, []string{"1.2"}},                // completing again is a no-op
+		{"2.1", 2, 66, []string{"1.2", "2.1"}},         // rounded down
+		{"1.1", 3, 100, []string{"1.1", "1.2", "2.1"}}, // in syllabus order
 	}
 	for _, step := range steps {
 		enrollment, err := services.CompleteLesson(ctx, userId, "course", step.code)
 		require.NoError(t, err, step.code)
 		assert.Equal(t, step.done, enrollment.LessonsDone, step.code)
 		assert.Equal(t, step.progress, enrollment.Progress, step.code)
+		assert.Equal(t, step.completed, enrollment.CompletedLessons, step.code)
 	}
 
 	assert.Equal(t, []string{"First", "Second", "Third"}, completedTitles(t, userId, "course"),
@@ -155,6 +158,137 @@ func TestCompleteLessonRejects(t *testing.T) {
 		})
 	}
 	assert.Empty(t, completedTitles(t, userId, "course"))
+}
+
+func TestUncompleteLesson(t *testing.T) {
+	useEmptyCatalog(t)
+	ctx := context.Background()
+	addSyllabusCourse(t, addDomain(t, "dist", 1), "course")
+	userId := uuid.New()
+	_, _, err := services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+	for _, code := range []string{"1.1", "2.1"} {
+		_, err := services.CompleteLesson(ctx, userId, "course", code)
+		require.NoError(t, err)
+	}
+
+	steps := []struct {
+		name      string
+		change    func(context.Context, uuid.UUID, string, string) (schemas.CourseEnrollmentSchema, error)
+		code      string
+		completed []string
+	}{
+		{"uncomplete", services.UncompleteLesson, "1.1", []string{"2.1"}},
+		{"uncomplete again, a no-op", services.UncompleteLesson, "1.1", []string{"2.1"}},
+		{"uncomplete a lesson not done, a no-op", services.UncompleteLesson, "1.2", []string{"2.1"}},
+		{"complete it again", services.CompleteLesson, "1.1", []string{"1.1", "2.1"}},
+	}
+	for _, step := range steps {
+		enrollment, err := step.change(ctx, userId, "course", step.code)
+		require.NoError(t, err, step.name)
+		assert.Equal(t, step.completed, enrollment.CompletedLessons, step.name)
+		assert.Equal(t, len(step.completed), enrollment.LessonsDone, step.name)
+	}
+	assert.Equal(t, []string{"First", "First", "Third"}, completedTitles(t, userId, "course"),
+		"the uncompleted row stays, deleted, beside the new one")
+}
+
+func TestUncompleteLessonRejects(t *testing.T) {
+	useEmptyCatalog(t)
+	ctx := context.Background()
+	dist := addDomain(t, "dist", 1)
+	addSyllabusCourse(t, dist, "course")
+	addSyllabusCourse(t, dist, "other")
+	userId := uuid.New()
+	_, _, err := services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+
+	cases := []struct {
+		name   string
+		course string
+		code   string
+		err    error
+	}{
+		{"an unknown course", "missing", "1.1", services.ErrCourseNotFound},
+		{"an unknown lesson", "course", "1.3", services.ErrLessonNotFound},
+		{"a course the learner is not enrolled in", "other", "1.1", services.ErrNotEnrolled},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := services.UncompleteLesson(ctx, userId, c.course, c.code)
+			assert.ErrorIs(t, err, c.err)
+		})
+	}
+}
+
+func TestGetEnrollment(t *testing.T) {
+	useEmptyCatalog(t)
+	ctx := context.Background()
+	dist := addDomain(t, "dist", 1)
+	addSyllabusCourse(t, dist, "course")
+	addSyllabusCourse(t, dist, "other")
+	userId := uuid.New()
+	_, _, err := services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+	for _, code := range []string{"2.1", "1.2"} {
+		_, err := services.CompleteLesson(ctx, userId, "course", code)
+		require.NoError(t, err)
+	}
+	// Someone else's progress is not the learner's.
+	otherId := uuid.New()
+	_, _, err = services.Enroll(ctx, otherId, "course")
+	require.NoError(t, err)
+	_, err = services.CompleteLesson(ctx, otherId, "course", "1.1")
+	require.NoError(t, err)
+
+	enrollment, err := services.GetEnrollment(ctx, userId, "course")
+	require.NoError(t, err)
+	assert.Equal(t, "course", enrollment.CourseId)
+	assert.Equal(t, 2, enrollment.LessonsDone)
+	assert.Equal(t, 66, enrollment.Progress)
+	assert.Equal(t, []string{"1.2", "2.1"}, enrollment.CompletedLessons)
+
+	// Deleting a lesson renumbers the module, and the codes follow.
+	require.NoError(t, core.DB.Exec(`UPDATE lessons SET deleted_at = now() WHERE title = 'First'
+		AND module_id IN (SELECT m.id FROM course_modules m JOIN courses c ON c.id = m.course_id WHERE c.slug = 'course')`).Error)
+	enrollment, err = services.GetEnrollment(ctx, userId, "course")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"1.1", "2.1"}, enrollment.CompletedLessons)
+
+	_, err = services.GetEnrollment(ctx, userId, "other")
+	assert.ErrorIs(t, err, services.ErrNotEnrolled)
+	_, err = services.GetEnrollment(ctx, userId, "missing")
+	assert.ErrorIs(t, err, services.ErrCourseNotFound)
+}
+
+func TestUnenroll(t *testing.T) {
+	useEmptyCatalog(t)
+	ctx := context.Background()
+	addSyllabusCourse(t, addDomain(t, "dist", 1), "course")
+	userId := uuid.New()
+	_, _, err := services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+	_, err = services.CompleteLesson(ctx, userId, "course", "1.1")
+	require.NoError(t, err)
+
+	require.NoError(t, services.Unenroll(ctx, userId, "course"))
+	require.NoError(t, services.Unenroll(ctx, userId, "course"), "unenrolling again is a no-op")
+
+	_, err = services.GetEnrollment(ctx, userId, "course")
+	assert.ErrorIs(t, err, services.ErrNotEnrolled)
+	enrollments, err := services.GetEnrollments(ctx, userId)
+	require.NoError(t, err)
+	assert.Empty(t, enrollments)
+	_, err = services.CompleteLesson(ctx, userId, "course", "1.2")
+	assert.ErrorIs(t, err, services.ErrNotEnrolled)
+
+	enrollment, created, err := services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+	assert.True(t, created, "enrolling again after unenrolling is a new enrollment")
+	assert.Zero(t, enrollment.LessonsDone, "and starts afresh")
+	assert.Equal(t, []string{}, enrollment.CompletedLessons)
+
+	assert.ErrorIs(t, services.Unenroll(ctx, userId, "missing"), services.ErrCourseNotFound)
 }
 
 func TestGetEnrollments(t *testing.T) {

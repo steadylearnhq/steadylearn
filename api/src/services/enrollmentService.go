@@ -31,7 +31,7 @@ var (
 // has completed. Deleted lessons count for neither. A query built on it
 // appends its own conditions and order.
 const enrollmentRows = `
-SELECT c.slug AS course_id, e.created_at AS enrolled_at, lc.lesson_count, done.lessons_done
+SELECT e.id, c.id AS course, c.slug AS course_id, e.created_at AS enrolled_at, lc.lesson_count, done.lessons_done
 FROM enrollments e
 JOIN courses c ON c.id = e.course_id AND c.deleted_at IS NULL AND c.published_at <= @now
 JOIN domains d ON d.id = c.domain_id AND d.deleted_at IS NULL
@@ -52,6 +52,8 @@ WHERE e.user_id = @user AND e.deleted_at IS NULL
 `
 
 type enrollmentRow struct {
+	Id          uuid.UUID
+	Course      uuid.UUID
 	CourseId    string
 	EnrolledAt  time.Time
 	LessonCount int
@@ -88,18 +90,44 @@ func GetEnrollments(ctx context.Context, userId uuid.UUID) ([]schemas.Enrollment
 	return enrollments, nil
 }
 
-// getEnrollment is the learner's enrollment in one course.
-func getEnrollment(ctx context.Context, userId uuid.UUID, slug string) (schemas.EnrollmentSchema, error) {
+// GetEnrollment is the learner's enrollment in a course in the catalog, with
+// the lessons they have completed.
+func GetEnrollment(ctx context.Context, userId uuid.UUID, slug string) (schemas.CourseEnrollmentSchema, error) {
+	if _, err := catalogCourseId(core.DB.WithContext(ctx), slug); err != nil {
+		return schemas.CourseEnrollmentSchema{}, err
+	}
+	return getEnrollment(ctx, userId, slug)
+}
+
+// getEnrollment is the learner's enrollment in one course, with the codes of
+// the lessons they have completed.
+func getEnrollment(ctx context.Context, userId uuid.UUID, slug string) (schemas.CourseEnrollmentSchema, error) {
+	db := core.DB.WithContext(ctx)
+
 	var rows []enrollmentRow
-	err := core.DB.WithContext(ctx).Raw(enrollmentRows+`AND c.slug = @slug`,
+	err := db.Raw(enrollmentRows+`AND c.slug = @slug`,
 		map[string]any{"user": userId, "now": time.Now(), "slug": slug}).Scan(&rows).Error
 	if err != nil {
-		return schemas.EnrollmentSchema{}, fmt.Errorf("failed to load enrollment: %w", err)
+		return schemas.CourseEnrollmentSchema{}, fmt.Errorf("failed to load enrollment: %w", err)
 	}
 	if len(rows) == 0 {
-		return schemas.EnrollmentSchema{}, ErrNotEnrolled
+		return schemas.CourseEnrollmentSchema{}, ErrNotEnrolled
 	}
-	return rows[0].schema(), nil
+	row := rows[0]
+
+	completed := []string{}
+	err = db.Raw(`
+SELECT s.module || '.' || s.lesson
+FROM (`+syllabusLessons+`) s
+JOIN lesson_completions lc ON lc.lesson_id = s.id AND lc.deleted_at IS NULL
+WHERE lc.enrollment_id = @enrollment
+ORDER BY s.module, s.lesson`,
+		map[string]any{"course": row.Course, "enrollment": row.Id}).Scan(&completed).Error
+	if err != nil {
+		return schemas.CourseEnrollmentSchema{}, fmt.Errorf("failed to list completed lessons: %w", err)
+	}
+
+	return schemas.CourseEnrollmentSchema{EnrollmentSchema: row.schema(), CompletedLessons: completed}, nil
 }
 
 // catalogCourseId is the id of the course in the catalog with the given slug.
@@ -125,7 +153,7 @@ WHERE c.slug = @slug AND c.deleted_at IS NULL AND c.published_at <= @now`,
 //
 // The learner's local row is created if it is missing: a valid token is all
 // it takes to be a learner, and the row exists to hold what hangs off them.
-func Enroll(ctx context.Context, userId uuid.UUID, slug string) (schemas.EnrollmentSchema, bool, error) {
+func Enroll(ctx context.Context, userId uuid.UUID, slug string) (schemas.CourseEnrollmentSchema, bool, error) {
 	created := false
 	err := core.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		courseId, err := catalogCourseId(tx, slug)
@@ -147,55 +175,119 @@ func Enroll(ctx context.Context, userId uuid.UUID, slug string) (schemas.Enrollm
 		return nil
 	})
 	if err != nil {
-		return schemas.EnrollmentSchema{}, false, err
+		return schemas.CourseEnrollmentSchema{}, false, err
 	}
 
 	enrollment, err := getEnrollment(ctx, userId, slug)
 	return enrollment, created, err
 }
 
-// CompleteLesson marks a lesson done for a learner enrolled in its course, and
-// returns the enrollment with its progress. The lesson is named by its code,
-// 2.4 for the fourth lesson of the second module, as the syllabus numbers it.
-// Completing a lesson again is a no-op.
-func CompleteLesson(ctx context.Context, userId uuid.UUID, slug string, code string) (schemas.EnrollmentSchema, error) {
+// Unenroll takes the learner out of a course in the catalog. Their progress
+// stays with the old enrollment, so enrolling again starts afresh. Unenrolling
+// from a course they are not taking is a no-op.
+func Unenroll(ctx context.Context, userId uuid.UUID, slug string) error {
 	db := core.DB.WithContext(ctx)
 
 	courseId, err := catalogCourseId(db, slug)
 	if err != nil {
-		return schemas.EnrollmentSchema{}, err
+		return err
 	}
 
-	lessonId, err := lessonByCode(db, courseId, code)
+	err = db.Exec(`UPDATE enrollments SET deleted_at = now() WHERE user_id = ? AND course_id = ? AND deleted_at IS NULL`,
+		userId, courseId).Error
 	if err != nil {
-		return schemas.EnrollmentSchema{}, err
+		return fmt.Errorf("failed to unenroll: %w", err)
+	}
+	return nil
+}
+
+// CompleteLesson marks a lesson done for a learner enrolled in its course, and
+// returns the enrollment with its progress. The lesson is named by its code,
+// 2.4 for the fourth lesson of the second module, as the syllabus numbers it.
+// Completing a lesson again is a no-op.
+func CompleteLesson(ctx context.Context, userId uuid.UUID, slug string, code string) (schemas.CourseEnrollmentSchema, error) {
+	db := core.DB.WithContext(ctx)
+
+	enrollmentId, lessonId, err := enrolledLesson(db, userId, slug, code)
+	if err != nil {
+		return schemas.CourseEnrollmentSchema{}, err
+	}
+
+	completion := models.LessonCompletion{
+		BaseModel:    models.BaseModel{Id: uuid.New()},
+		EnrollmentId: enrollmentId,
+		LessonId:     lessonId,
+	}
+	err = db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&completion).Error
+	if err != nil {
+		return schemas.CourseEnrollmentSchema{}, fmt.Errorf("failed to complete lesson: %w", err)
+	}
+
+	return getEnrollment(ctx, userId, slug)
+}
+
+// UncompleteLesson marks a lesson not done again, as CompleteLesson names it,
+// and returns the enrollment with its progress. A lesson that is not done is
+// left as it is.
+func UncompleteLesson(ctx context.Context, userId uuid.UUID, slug string, code string) (schemas.CourseEnrollmentSchema, error) {
+	db := core.DB.WithContext(ctx)
+
+	enrollmentId, lessonId, err := enrolledLesson(db, userId, slug, code)
+	if err != nil {
+		return schemas.CourseEnrollmentSchema{}, err
+	}
+
+	err = db.Exec(`UPDATE lesson_completions SET deleted_at = now() WHERE enrollment_id = ? AND lesson_id = ? AND deleted_at IS NULL`,
+		enrollmentId, lessonId).Error
+	if err != nil {
+		return schemas.CourseEnrollmentSchema{}, fmt.Errorf("failed to uncomplete lesson: %w", err)
+	}
+
+	return getEnrollment(ctx, userId, slug)
+}
+
+// enrolledLesson finds the learner's enrollment in a course in the catalog and
+// the lesson of it that a syllabus code names.
+func enrolledLesson(db *gorm.DB, userId uuid.UUID, slug string, code string) (enrollmentId, lessonId uuid.UUID, err error) {
+	courseId, err := catalogCourseId(db, slug)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+
+	lessonId, err = lessonByCode(db, courseId, code)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
 	}
 
 	var enrollments []struct{ Id uuid.UUID }
 	err = db.Raw(`SELECT id FROM enrollments WHERE user_id = ? AND course_id = ? AND deleted_at IS NULL`,
 		userId, courseId).Scan(&enrollments).Error
 	if err != nil {
-		return schemas.EnrollmentSchema{}, fmt.Errorf("failed to find enrollment: %w", err)
+		return uuid.Nil, uuid.Nil, fmt.Errorf("failed to find enrollment: %w", err)
 	}
 	if len(enrollments) == 0 {
-		return schemas.EnrollmentSchema{}, ErrNotEnrolled
+		return uuid.Nil, uuid.Nil, ErrNotEnrolled
 	}
-
-	completion := models.LessonCompletion{
-		BaseModel:    models.BaseModel{Id: uuid.New()},
-		EnrollmentId: enrollments[0].Id,
-		LessonId:     lessonId,
-	}
-	err = db.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&completion).Error
-	if err != nil {
-		return schemas.EnrollmentSchema{}, fmt.Errorf("failed to complete lesson: %w", err)
-	}
-
-	return getEnrollment(ctx, userId, slug)
+	return enrollments[0].Id, lessonId, nil
 }
 
-// lessonByCode finds the lesson a syllabus code names. Codes count modules and
-// lessons in order, skipping deleted ones, as loadCourse numbers them.
+// syllabusLessons numbers the lessons of the course @course as its syllabus
+// codes do, counting modules and lessons in order and skipping deleted ones,
+// as loadCourse numbers them. Lesson 2.4 is the row with module 2, lesson 4.
+const syllabusLessons = `
+SELECT l.id, m.number AS module, l.number AS lesson
+FROM (
+	SELECT m.id, row_number() OVER (ORDER BY m.position) AS number
+	FROM course_modules m
+	WHERE m.course_id = @course AND m.deleted_at IS NULL
+) m
+CROSS JOIN LATERAL (
+	SELECT l.id, row_number() OVER (ORDER BY l.position) AS number
+	FROM lessons l
+	WHERE l.module_id = m.id AND l.deleted_at IS NULL
+) l`
+
+// lessonByCode finds the lesson a syllabus code names.
 func lessonByCode(db *gorm.DB, courseId uuid.UUID, code string) (uuid.UUID, error) {
 	var module, lesson int
 	// The round trip rejects anything but the plain form: 2.4, not 02.4 or 2.4x.
@@ -204,19 +296,7 @@ func lessonByCode(db *gorm.DB, courseId uuid.UUID, code string) (uuid.UUID, erro
 	}
 
 	var rows []struct{ Id uuid.UUID }
-	err := db.Raw(`
-SELECT l.id
-FROM (
-	SELECT m.id, row_number() OVER (ORDER BY m.position) AS number
-	FROM course_modules m
-	WHERE m.course_id = @course AND m.deleted_at IS NULL
-) m
-JOIN LATERAL (
-	SELECT l.id, row_number() OVER (ORDER BY l.position) AS number
-	FROM lessons l
-	WHERE l.module_id = m.id AND l.deleted_at IS NULL
-) l ON l.number = @lesson
-WHERE m.number = @module`,
+	err := db.Raw(`SELECT id FROM (`+syllabusLessons+`) s WHERE s.module = @module AND s.lesson = @lesson`,
 		map[string]any{"course": courseId, "module": module, "lesson": lesson}).Scan(&rows).Error
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to find lesson: %w", err)
