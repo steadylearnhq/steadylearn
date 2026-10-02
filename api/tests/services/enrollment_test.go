@@ -222,8 +222,18 @@ func TestUncompleteLessonRejects(t *testing.T) {
 	}
 }
 
-func TestGetEnrollment(t *testing.T) {
+// enrollmentIn is the learner's enrollment as their course page gets it, nil
+// when they are not enrolled.
+func enrollmentIn(t *testing.T, userId uuid.UUID, slug string) *schemas.CourseEnrollmentSchema {
+	t.Helper()
+	course, err := services.GetMemberCourse(context.Background(), slug, userId)
+	require.NoError(t, err)
+	return course.Enrollment
+}
+
+func TestCourseEnrollment(t *testing.T) {
 	useEmptyCatalog(t)
+	testutil.UseCache(t)
 	ctx := context.Background()
 	dist := addDomain(t, "dist", 1)
 	addSyllabusCourse(t, dist, "course")
@@ -242,8 +252,8 @@ func TestGetEnrollment(t *testing.T) {
 	_, err = services.CompleteLesson(ctx, otherId, "course", "1.1")
 	require.NoError(t, err)
 
-	enrollment, err := services.GetEnrollment(ctx, userId, "course")
-	require.NoError(t, err)
+	enrollment := enrollmentIn(t, userId, "course")
+	require.NotNil(t, enrollment)
 	assert.Equal(t, "course", enrollment.CourseId)
 	assert.Equal(t, 2, enrollment.LessonsDone)
 	assert.Equal(t, 66, enrollment.Progress)
@@ -252,18 +262,16 @@ func TestGetEnrollment(t *testing.T) {
 	// Deleting a lesson renumbers the module, and the codes follow.
 	require.NoError(t, core.DB.Exec(`UPDATE lessons SET deleted_at = now() WHERE title = 'First'
 		AND module_id IN (SELECT m.id FROM course_modules m JOIN courses c ON c.id = m.course_id WHERE c.slug = 'course')`).Error)
-	enrollment, err = services.GetEnrollment(ctx, userId, "course")
-	require.NoError(t, err)
+	enrollment = enrollmentIn(t, userId, "course")
+	require.NotNil(t, enrollment)
 	assert.Equal(t, []string{"1.1", "2.1"}, enrollment.CompletedLessons)
 
-	_, err = services.GetEnrollment(ctx, userId, "other")
-	assert.ErrorIs(t, err, services.ErrNotEnrolled)
-	_, err = services.GetEnrollment(ctx, userId, "missing")
-	assert.ErrorIs(t, err, services.ErrCourseNotFound)
+	assert.Nil(t, enrollmentIn(t, userId, "other"))
 }
 
 func TestUnenroll(t *testing.T) {
 	useEmptyCatalog(t)
+	testutil.UseCache(t)
 	ctx := context.Background()
 	addSyllabusCourse(t, addDomain(t, "dist", 1), "course")
 	userId := uuid.New()
@@ -275,8 +283,7 @@ func TestUnenroll(t *testing.T) {
 	require.NoError(t, services.Unenroll(ctx, userId, "course"))
 	require.NoError(t, services.Unenroll(ctx, userId, "course"), "unenrolling again is a no-op")
 
-	_, err = services.GetEnrollment(ctx, userId, "course")
-	assert.ErrorIs(t, err, services.ErrNotEnrolled)
+	assert.Nil(t, enrollmentIn(t, userId, "course"))
 	enrollments, err := services.GetEnrollments(ctx, userId)
 	require.NoError(t, err)
 	assert.Empty(t, enrollments)

@@ -90,15 +90,6 @@ func GetEnrollments(ctx context.Context, userId uuid.UUID) ([]schemas.Enrollment
 	return enrollments, nil
 }
 
-// GetEnrollment is the learner's enrollment in a course in the catalog, with
-// the lessons they have completed.
-func GetEnrollment(ctx context.Context, userId uuid.UUID, slug string) (schemas.CourseEnrollmentSchema, error) {
-	if _, err := catalogCourseId(core.DB.WithContext(ctx), slug); err != nil {
-		return schemas.CourseEnrollmentSchema{}, err
-	}
-	return getEnrollment(ctx, userId, slug)
-}
-
 // getEnrollment is the learner's enrollment in one course, with the codes of
 // the lessons they have completed.
 func getEnrollment(ctx context.Context, userId uuid.UUID, slug string) (schemas.CourseEnrollmentSchema, error) {

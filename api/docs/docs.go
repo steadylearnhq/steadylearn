@@ -88,7 +88,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Every published course with the domains they belong to, in display order. The token is optional: a signed-in caller also gets their enrollments, as GET /v1/enrollments lists them. The catalog is served from a cache for up to ten minutes; the enrollments never are.",
+                "description": "Every published course with the domains they belong to, in display order. The token is optional: a signed-in caller also gets their enrollments in it, most recently enrolled first, each with its progress. The catalog is served from a cache for up to ten minutes; the enrollments never are.",
                 "produces": [
                     "application/json"
                 ],
@@ -187,67 +187,6 @@ const docTemplate = `{
             }
         },
         "/v1/courses/{id}/enrollment": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "The caller's enrollment in a course in the catalog, with its progress and the codes of the lessons they have completed, in syllabus order. A 404 means the course is not in the catalog or the caller is not enrolled in it. Superseded by the enrollment GET /v1/courses/{id} returns; kept until the app reads that one.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "enrollments"
-                ],
-                "summary": "Get my enrollment in a course",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "replication-consensus",
-                        "description": "Course slug",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/schemas.CourseEnrollmentSchema"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
             "put": {
                 "security": [
                     {
@@ -506,52 +445,6 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/enrollments": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Every course in the catalog the caller is enrolled in, most recently enrolled first, with how many of its lessons they have completed. Progress is that count as a percentage of the course's lessons, rounded down.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "enrollments"
-                ],
-                "summary": "List my enrollments",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/schemas.EnrollmentSchema"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
