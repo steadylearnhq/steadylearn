@@ -1,4 +1,5 @@
 import type { CritterKind } from '../components/Critter'
+import type { CourseEnrollment } from '../lib/enrollments'
 import type { LessonStepKey } from './lessonSteps'
 
 export type DomainId = 'dist' | 'db' | 'comp' | 'crypto' | 'ml' | 'prob'
@@ -104,6 +105,8 @@ export type CourseDetail = Course & {
   breakItDetails: BreakIt[]
   prerequisites: Prerequisite[]
   modules: Module[]
+  /** The member's own, sent only when they are signed in and enrolled. */
+  enrollment?: CourseEnrollment
 }
 
 // The pages the API does not serve yet (landing, pricing and the dashboard's

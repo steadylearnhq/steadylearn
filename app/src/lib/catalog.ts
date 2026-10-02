@@ -8,8 +8,9 @@ import { accessToken } from './auth'
 // call tries again.
 //
 // A course is fetched with the session's token when there is one, since a
-// member sees every lesson; each view is kept apart, so signing in mid-visit
-// doesn't keep serving the visitor's.
+// member sees every lesson and their enrollment; each view is kept apart, so
+// signing in mid-visit doesn't keep serving the visitor's. A member's copy is
+// forgotten when their enrollment in it changes.
 
 let catalog: Promise<Catalog> | undefined
 const courses = new Map<string, Promise<CourseDetail>>()
@@ -20,6 +21,11 @@ export function fetchCatalog(): Promise<Catalog> {
     throw error
   })
   return catalog
+}
+
+/** Drops the member's copy of a course, so the next visit asks for it again. */
+export function forgetMemberCourse(id: string) {
+  courses.delete(`member:${id}`)
 }
 
 export async function fetchCourse(id: string): Promise<CourseDetail> {

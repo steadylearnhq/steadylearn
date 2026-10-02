@@ -6,9 +6,8 @@ import StepIcon from '../../components/StepIcon'
 import { domainDot, formatLength, levelLabel, plural, type Course, type Lesson, type Module } from '../../data/catalog'
 import { STEP_BY_KEY, type LessonStepKey } from '../../data/lessonSteps'
 import { ApiError } from '../../lib/api'
-import { user } from '../../lib/auth'
 import { fetchCatalog, fetchCourse } from '../../lib/catalog'
-import { enroll, fetchEnrollment } from '../../lib/enrollments'
+import { enroll } from '../../lib/enrollments'
 import { usePageTitle } from '../../lib/title'
 import NotFound from '../NotFound'
 import styles from './Course.module.css'
@@ -40,7 +39,7 @@ const Chevron = () => (
 /** A course's own page, as a member sees it, with the button to enroll in it. */
 export default function CoursePage() {
   const params = useParams<{ id: string }>()
-  const [course, { refetch }] = createResource(() => params.id, fetchCourse)
+  const [course, { mutate: setCourse, refetch }] = createResource(() => params.id, fetchCourse)
   const [catalog] = createResource(fetchCatalog)
   // Reading an errored resource throws, so the page reads these instead.
   const loaded = () => (course.state === 'ready' ? course() : undefined)
@@ -49,17 +48,9 @@ export default function CoursePage() {
 
   usePageTitle(() => loaded()?.title ?? '')
 
-  // Keyed on the member too, so signing in as someone else asks again.
-  const [enrollment, { mutate: setEnrollment }] = createResource(
-    () => user() && { userId: user()!.id, courseId: params.id },
-    ({ courseId }) => fetchEnrollment(courseId),
-  )
-  const enrolled = () => (enrollment.state === 'ready' ? enrollment() : undefined)
+  // The course carries the member's enrollment, so it is known as soon as the page is.
+  const enrolled = () => loaded()?.enrollment
   const doneCodes = () => new Set(enrolled()?.completedLessons)
-  // Until the member's enrollment is known the button waits, so it never shows
-  // Enroll to someone who is. If it fails to load, Enroll is offered anyway:
-  // enrolling again is harmless and answers with the enrollment.
-  const enrollmentKnown = () => enrollment.state === 'ready' || enrollment.state === 'errored'
   const [enrolling, setEnrolling] = createSignal(false)
   const [enrollFailed, setEnrollFailed] = createSignal(false)
   const startCourse = async () => {
@@ -68,7 +59,7 @@ export default function CoursePage() {
     setEnrollFailed(false)
     try {
       const made = await enroll(courseId)
-      if (courseId === params.id) setEnrollment(made)
+      if (courseId === params.id) setCourse((prev) => prev && { ...prev, enrollment: made })
     } catch {
       if (courseId === params.id) setEnrollFailed(true)
     } finally {
@@ -134,7 +125,7 @@ export default function CoursePage() {
               </div>
               {/* Enrolled, the design resumes the course here, which waits for the lesson player. */}
               <div class={styles.cta}>
-                <Show when={enrollmentKnown() && !enrolled()}>
+                <Show when={!enrolled()}>
                   <Button variant="primary" size="md" disabled={enrolling()} onClick={() => void startCourse()}>
                     {enrolling() ? 'Enrolling…' : 'Enroll →'}
                   </Button>
