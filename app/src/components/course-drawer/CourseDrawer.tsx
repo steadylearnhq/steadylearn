@@ -1,7 +1,7 @@
-import { For, Match, Show, Switch, createEffect, createResource, on, onCleanup, onMount } from 'solid-js'
-import { Portal } from 'solid-js/web'
-import { domainDot, domainStyle, formatLength, levelLabel, plural, type Course, type Module } from '../../data/catalog'
-import { LESSON_STEPS, STEP_BY_KEY } from '../../data/lessonSteps'
+import { For, Match, Show, Switch, createEffect, createResource, createSignal, on, onCleanup, onMount } from 'solid-js'
+import { Dynamic, Portal } from 'solid-js/web'
+import { domainDot, domainStyle, formatLength, levelLabel, plural, type Course, type Lesson, type Module } from '../../data/catalog'
+import { LESSON_STEPS, STEP_BY_KEY, type LessonStepKey } from '../../data/lessonSteps'
 import { fetchCourse } from '../../lib/catalog'
 import Button from '../Button'
 import Critter from '../Critter'
@@ -19,6 +19,19 @@ type CourseDrawerProps = {
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
 
+/** How many lessons in a module use each step, in order of first use. */
+const stepMix = (lessons: Lesson[]) => {
+  const counts = new Map<LessonStepKey, number>()
+  for (const l of lessons) for (const s of l.steps) counts.set(s, (counts.get(s) ?? 0) + 1)
+  return [...counts]
+}
+
+const Chevron = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+)
+
 /** A course's details in a panel that slides in from the right. */
 export default function CourseDrawer(props: CourseDrawerProps) {
   let panel!: HTMLDivElement
@@ -33,6 +46,15 @@ export default function CourseDrawer(props: CourseDrawerProps) {
   const syllabus = () =>
     detail.state === 'ready' && detail().id === props.course.id ? detail().modules : undefined
   const hasLessons = () => syllabus()?.some((m) => m.lessons) ?? false
+
+  // Modules start open; these are the ones the visitor has folded.
+  const [folded, setFolded] = createSignal<ReadonlySet<number>>(new Set())
+  const toggle = (i: number) =>
+    setFolded((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(i)) next.add(i)
+      return next
+    })
 
   const kpis = () => [
     { label: 'Level', value: levelLabel(props.course.level) },
@@ -79,8 +101,17 @@ export default function CourseDrawer(props: CourseDrawerProps) {
     })
   })
 
-  // Start each course at the top of its syllabus.
-  createEffect(on(() => props.course.id, () => (body.scrollTop = 0), { defer: true }))
+  // Start each course at the top of its syllabus, with every module open.
+  createEffect(
+    on(
+      () => props.course.id,
+      () => {
+        body.scrollTop = 0
+        setFolded(new Set<number>())
+      },
+      { defer: true },
+    ),
+  )
 
   return (
     <Portal>
@@ -138,7 +169,7 @@ export default function CourseDrawer(props: CourseDrawerProps) {
           <div ref={body} class={styles.body}>
             <div class={styles.syllabus}>
               <div class={styles.sectionHead}>
-                <h3 class={styles.h3}>Syllabus</h3>
+                <h3 class={`${styles.h3} ${styles.syllabusTitle}`}>Syllabus</h3>
                 <span class={styles.small}>
                   <Show when={syllabus()}>
                     {(modules) => (
@@ -166,37 +197,83 @@ export default function CourseDrawer(props: CourseDrawerProps) {
                 </Match>
               </Switch>
               <For each={syllabus()}>
-                {(m, i) => (
-                  <div class={styles.module}>
-                    <div class={styles.moduleHead}>
-                      <span class={styles.small}>{String(i() + 1).padStart(2, '0')}</span>
-                      <span class={styles.moduleTitle}>{m.title}</span>
-                      <span class={styles.small}>{moduleMeta(m)}</span>
-                    </div>
-                    <For each={m.lessons}>
-                      {(l) => (
-                        <div class={styles.lesson}>
-                          <span class={styles.small}>{l.code}</span>
-                          <span class={styles.lessonTitle}>{l.title}</span>
-                          <span
-                            class={styles.steps}
-                            role="img"
-                            aria-label={l.steps.map((s) => STEP_BY_KEY[s].legend).join(', ')}
-                          >
-                            <For each={l.steps}>
-                              {(s) => (
-                                <span classList={{ [styles.breakStep]: s === 'break' }}>
-                                  <StepIcon step={s} size={16} stroke={2} />
-                                </span>
+                {(m, i) => {
+                  const lessons = () => (m.lessons?.length ? m.lessons : undefined)
+                  const open = () => !!lessons() && !folded().has(i())
+                  return (
+                    <div class={styles.module} classList={{ [styles.moduleOpen]: open() }}>
+                      {/* Only modules with a visible lesson list fold. */}
+                      <Dynamic
+                        component={lessons() ? 'button' : 'div'}
+                        type={lessons() ? 'button' : undefined}
+                        class={styles.moduleHead}
+                        aria-expanded={lessons() ? open() : undefined}
+                        onClick={lessons() ? () => toggle(i()) : undefined}
+                      >
+                        <span class={styles.chevron} classList={{ [styles.chevronOpen]: open() }}>
+                          <Show when={lessons()}>
+                            <Chevron />
+                          </Show>
+                        </span>
+                        <span class={styles.code}>{String(i() + 1).padStart(2, '0')}</span>
+                        <span class={styles.moduleText}>
+                          <span class={styles.moduleTitle}>{m.title}</span>
+                          <span class={styles.moduleMeta}>
+                            <Show when={!open() && lessons()}>
+                              {(ls) => (
+                                <>
+                                  <span
+                                    class={styles.mix}
+                                    role="img"
+                                    aria-label={stepMix(ls())
+                                      .map(([s, n]) => `${n} ${STEP_BY_KEY[s].legend}`)
+                                      .join(', ')}
+                                  >
+                                    <For each={stepMix(ls())}>
+                                      {([s, n]) => (
+                                        <span class={styles.mixItem}>
+                                          <StepIcon step={s} size={14} stroke={2} />
+                                          {n}
+                                        </span>
+                                      )}
+                                    </For>
+                                  </span>
+                                  <span class={styles.metaRule} />
+                                </>
                               )}
-                            </For>
+                            </Show>
+                            <span>{moduleMeta(m)}</span>
                           </span>
-                          <span class={styles.duration}>{l.minutes} min</span>
-                        </div>
-                      )}
-                    </For>
-                  </div>
-                )}
+                        </span>
+                      </Dynamic>
+                      <Show when={open()}>
+                        <For each={lessons()}>
+                          {(l) => (
+                            <div class={styles.lesson}>
+                              <span />
+                              <span class={styles.code}>{l.code}</span>
+                              <span class={styles.lessonTitle}>{l.title}</span>
+                              <span
+                                class={styles.steps}
+                                role="img"
+                                aria-label={l.steps.map((s) => STEP_BY_KEY[s].legend).join(', ')}
+                              >
+                                <For each={l.steps}>
+                                  {(s) => (
+                                    <span classList={{ [styles.breakStep]: s === 'break' }}>
+                                      <StepIcon step={s} size={16} stroke={2} />
+                                    </span>
+                                  )}
+                                </For>
+                              </span>
+                              <span class={styles.duration}>{l.minutes} min</span>
+                            </div>
+                          )}
+                        </For>
+                      </Show>
+                    </div>
+                  )
+                }}
               </For>
             </div>
 
@@ -217,6 +294,9 @@ export default function CourseDrawer(props: CourseDrawerProps) {
                   )}
                 </For>
               </ul>
+            </aside>
+
+            <aside class={styles.aside}>
               <h3 class={`${styles.h3} ${styles.legendTitle}`}>Lesson steps</h3>
               <ul class={styles.legend}>
                 <For each={LESSON_STEPS}>
