@@ -23,10 +23,10 @@ type CatalogParams = {
  * views can be linked to, e.g. from the landing page's domain grid. The API
  * returns the whole catalog, so filtering is done here and answers as you type.
  *
- * `own=unenrolled` hides the courses a member has started; it needs `started`,
- * so it does nothing for visitors.
+ * `own=unenrolled` hides the courses a member is enrolled in; it needs
+ * `enrolled`, so it does nothing for visitors.
  */
-export function useCatalogFilters(catalog: () => Catalog | undefined, started?: (c: Course) => boolean) {
+export function useCatalogFilters(catalog: () => Catalog | undefined, enrolled?: (c: Course) => boolean) {
   const [params, setParams] = useSearchParams<CatalogParams>()
 
   const courses = () => catalog()?.courses ?? []
@@ -34,7 +34,7 @@ export function useCatalogFilters(catalog: () => Catalog | undefined, started?: 
   const domain = () => catalog()?.domains.find((d) => d.id === params.domain)?.id
   const level = (): Level | undefined => LEVELS.find((l) => l.id === params.level)?.id
   const length = () => LENGTHS.find((l) => l.id === params.length)
-  const unenrolled = () => !!started && params.own === 'unenrolled'
+  const unenrolled = () => !!enrolled && params.own === 'unenrolled'
   const query = () => params.q ?? ''
 
   const matches = (c: Course) => {
@@ -44,7 +44,7 @@ export function useCatalogFilters(catalog: () => Catalog | undefined, started?: 
       (!domain() || c.domain === domain()) &&
       (!level() || c.level === level()) &&
       (!length() || length()!.test(c.minutes)) &&
-      (!unenrolled() || !started!(c)) &&
+      (!unenrolled() || !enrolled!(c)) &&
       (!q || haystack.includes(q))
     )
   }
