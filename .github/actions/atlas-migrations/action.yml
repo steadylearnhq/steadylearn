@@ -1,0 +1,44 @@
+name: Atlas migrations
+description: Validate api/migrations and fail when the GORM models need a migration that is not there.
+
+# Needs the repository checked out and a Docker daemon, which Atlas uses for
+# its throwaway dev database.
+
+runs:
+  using: composite
+  steps:
+    # The desired schema comes from `go run ./cmd/atlas-loader`.
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: api/go.mod
+        cache-dependency-path: api/go.sum
+
+    - uses: ariga/setup-atlas@v0
+
+    # Replays every migration on the dev database and checks atlas.sum.
+    # validate and diff only touch Atlas's throwaway dev database, but
+    # atlas.hcl declares DATABASE_URL, so it needs a value.
+    - name: Validate
+      shell: bash
+      working-directory: api
+      env:
+        DATABASE_URL: postgres://unused
+        ATLAS_NO_UPDATE_NOTIFIER: "1"
+      run: atlas migrate validate --env dev --var "DATABASE_URL=$DATABASE_URL"
+
+    # A model change without its migration makes diff write a new file.
+    - name: Check models against migrations
+      shell: bash
+      working-directory: api
+      env:
+        DATABASE_URL: postgres://unused
+        ATLAS_NO_UPDATE_NOTIFIER: "1"
+      run: |
+        atlas migrate diff drift --env dev --var "DATABASE_URL=$DATABASE_URL"
+        changes=$(git status --porcelain -- migrations)
+        if [ -n "$changes" ]; then
+          echo "$changes"
+          git ls-files --others --exclude-standard -- migrations | xargs cat
+          echo "::error::The GORM models and api/migrations are out of sync. Run make migrate-diff name=<name> in api/ and commit the migration."
+          exit 1
+        fi

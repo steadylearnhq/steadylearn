@@ -1,0 +1,17 @@
+name: Go lint
+description: Run golangci-lint over api/, covering both its linters and formatters.
+
+# Needs the repository checked out.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: api/go.mod
+        cache-dependency-path: api/go.sum
+
+    - uses: golangci/golangci-lint-action@v8
+      with:
+        version: v2.13
+        working-directory: api

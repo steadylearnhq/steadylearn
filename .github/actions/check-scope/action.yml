@@ -1,0 +1,27 @@
+name: Check scope
+description: Fail a pull request that changes more than one of .github/, api/ and app/.
+
+# One PR does one job: it may touch at most one of .github/, api/ and app/.
+# Files at the repo root are free to change alongside any of them.
+#
+# Needs the repository checked out with full history (fetch-depth: 0). Three
+# dots diff from the merge base, so commits landed on main since the branch
+# was cut do not count; --no-renames lists both sides of a move, so moving a
+# file between areas touches both.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        HEAD: ${{ github.event.pull_request.head.sha }}
+      run: |
+        files=$(git diff --name-only --no-renames "$BASE...$HEAD")
+        touched=$(echo "$files" | awk -F/ '$1 ~ /^(\.github|api|app)$/ { print $1 }' | sort -u | xargs)
+        echo "Areas touched: ${touched:-none}"
+        if [ "$(echo "$touched" | wc -w)" -gt 1 ]; then
+          echo "::error::This PR changes ${touched// /, }. Split it so each PR changes only one of .github/, api/ and app/."
+          exit 1
+        fi

@@ -1,0 +1,23 @@
+name: App lint
+description: Typecheck app/.
+
+# Needs the repository checked out. The app has no ESLint or Prettier setup
+# yet; when it gets one, its steps belong here, after the typecheck.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v5
+      with:
+        node-version-file: app/.nvmrc
+        cache: npm
+        cache-dependency-path: app/package-lock.json
+
+    - shell: bash
+      working-directory: app
+      run: npm ci
+
+    - name: Typecheck
+      shell: bash
+      working-directory: app
+      run: npm run typecheck

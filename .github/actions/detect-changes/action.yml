@@ -1,0 +1,41 @@
+name: Detect changes
+description: Report which of .github/, api/ and app/ a pull request changes.
+
+# Needs the repository checked out with full history (fetch-depth: 0), both to
+# find this action and to diff. Three dots diff from the merge base, as in
+# check-scope, so commits landed on main since the branch was cut do not
+# count.
+
+outputs:
+  workflows:
+    description: "'true' when the PR changes .github/"
+    value: ${{ steps.diff.outputs.workflows }}
+  api:
+    description: "'true' when the PR changes api/"
+    value: ${{ steps.diff.outputs.api }}
+  app:
+    description: "'true' when the PR changes app/"
+    value: ${{ steps.diff.outputs.app }}
+
+runs:
+  using: composite
+  steps:
+    - id: diff
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        HEAD: ${{ github.event.pull_request.head.sha }}
+      run: |
+        files=$(git diff --name-only --no-renames "$BASE...$HEAD")
+        for area in workflows:.github api:api app:app; do
+          name=${area%%:*}
+          dir=${area#*:}
+          if echo "$files" | grep -q "^${dir//./\\.}/"; then
+            changed=true
+          else
+            changed=false
+          fi
+          echo "$dir/: $changed"
+          echo "$name=$changed" >> "$GITHUB_OUTPUT"
+        done

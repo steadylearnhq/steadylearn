@@ -1,0 +1,19 @@
+name: Go test
+description: Run the api/ test suite under api/tests.
+
+# Needs the repository checked out and a Docker daemon: tests that touch the
+# database start a postgres:16-alpine container through testcontainers.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: api/go.mod
+        cache-dependency-path: api/go.sum
+
+    # force=1 skips Go's test cache, which setup-go restores along with the
+    # build cache and which knows nothing of the Postgres image.
+    - shell: bash
+      working-directory: api
+      run: make test force=1
