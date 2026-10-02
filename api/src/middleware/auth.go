@@ -44,3 +44,17 @@ func RequireAuth() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// OptionalAuth lets a request without an Authorization header through as a
+// visitor's. One that carries a header is checked as RequireAuth checks it, so
+// a bad or expired token is rejected rather than quietly treated as a visitor.
+func OptionalAuth() gin.HandlerFunc {
+	requireAuth := RequireAuth()
+	return func(c *gin.Context) {
+		if c.GetHeader("Authorization") == "" {
+			c.Next()
+			return
+		}
+		requireAuth(c)
+	}
+}

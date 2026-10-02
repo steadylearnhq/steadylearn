@@ -33,8 +33,14 @@ func CatalogCacheKey() string {
 	return core.CacheKey("catalog", "v1")
 }
 
-func CourseCacheKey(slug string) string {
-	return core.CacheKey("course", "v1", slug)
+// CourseCacheKey holds one view of a course: a member's, with every lesson, or
+// a visitor's.
+func CourseCacheKey(slug string, member bool) string {
+	view := "visitor"
+	if member {
+		view = "member"
+	}
+	return core.CacheKey("course", "v2", slug, view)
 }
 
 // GetCatalog is every published course, with the domains they belong to,
@@ -45,12 +51,13 @@ func GetCatalog(ctx context.Context) (schemas.CatalogSchema, error) {
 	})
 }
 
-// GetCourse is one published course with its syllabus, read through the cache.
-// It is the view of a visitor who is not signed in: a course that keeps its
-// syllabus private lists its modules but not their lessons.
-func GetCourse(ctx context.Context, slug string) (schemas.CourseSchema, error) {
-	return cached(ctx, CourseCacheKey(slug), catalogCacheTTL, func() (schemas.CourseSchema, error) {
-		return loadCourse(ctx, slug, time.Now())
+// GetCourse is one published course with its syllabus and page copy, read
+// through the cache. A member sees every lesson; to a visitor who is not
+// signed in, a course that keeps its syllabus private lists its modules but
+// not their lessons.
+func GetCourse(ctx context.Context, slug string, member bool) (schemas.CourseSchema, error) {
+	return cached(ctx, CourseCacheKey(slug, member), catalogCacheTTL, func() (schemas.CourseSchema, error) {
+		return loadCourse(ctx, slug, member, time.Now())
 	})
 }
 
@@ -168,7 +175,7 @@ type lessonRow struct {
 	Steps    []byte
 }
 
-func loadCourse(ctx context.Context, slug string, now time.Time) (schemas.CourseSchema, error) {
+func loadCourse(ctx context.Context, slug string, member bool, now time.Time) (schemas.CourseSchema, error) {
 	params := map[string]any{"now": now, "new_since": now.Add(-newCourseWindow), "slug": slug}
 	db := core.DB.WithContext(ctx)
 
@@ -200,8 +207,9 @@ ORDER BY m.position`, row.Id).Scan(&modules).Error
 		return schemas.CourseSchema{}, fmt.Errorf("failed to list modules: %w", err)
 	}
 
+	showLessons := row.SyllabusPublic || member
 	lessons := map[uuid.UUID][]schemas.LessonSchema{}
-	if row.SyllabusPublic {
+	if showLessons {
 		lessons, err = loadLessons(ctx, row.Id, modules)
 		if err != nil {
 			return schemas.CourseSchema{}, err
@@ -209,10 +217,13 @@ ORDER BY m.position`, row.Id).Scan(&modules).Error
 	}
 
 	course := schemas.CourseSchema{CourseSummarySchema: summary, Modules: make([]schemas.ModuleSchema, 0, len(modules))}
+	if err := loadPageCopy(ctx, row.Id, now, &course); err != nil {
+		return schemas.CourseSchema{}, err
+	}
 	for _, m := range modules {
 		module := schemas.ModuleSchema{Title: m.Title, LessonCount: m.LessonCount}
 		// A private syllabus leaves Lessons nil, which the API reports as null.
-		if row.SyllabusPublic {
+		if showLessons {
 			module.Lessons = lessons[m.Id]
 			if module.Lessons == nil {
 				module.Lessons = []schemas.LessonSchema{}
@@ -222,6 +233,65 @@ ORDER BY m.position`, row.Id).Scan(&modules).Error
 	}
 
 	return course, nil
+}
+
+// loadPageCopy fills in what the course's own page shows beyond its catalog
+// listing. A course without some of it gets empty lists, never null.
+func loadPageCopy(ctx context.Context, courseId uuid.UUID, now time.Time, course *schemas.CourseSchema) error {
+	db := core.DB.WithContext(ctx)
+
+	var texts struct {
+		Overview string
+		Assumes  string
+	}
+	if err := db.Raw(`SELECT overview, assumes FROM courses WHERE id = ?`, courseId).Scan(&texts).Error; err != nil {
+		return fmt.Errorf("failed to load course overview: %w", err)
+	}
+	course.Overview = texts.Overview
+	course.Assumes = texts.Assumes
+
+	course.Requirements = []schemas.RequirementSchema{}
+	err := db.Raw(`
+SELECT title, detail FROM course_requirements
+WHERE course_id = ? AND deleted_at IS NULL
+ORDER BY position`, courseId).Scan(&course.Requirements).Error
+	if err != nil {
+		return fmt.Errorf("failed to list requirements: %w", err)
+	}
+
+	course.Outcomes = []string{}
+	err = db.Raw(`
+SELECT statement FROM course_outcomes
+WHERE course_id = ? AND deleted_at IS NULL
+ORDER BY position`, courseId).Scan(&course.Outcomes).Error
+	if err != nil {
+		return fmt.Errorf("failed to list outcomes: %w", err)
+	}
+
+	course.BreakItDetails = []schemas.BreakItSchema{}
+	err = db.Raw(`
+SELECT name, description, par FROM course_break_its
+WHERE course_id = ? AND deleted_at IS NULL
+ORDER BY position`, courseId).Scan(&course.BreakItDetails).Error
+	if err != nil {
+		return fmt.Errorf("failed to list break-its: %w", err)
+	}
+
+	// A prerequisite that is unpublished, deleted or in a deleted domain is
+	// not in the catalog, so it is left out rather than linked to.
+	course.Prerequisites = []schemas.PrerequisiteSchema{}
+	err = db.Raw(`
+SELECT p.slug AS id, cp.optional
+FROM course_prerequisites cp
+JOIN courses p ON p.id = cp.prerequisite_id AND p.deleted_at IS NULL AND p.published_at <= @now
+JOIN domains d ON d.id = p.domain_id AND d.deleted_at IS NULL
+WHERE cp.course_id = @course AND cp.deleted_at IS NULL
+ORDER BY cp.position`, map[string]any{"course": courseId, "now": now}).Scan(&course.Prerequisites).Error
+	if err != nil {
+		return fmt.Errorf("failed to list prerequisites: %w", err)
+	}
+
+	return nil
 }
 
 // loadLessons is every lesson of the course with its steps, grouped by module.

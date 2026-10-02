@@ -1,5 +1,19 @@
 basePath: /
 definitions:
+  schemas.BreakItSchema:
+    properties:
+      description:
+        example: Get an acknowledged write to vanish
+        type: string
+      name:
+        example: Lost write
+        type: string
+      par:
+        description: Par is how many moves the break is expected to take, or null
+          without one.
+        example: 4
+        type: integer
+    type: object
   schemas.CatalogSchema:
     properties:
       courses:
@@ -15,6 +29,14 @@ definitions:
     type: object
   schemas.CourseSchema:
     properties:
+      assumes:
+        description: Assumes is the background the level takes for granted, or empty.
+        example: assumes basic networking
+        type: string
+      breakItDetails:
+        items:
+          $ref: '#/definitions/schemas.BreakItSchema'
+        type: array
       breakIts:
         description: BreakIts are the failure modes the learner triggers in the simulations.
         example:
@@ -58,6 +80,26 @@ definitions:
       modules:
         items:
           $ref: '#/definitions/schemas.ModuleSchema'
+        type: array
+      outcomes:
+        example:
+        - Size R and W for a given N and say what each choice costs
+        items:
+          type: string
+        type: array
+      overview:
+        description: Overview leads the course's page; it is empty until the course
+          has one.
+        example: How replicated systems agree on what "latest" means, and the specific
+          ways that agreement breaks.
+        type: string
+      prerequisites:
+        items:
+          $ref: '#/definitions/schemas.PrerequisiteSchema'
+        type: array
+      requirements:
+        items:
+          $ref: '#/definitions/schemas.RequirementSchema'
         type: array
       title:
         example: Replication & consensus
@@ -173,6 +215,17 @@ definitions:
         example: Quorums
         type: string
     type: object
+  schemas.PrerequisiteSchema:
+    properties:
+      id:
+        description: Id is the prerequisite's slug, a course in the catalog.
+        example: partitioning-rebalancing
+        type: string
+      optional:
+        description: Optional is a course worth taking first; one that is not is recommended.
+        example: false
+        type: boolean
+    type: object
   schemas.ReadinessSchema:
     properties:
       database:
@@ -182,6 +235,15 @@ definitions:
         type: string
       status:
         example: ok
+        type: string
+    type: object
+  schemas.RequirementSchema:
+    properties:
+      detail:
+        example: You know a request can time out even though the server applied it.
+        type: string
+      title:
+        example: Networks drop and reorder messages
         type: string
     type: object
   schemas.UserProfileSchema:
@@ -288,10 +350,11 @@ paths:
       - catalog
   /v1/courses/{id}:
     get:
-      description: 'A published course with its syllabus, as a visitor who is not
-        signed in sees it: a course that keeps its syllabus private lists each module''s
-        lesson count, and null for its lessons. Served from a cache for up to ten
-        minutes.'
+      description: 'A published course with its syllabus and the copy its page shows.
+        The token is optional: without one, a course that keeps its syllabus private
+        lists each module''s lesson count and null for its lessons; a signed-in caller
+        gets every lesson. Prerequisites name only courses in the catalog. Served
+        from a cache for up to ten minutes.'
       parameters:
       - description: Course slug
         example: replication-consensus
@@ -306,6 +369,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/schemas.CourseSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "404":
           description: Not Found
           schema:
@@ -318,6 +387,8 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: Get a course
       tags:
       - catalog

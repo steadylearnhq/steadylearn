@@ -17,7 +17,8 @@ func RegisterV1Routes(router *gin.Engine) {
 		}
 
 		// The catalog is public: it is what visitors browse before signing up.
+		// A signed-in caller sees more of a course, every lesson of its syllabus.
 		v1.GET("/catalog", controllers.GetCatalog)
-		v1.GET("/courses/:id", controllers.GetCourse)
+		v1.GET("/courses/:id", middleware.OptionalAuth(), controllers.GetCourse)
 	}
 }

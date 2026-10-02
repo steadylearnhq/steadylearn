@@ -48,8 +48,38 @@ type ModuleSchema struct {
 	Lessons []LessonSchema `json:"lessons"`
 }
 
-// CourseSchema is a course with its syllabus.
+// RequirementSchema is something to know before starting the course.
+type RequirementSchema struct {
+	Title  string `json:"title" example:"Networks drop and reorder messages"`
+	Detail string `json:"detail" example:"You know a request can time out even though the server applied it."`
+}
+
+// BreakItSchema is a break-it as the course's page describes it.
+type BreakItSchema struct {
+	Name        string `json:"name" example:"Lost write"`
+	Description string `json:"description" example:"Get an acknowledged write to vanish"`
+	// Par is how many moves the break is expected to take, or null without one.
+	Par *int `json:"par" example:"4"`
+}
+
+// PrerequisiteSchema is a course that makes this one easier to take.
+type PrerequisiteSchema struct {
+	// Id is the prerequisite's slug, a course in the catalog.
+	Id string `json:"id" example:"partitioning-rebalancing"`
+	// Optional is a course worth taking first; one that is not is recommended.
+	Optional bool `json:"optional" example:"false"`
+}
+
+// CourseSchema is a course with its syllabus and the copy its own page shows.
 type CourseSchema struct {
 	CourseSummarySchema
-	Modules []ModuleSchema `json:"modules"`
+	// Overview leads the course's page; it is empty until the course has one.
+	Overview string `json:"overview" example:"How replicated systems agree on what \"latest\" means, and the specific ways that agreement breaks."`
+	// Assumes is the background the level takes for granted, or empty.
+	Assumes        string               `json:"assumes" example:"assumes basic networking"`
+	Requirements   []RequirementSchema  `json:"requirements"`
+	Outcomes       []string             `json:"outcomes" example:"Size R and W for a given N and say what each choice costs"`
+	BreakItDetails []BreakItSchema      `json:"breakItDetails"`
+	Prerequisites  []PrerequisiteSchema `json:"prerequisites"`
+	Modules        []ModuleSchema       `json:"modules"`
 }
