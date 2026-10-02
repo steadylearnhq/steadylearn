@@ -42,8 +42,9 @@ func GetEnrollments(c *gin.Context) {
 
 // GetEnrollment handles reading the caller's enrollment in one course
 // @Summary Get my enrollment in a course
-// @Description The caller's enrollment in a course in the catalog, with its progress and the codes of the lessons they have completed, in syllabus order. A 404 means the course is not in the catalog or the caller is not enrolled in it.
+// @Description The caller's enrollment in a course in the catalog, with its progress and the codes of the lessons they have completed, in syllabus order. A 404 means the course is not in the catalog or the caller is not enrolled in it. Superseded by the enrollment GET /v1/courses/{id} returns; kept until the app reads that one.
 // @Tags enrollments
+// @Deprecated
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "Course slug" example(replication-consensus)

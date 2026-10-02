@@ -13,6 +13,7 @@ import (
 	"steadylearn-api/src/models"
 	"steadylearn-api/src/schemas"
 	"steadylearn-api/src/services"
+	"steadylearn-api/tests/testutil"
 )
 
 // addSyllabusCourse adds a published course of three lessons: 1.1, 1.2 and
@@ -352,4 +353,44 @@ func TestGetEnrollmentsWithNone(t *testing.T) {
 	enrollments, err := services.GetEnrollments(context.Background(), uuid.New())
 	require.NoError(t, err)
 	assert.Equal(t, []schemas.EnrollmentSchema{}, enrollments, "an empty list, not null")
+}
+
+func TestGetMemberCourse(t *testing.T) {
+	useEmptyCatalog(t)
+	cache := testutil.UseCache(t)
+	ctx := context.Background()
+	addSyllabusCourse(t, addDomain(t, "dist", 1), "course")
+	userId := uuid.New()
+	_, _, err := services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+	_, err = services.CompleteLesson(ctx, userId, "course", "1.2")
+	require.NoError(t, err)
+
+	course, err := services.GetMemberCourse(ctx, "course", userId)
+	require.NoError(t, err)
+	assert.NotEmpty(t, course.Modules[0].Lessons, "a member sees every lesson")
+	require.NotNil(t, course.Enrollment)
+	assert.Equal(t, "course", course.Enrollment.CourseId)
+	assert.Equal(t, 1, course.Enrollment.LessonsDone)
+	assert.Equal(t, []string{"1.2"}, course.Enrollment.CompletedLessons)
+	assert.True(t, cache.Exists(services.CourseCacheKey("course", true)))
+
+	// The cached course carries no one's enrollment.
+	cachedCourse, err := services.GetCourse(ctx, "course", true)
+	require.NoError(t, err)
+	assert.Nil(t, cachedCourse.Enrollment)
+	other, err := services.GetMemberCourse(ctx, "course", uuid.New())
+	require.NoError(t, err)
+	assert.Nil(t, other.Enrollment, "a member who isn't enrolled gets none")
+
+	// The enrollment is read afresh each time, though the course is cached.
+	_, err = services.CompleteLesson(ctx, userId, "course", "2.1")
+	require.NoError(t, err)
+	course, err = services.GetMemberCourse(ctx, "course", userId)
+	require.NoError(t, err)
+	require.NotNil(t, course.Enrollment)
+	assert.Equal(t, []string{"1.2", "2.1"}, course.Enrollment.CompletedLessons)
+
+	_, err = services.GetMemberCourse(ctx, "missing", userId)
+	assert.ErrorIs(t, err, services.ErrCourseNotFound)
 }

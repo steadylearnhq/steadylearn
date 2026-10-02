@@ -61,6 +61,25 @@ func GetCourse(ctx context.Context, slug string, member bool) (schemas.CourseSch
 	})
 }
 
+// GetMemberCourse is the course as GetCourse gives it to a member, with the
+// member's enrollment in it, if any. The course comes through the cache; the
+// enrollment, which changes with every lesson completed, never does.
+func GetMemberCourse(ctx context.Context, slug string, userId uuid.UUID) (schemas.CourseSchema, error) {
+	course, err := GetCourse(ctx, slug, true)
+	if err != nil {
+		return course, err
+	}
+	enrollment, err := getEnrollment(ctx, userId, slug)
+	switch {
+	case errors.Is(err, ErrNotEnrolled):
+	case err != nil:
+		return schemas.CourseSchema{}, err
+	default:
+		course.Enrollment = &enrollment
+	}
+	return course, nil
+}
+
 // courseSummaries selects the listing fields of every course in the catalog:
 // published by now, and in a domain that is not deleted. A query built on it
 // appends its own conditions and order.

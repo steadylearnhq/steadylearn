@@ -82,6 +82,13 @@ definitions:
       domain:
         example: dist
         type: string
+      enrollment:
+        allOf:
+        - $ref: '#/definitions/schemas.CourseEnrollmentSchema'
+        description: |-
+          Enrollment is the caller's own, with the lessons they have completed. It
+          is sent only to a signed-in caller who is enrolled in the course, and is
+          never cached with the rest.
       id:
         example: replication-consensus
         type: string
@@ -403,8 +410,9 @@ paths:
       description: 'A published course with its syllabus and the copy its page shows.
         The token is optional: without one, a course that keeps its syllabus private
         lists each module''s lesson count and null for its lessons; a signed-in caller
-        gets every lesson. Prerequisites name only courses in the catalog. Served
-        from a cache for up to ten minutes.'
+        gets every lesson, and their enrollment in the course when they have one.
+        Prerequisites name only courses in the catalog. The course is served from
+        a cache for up to ten minutes; the enrollment never is.'
       parameters:
       - description: Course slug
         example: replication-consensus
@@ -480,9 +488,12 @@ paths:
       tags:
       - enrollments
     get:
+      deprecated: true
       description: The caller's enrollment in a course in the catalog, with its progress
         and the codes of the lessons they have completed, in syllabus order. A 404
         means the course is not in the catalog or the caller is not enrolled in it.
+        Superseded by the enrollment GET /v1/courses/{id} returns; kept until the
+        app reads that one.
       parameters:
       - description: Course slug
         example: replication-consensus

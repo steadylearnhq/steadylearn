@@ -14,18 +14,19 @@ import (
 
 	"steadylearn-api/src/api/v1/controllers"
 	"steadylearn-api/src/schemas"
+	"steadylearn-api/src/services"
 	"steadylearn-api/tests/testutil"
 )
 
-// getCourse serves GET /courses/:id, with the user id set as RequireAuth sets
-// it when signedIn, and decodes the course.
-func getCourse(t *testing.T, slug string, signedIn bool) (*httptest.ResponseRecorder, schemas.CourseSchema) {
+// getCourse serves GET /courses/:id, with the user id set as OptionalAuth sets
+// it unless it is uuid.Nil, for a visitor, and decodes the course.
+func getCourse(t *testing.T, slug string, userId uuid.UUID) (*httptest.ResponseRecorder, schemas.CourseSchema) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.GET("/courses/:id", func(c *gin.Context) {
-		if signedIn {
-			c.Set("user_id", uuid.New())
+		if userId != uuid.Nil {
+			c.Set("user_id", userId)
 		}
 	}, controllers.GetCourse)
 
@@ -44,13 +45,34 @@ func TestGetCourseServesAMemberTheFullSyllabus(t *testing.T) {
 	// storage-engines is seeded with a syllabus private to visitors.
 	const slug = "storage-engines"
 
-	rec, visitor := getCourse(t, slug, false)
+	rec, visitor := getCourse(t, slug, uuid.Nil)
 	assert.Equal(t, "public, max-age=60", rec.Header().Get("Cache-Control"))
 	require.NotEmpty(t, visitor.Modules)
 	assert.Nil(t, visitor.Modules[0].Lessons)
+	assert.Nil(t, visitor.Enrollment)
 
-	rec, member := getCourse(t, slug, true)
-	assert.Equal(t, "private, max-age=60", rec.Header().Get("Cache-Control"))
+	rec, member := getCourse(t, slug, uuid.New())
+	assert.Equal(t, "private, no-cache", rec.Header().Get("Cache-Control"))
 	require.NotEmpty(t, member.Modules)
 	assert.NotEmpty(t, member.Modules[0].Lessons, "a signed-in caller sees every lesson")
+	assert.Nil(t, member.Enrollment, "and no enrollment until they enroll")
+}
+
+func TestGetCourseServesAMemberTheirEnrollment(t *testing.T) {
+	testutil.UseDB(t)
+	testutil.UseCache(t)
+	const slug = "storage-engines"
+	userId := uuid.New()
+	_, _, err := services.Enroll(context.Background(), userId, slug)
+	require.NoError(t, err)
+	_, err = services.CompleteLesson(context.Background(), userId, slug, "1.1")
+	require.NoError(t, err)
+
+	_, course := getCourse(t, slug, userId)
+	require.NotNil(t, course.Enrollment)
+	assert.Equal(t, slug, course.Enrollment.CourseId)
+	assert.Equal(t, []string{"1.1"}, course.Enrollment.CompletedLessons)
+
+	_, other := getCourse(t, slug, uuid.New())
+	assert.Nil(t, other.Enrollment, "another member doesn't get it")
 }

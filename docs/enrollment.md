@@ -54,6 +54,19 @@ through each they are. Until now that came from placeholder data in
 - Enrolling drops the shared `GET /v1/enrollments` request, so the catalog
   shows the new enrollment when the member goes back to it.
 
+## Step 4: The enrollment rides with the course
+
+The course page made two requests, the course and then the enrollment, and
+held the button's place empty between them.
+
+- API: `GET /v1/courses/:id` adds `enrollment` for a signed-in caller who is
+  enrolled. The course still comes from the cache; the enrollment is read
+  each time and never cached. A member's response is `private, no-cache`.
+- `GET /v1/courses/:id/enrollment` is deprecated, kept until the app reads
+  the new field, then removed.
+- App: the course page reads the enrollment from the course, and after
+  enrolling writes the answer into its copy of it.
+
 ## Later
 
 - The dashboard's "Continue" list still uses placeholder data.
