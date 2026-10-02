@@ -8,6 +8,7 @@ Requires Node 22.12 or newer (`.nvmrc` pins 24).
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # type-check and build to dist/
+npm run typecheck  # type-check only, as the PR checks do
 npm run preview  # serve the production build
 ```
 
