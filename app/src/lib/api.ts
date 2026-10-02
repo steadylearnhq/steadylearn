@@ -12,9 +12,14 @@ export class ApiError extends Error {
   }
 }
 
-/** GETs a JSON resource. Failures carry the API's own `{ error }` message when it sent one. */
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, { headers: { Accept: 'application/json' } })
+/**
+ * GETs a JSON resource, sending `token` as a bearer token when one is given.
+ * Failures carry the API's own `{ error }` message when it sent one.
+ */
+export async function apiGet<T>(path: string, token?: string): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const response = await fetch(`${BASE_URL}${path}`, { headers })
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null)
     const message =

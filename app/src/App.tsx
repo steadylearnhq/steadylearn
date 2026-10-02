@@ -5,6 +5,7 @@ import { GuestOnArrival, GuestOnly, RequireAuth } from './components/RouteGuards
 import Auth from './pages/auth/Auth'
 import ExternalAuth from './pages/auth/ExternalAuth'
 import Catalog from './pages/catalog/Catalog'
+import CoursePage from './pages/course/Course'
 import Dashboard from './pages/dashboard/Dashboard'
 import Landing from './pages/landing/Landing'
 import NotFound from './pages/NotFound'
@@ -36,6 +37,7 @@ function App() {
         </Route>
         <Route component={RequireAuth}>
           <Route path="/dashboard" component={Dashboard} />
+          <Route path="/courses/:id" component={CoursePage} />
         </Route>
         {/* Open to everyone: members see their progress on the catalog and need the terms as much as visitors do. */}
         <Route path="/catalog" component={Catalog} />

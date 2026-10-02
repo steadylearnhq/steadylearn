@@ -19,7 +19,8 @@ export default function Catalog() {
   const [catalog, { refetch }] = createResource(fetchCatalog)
   // Reading an errored resource throws, so everything below reads this instead.
   const loaded = () => (catalog.state === 'ready' ? catalog() : undefined)
-  // Members see the courses as cards with their progress, and can hide the ones they've started.
+  // Members see the courses as cards with their progress, open each on its own
+  // page rather than in the drawer, and can hide the ones they've started.
   const member = () => !!user()
   const started = (c: Course) => member() && progressOf(c.id) !== undefined
   const filters = useCatalogFilters(loaded, started)
@@ -155,7 +156,7 @@ export default function Catalog() {
               <CourseCard
                 course={course}
                 domainName={domainName(course.domain)}
-                href={courseHref(course.id)}
+                href={`/courses/${course.id}`}
                 progress={progressOf(course.id)}
               />
             )}
