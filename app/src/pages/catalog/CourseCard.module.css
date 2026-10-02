@@ -1,48 +1,23 @@
-/* Three to a row, split by vertical hairlines; the outer columns sit flush with the page edge. */
+/* A bordered card, three to a row; the border darkens on hover. */
 .card {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 22px 24px 24px;
-  border-left: 1px solid var(--line);
+  border: 1px solid var(--line);
   color: var(--ink);
   text-decoration: none;
-}
-
-.card:nth-child(3n + 1) {
-  padding-left: 0;
-  border-left: 0;
-}
-
-.card:nth-child(3n) {
-  padding-right: 0;
-}
-
-/* Closes a part-filled last row. */
-.card:last-child:not(:nth-child(3n)) {
-  border-right: 1px solid var(--line);
+  transition: border-color 0.15s var(--ease);
 }
 
 .card:hover {
+  border-color: var(--line3);
   color: var(--ink);
 }
 
 .card:focus-visible {
   outline: 2px solid var(--accentText);
-  outline-offset: -2px;
-}
-
-/* Row rule that runs the full viewport width. */
-.card::after {
-  content: '';
-  position: absolute;
-  left: -100vw;
-  right: -100vw;
-  bottom: 0;
-  height: 1px;
-  background: var(--line);
-  pointer-events: none;
+  outline-offset: 2px;
 }
 
 .meta {
@@ -133,39 +108,4 @@
   display: block;
   height: 100%;
   background: var(--tomato);
-}
-
-@media (max-width: 1100px) {
-  .card:nth-child(n) {
-    padding: 22px 24px 24px;
-    border-left: 1px solid var(--line);
-  }
-
-  .card:last-child:not(:nth-child(3n)) {
-    border-right: 0;
-  }
-
-  .card:nth-child(odd) {
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .card:nth-child(even) {
-    padding-right: 0;
-  }
-
-  .card:last-child:nth-child(odd) {
-    border-right: 1px solid var(--line);
-  }
-}
-
-@media (max-width: 720px) {
-  .card:nth-child(n) {
-    padding: 20px 0;
-    border-left: 0;
-  }
-
-  .card:last-child:nth-child(odd) {
-    border-right: 0;
-  }
 }

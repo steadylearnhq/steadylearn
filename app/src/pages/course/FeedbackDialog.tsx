@@ -5,7 +5,8 @@ import type { Feedback } from '../../lib/enrollments'
 import styles from './FeedbackDialog.module.css'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, [tabindex]:not([tabindex="-1"])'
-const RATINGS = ['Poor', 'Fair', 'Good', 'Great', 'Excellent']
+/** What each rating, from 1 to 5, stands for. */
+export const RATINGS = ['Poor', 'Fair', 'Good', 'Great', 'Excellent']
 
 type Props = {
   courseTitle: string
@@ -84,7 +85,7 @@ export default function FeedbackDialog(props: Props) {
         >
           <div class={styles.head}>
             <span id="feedback-title" class={styles.title}>
-              Leave a feedback
+              {props.current ? 'Edit feedback' : 'Leave a feedback'}
             </span>
             <button type="button" class={styles.close} aria-label="Close" onClick={() => props.onClose()}>
               ×
@@ -98,7 +99,7 @@ export default function FeedbackDialog(props: Props) {
             }}
           >
             <div class={styles.field}>
-              <span class={styles.label}>How is {props.courseTitle} going?</span>
+              <span class={styles.label}>How is {props.courseTitle} going? Only the course author sees this.</span>
               <div class={styles.rating}>
                 <div role="radiogroup" aria-label="Rating" class={styles.stars} onMouseLeave={() => setHover(0)}>
                   <For each={RATINGS}>
@@ -147,7 +148,7 @@ export default function FeedbackDialog(props: Props) {
                 Cancel
               </Button>
               <Button type="submit" variant="primary" size="lg" class={styles.action} disabled={!rating() || sending()}>
-                {sending() ? 'Sending…' : 'Send feedback'}
+                {sending() ? 'Sending…' : props.current ? 'Save changes' : 'Send feedback'}
               </Button>
             </div>
           </form>
