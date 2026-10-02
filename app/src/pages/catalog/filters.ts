@@ -14,15 +14,19 @@ type CatalogParams = {
   domain?: string
   level?: string
   length?: string
+  own?: string
   q?: string
 }
 
 /**
- * Catalog filters live in the URL (?domain=&level=&length=&q=) so filtered
+ * Catalog filters live in the URL (?domain=&level=&length=&own=&q=) so filtered
  * views can be linked to, e.g. from the landing page's domain grid. The API
  * returns the whole catalog, so filtering is done here and answers as you type.
+ *
+ * `own=unenrolled` hides the courses a member has started; it needs `started`,
+ * so it does nothing for visitors.
  */
-export function useCatalogFilters(catalog: () => Catalog | undefined) {
+export function useCatalogFilters(catalog: () => Catalog | undefined, started?: (c: Course) => boolean) {
   const [params, setParams] = useSearchParams<CatalogParams>()
 
   const courses = () => catalog()?.courses ?? []
@@ -30,6 +34,7 @@ export function useCatalogFilters(catalog: () => Catalog | undefined) {
   const domain = () => catalog()?.domains.find((d) => d.id === params.domain)?.id
   const level = (): Level | undefined => LEVELS.find((l) => l.id === params.level)?.id
   const length = () => LENGTHS.find((l) => l.id === params.length)
+  const unenrolled = () => !!started && params.own === 'unenrolled'
   const query = () => params.q ?? ''
 
   const matches = (c: Course) => {
@@ -39,6 +44,7 @@ export function useCatalogFilters(catalog: () => Catalog | undefined) {
       (!domain() || c.domain === domain()) &&
       (!level() || c.level === level()) &&
       (!length() || length()!.test(c.minutes)) &&
+      (!unenrolled() || !started!(c)) &&
       (!q || haystack.includes(q))
     )
   }
@@ -61,13 +67,15 @@ export function useCatalogFilters(catalog: () => Catalog | undefined) {
     domain,
     level,
     length,
+    unenrolled,
     query,
     filtered,
     chips,
     setDomain: (d: string | undefined) => update({ domain: d }),
     setLevel: (l: Level | undefined) => update({ level: l }),
     setLength: (l: LengthId | undefined) => update({ length: l }),
+    setUnenrolled: (on: boolean) => update({ own: on ? 'unenrolled' : undefined }),
     setQuery: (q: string) => update({ q: q || undefined }),
-    clear: () => update({ domain: undefined, level: undefined, length: undefined, q: undefined }),
+    clear: () => update({ domain: undefined, level: undefined, length: undefined, own: undefined, q: undefined }),
   }
 }

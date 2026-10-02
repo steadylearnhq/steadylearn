@@ -59,3 +59,6 @@ export const BOARDS: Record<'following' | 'all', BoardEntry[]> = {
 export const RECOMMENDED: Course[] = ['storage-engines', 'tail-latency-queueing', 'applied-cryptography'].map(
   (id) => courseById(id)!,
 )
+
+/** A member's progress through a course, as a percentage, or undefined if they haven't started it. */
+export const progressOf = (courseId: string) => CONTINUE.find((e) => e.course.id === courseId)?.progress

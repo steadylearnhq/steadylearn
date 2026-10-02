@@ -13,9 +13,12 @@ const NAV = [
   { label: 'Pricing', href: '/pricing' },
 ]
 
-// Signed-in visitors can't open the public pages, so until members get their
-// own header they only have the dashboard to go to.
-const MEMBER_NAV = [{ label: 'Home', href: HOME }]
+// Signed-in visitors can't open the landing or pricing pages; the catalog is
+// open to both.
+const MEMBER_NAV = [
+  { label: 'Home', href: HOME },
+  { label: 'Catalog', href: '/catalog' },
+]
 
 export default function Header() {
   const location = useLocation()

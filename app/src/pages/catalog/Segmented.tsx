@@ -5,6 +5,8 @@ type Option<T> = { value: T; label: string }
 
 type SegmentedProps<T> = {
   label: string
+  /** Names the group for screen readers only. */
+  hideLabel?: boolean
   options: Option<T>[]
   value: T
   onChange: (value: T) => void
@@ -43,7 +45,7 @@ export default function Segmented<T>(props: SegmentedProps<T>) {
 
   return (
     <div class={styles.field}>
-      <span class={styles.label}>{props.label}</span>
+      <span class={props.hideLabel ? 'visually-hidden' : styles.label}>{props.label}</span>
       <div ref={group} class={styles.group} role="radiogroup" aria-label={props.label}>
         <Show when={thumb()}>
           {(t) => (

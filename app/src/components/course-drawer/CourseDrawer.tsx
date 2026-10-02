@@ -2,6 +2,7 @@ import { For, Match, Show, Switch, createEffect, createResource, createSignal, o
 import { Dynamic, Portal } from 'solid-js/web'
 import { domainDot, domainStyle, formatLength, levelLabel, plural, type Course, type Lesson, type Module } from '../../data/catalog'
 import { LESSON_STEPS, STEP_BY_KEY, type LessonStepKey } from '../../data/lessonSteps'
+import { user } from '../../lib/auth'
 import { fetchCourse } from '../../lib/catalog'
 import Button from '../Button'
 import Critter from '../Critter'
@@ -313,15 +314,18 @@ export default function CourseDrawer(props: CourseDrawerProps) {
             </aside>
           </div>
 
-          <div class={styles.foot}>
-            <span class={styles.access}>
-              {props.course.isFree ? 'Free course. Sign up to start.' : 'Included with the subscription.'}
-            </span>
-            <span class={styles.spacer} />
-            <Button variant="primary" size="md" href={props.course.isFree ? '/login' : '/signup'}>
-              {props.course.isFree ? 'Start for free →' : 'Subscribe →'}
-            </Button>
-          </div>
+          {/* The sign-up prompt is for visitors; members have no lesson pages to start yet. */}
+          <Show when={!user()}>
+            <div class={styles.foot}>
+              <span class={styles.access}>
+                {props.course.isFree ? 'Free course. Sign up to start.' : 'Included with the subscription.'}
+              </span>
+              <span class={styles.spacer} />
+              <Button variant="primary" size="md" href={props.course.isFree ? '/login' : '/signup'}>
+                {props.course.isFree ? 'Start for free →' : 'Subscribe →'}
+              </Button>
+            </div>
+          </Show>
         </div>
       </div>
     </Portal>

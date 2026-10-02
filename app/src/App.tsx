@@ -32,13 +32,13 @@ function App() {
       <Route component={Layout}>
         <Route component={GuestOnly}>
           <Route path="/" component={Landing} />
-          <Route path="/catalog" component={Catalog} />
           <Route path="/pricing" component={Pricing} />
         </Route>
         <Route component={RequireAuth}>
           <Route path="/dashboard" component={Dashboard} />
         </Route>
-        {/* Open to everyone: members need the terms as much as visitors do. */}
+        {/* Open to everyone: members see their progress on the catalog and need the terms as much as visitors do. */}
+        <Route path="/catalog" component={Catalog} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
         <Route path="*" component={NotFound} />
