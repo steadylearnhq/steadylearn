@@ -76,7 +76,27 @@ export default function CoursePage() {
 
   // The course carries the member's enrollment, so it is known as soon as the page is.
   const enrolled = () => loaded()?.enrollment
-  const doneCodes = createMemo<ReadonlySet<string>>(() => new Set(enrolled()?.completedLessons))
+  // A lesson shows as done or not the moment it is marked; until every change
+  // sent for it has been answered, its mark wins over the enrollment. Marks are
+  // keyed by course too, so an answer arriving after the member has moved on
+  // still clears its own.
+  const [marks, setMarks] = createSignal<ReadonlyMap<string, { done: boolean; sending: number }>>(new Map())
+  const markKey = (courseId: string, code: string) => `${courseId}/${code}`
+  const doneCodes = createMemo<ReadonlySet<string>>(() => {
+    const c = loaded()
+    const done = new Set(c?.enrollment?.completedLessons)
+    for (const l of c ? allLessons(c) : []) {
+      const mark = marks().get(markKey(params.id, l.code))
+      if (mark?.done) done.add(l.code)
+      else if (mark) done.delete(l.code)
+    }
+    return done
+  })
+  /** Lessons done as a percentage, rounded down, as the enrollment counts it. */
+  const progress = () => {
+    const count = loaded()?.lessonCount
+    return count ? Math.floor((doneCodes().size * 100) / count) : 0
+  }
   /** The first lesson, in syllabus order, the enrolled member hasn't done. */
   const upNext = () => {
     const c = loaded()
@@ -102,13 +122,15 @@ export default function CoursePage() {
   }
 
   // Each change answers with the whole enrollment, so changes are sent one at a
-  // time: an older answer arriving last would otherwise undo a newer one.
+  // time: an older answer arriving last would otherwise undo a newer one. A
+  // change that fails drops its mark once nothing newer is queued for the
+  // lesson, so the checkbox falls back to the last enrollment the API sent.
   let changes = Promise.resolve()
-  const [marking, setMarking] = createSignal<ReadonlySet<string>>(new Set())
   const [markFailed, setMarkFailed] = createSignal(false)
   const markDone = (code: string, done: boolean) => {
     const courseId = params.id
-    setMarking((prev) => new Set(prev).add(code))
+    const key = markKey(courseId, code)
+    setMarks((prev) => new Map(prev).set(key, { done, sending: (prev.get(key)?.sending ?? 0) + 1 }))
     setMarkFailed(false)
     changes = changes.then(async () => {
       try {
@@ -117,9 +139,11 @@ export default function CoursePage() {
       } catch {
         if (courseId === params.id) setMarkFailed(true)
       } finally {
-        setMarking((prev) => {
-          const next = new Set(prev)
-          next.delete(code)
+        setMarks((prev) => {
+          const mark = prev.get(key)!
+          const next = new Map(prev)
+          if (mark.sending > 1) next.set(key, { ...mark, sending: mark.sending - 1 })
+          else next.delete(key)
           return next
         })
       }
@@ -288,23 +312,22 @@ export default function CoursePage() {
             </section>
 
             <section class={styles.stats}>
+              {/* Counted from the marks, not the enrollment, so it moves with the checkboxes. */}
               <Show when={enrolled()}>
-                {(e) => (
-                  <div class={styles.stat}>
-                    <span class={styles.statLabel}>Progress</span>
-                    <span class={styles.statValue}>
-                      {e().lessonsDone} of {c().lessonCount}
+                <div class={styles.stat}>
+                  <span class={styles.statLabel}>Progress</span>
+                  <span class={styles.statValue}>
+                    {doneCodes().size} of {c().lessonCount}
+                  </span>
+                  <span class={styles.progress}>
+                    <span>{progress()}%</span>
+                    <span class={styles.bar} aria-hidden="true">
+                      <For each={allLessons(c())}>
+                        {(l) => <span classList={{ [styles.barDone]: doneCodes().has(l.code) }} />}
+                      </For>
                     </span>
-                    <span class={styles.progress}>
-                      <span>{e().progress}%</span>
-                      <span class={styles.bar} aria-hidden="true">
-                        <For each={allLessons(c())}>
-                          {(l) => <span classList={{ [styles.barDone]: doneCodes().has(l.code) }} />}
-                        </For>
-                      </span>
-                    </span>
-                  </div>
-                )}
+                  </span>
+                </div>
               </Show>
               {/* Enrolled, the design's other stats (points, vs par, calibration, next review) wait for data. */}
               <Show when={!enrolled()}>
@@ -387,7 +410,6 @@ export default function CoursePage() {
                                         aria-label={`${done() ? 'Mark not done' : 'Mark done'}: ${l.title}`}
                                         class={styles.checkbox}
                                         classList={{ [styles.checked]: done(), [styles.upNext]: next() }}
-                                        disabled={marking().has(l.code)}
                                         onClick={() => markDone(l.code, !done())}
                                       >
                                         <Check size={12} />

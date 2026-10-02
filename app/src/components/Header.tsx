@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from '@solidjs/router'
 import { For, Show } from 'solid-js'
 import { authReady, signOut, user } from '../lib/auth'
 import { theme, toggleTheme } from '../lib/theme'
+import AccountMenu from './AccountMenu'
 import Button from './Button'
 import Logo from './Logo'
 import { HOME } from './RouteGuards'
@@ -63,14 +64,7 @@ export default function Header() {
                 </Button>
               }
             >
-              {(u) => (
-                <>
-                  <span class={styles.userName}>{u().name}</span>
-                  <Button variant="outline" size="sm" onClick={() => void logOut()}>
-                    Log out
-                  </Button>
-                </>
-              )}
+              {(u) => <AccountMenu user={u()} onSignOut={() => void logOut()} />}
             </Show>
           </Show>
         </div>
