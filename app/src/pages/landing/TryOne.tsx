@@ -24,7 +24,7 @@ export default function TryOne() {
           </p>
           <span class={styles.source}>from lesson 2.2 · Quorums and R + W &gt; N</span>
         </div>
-        <ChoiceBet {...SAMPLE} />
+        <ChoiceBet {...SAMPLE} flush />
       </div>
     </section>
   )

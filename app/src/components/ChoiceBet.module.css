@@ -38,6 +38,23 @@
   cursor: pointer;
 }
 
+.flush .options {
+  border-top: 0;
+}
+
+.flush .option {
+  border-bottom-color: var(--line2);
+}
+
+.flush .option:last-child {
+  border-bottom: 0;
+}
+
+/* A flush bet sits on a --hover band, so hovering lifts to the page colour. */
+.flush .option:not(:disabled):hover .letter:not(.selected) {
+  background: var(--paper);
+}
+
 .option:disabled {
   cursor: default;
 }

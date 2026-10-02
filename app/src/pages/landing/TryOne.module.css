@@ -1,5 +1,18 @@
 .section {
-  padding: 96px 0 0;
+  position: relative;
+  isolation: isolate;
+  margin-top: 56px;
+  padding: 64px 0;
+}
+
+/* Tinted band that runs the full viewport width. */
+.section::before {
+  content: '';
+  position: absolute;
+  inset: 0 -100vw;
+  z-index: -1;
+  background: var(--hover);
+  pointer-events: none;
 }
 
 .source {
@@ -11,6 +24,7 @@
 
 @media (max-width: 720px) {
   .section {
-    padding-top: 64px;
+    margin-top: 40px;
+    padding: 48px 0;
   }
 }

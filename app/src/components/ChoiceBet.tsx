@@ -14,6 +14,8 @@ type ChoiceBetProps = {
   /** Index of the correct option. */
   answer: number
   explanation: string
+  /** Drop the outer rules, for a bet that sits on its own tinted band. */
+  flush?: boolean
   onScore?: (points: number) => void
 }
 
@@ -42,7 +44,7 @@ export default function ChoiceBet(props: ChoiceBetProps) {
   }
 
   return (
-    <div class={styles.bet}>
+    <div class={styles.bet} classList={{ [styles.flush]: props.flush }}>
       <p class={styles.question}>{props.question}</p>
       <div class={styles.body}>
         <div class={styles.options} role="radiogroup" aria-label="Answer">
