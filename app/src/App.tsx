@@ -10,6 +10,8 @@ import Dashboard from './pages/dashboard/Dashboard'
 import Landing from './pages/landing/Landing'
 import NotFound from './pages/NotFound'
 import Pricing from './pages/pricing/Pricing'
+import Checkout from './pages/subscription/Checkout'
+import Subscription from './pages/subscription/Subscription'
 import { Privacy, Terms } from './pages/legal/Legal'
 
 function Layout(props: RouteSectionProps) {
@@ -30,6 +32,10 @@ function App() {
         <Route path={['/login', '/signup']} component={Auth} />
       </Route>
       <Route path="/external-auth" component={ExternalAuth} />
+      {/* The review before payment stands alone too. */}
+      <Route component={RequireAuth}>
+        <Route path="/subscription/checkout" component={Checkout} />
+      </Route>
       <Route component={Layout}>
         <Route component={GuestOnly}>
           <Route path="/" component={Landing} />
@@ -38,6 +44,7 @@ function App() {
         <Route component={RequireAuth}>
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/courses/:id" component={CoursePage} />
+          <Route path="/subscription" component={Subscription} />
         </Route>
         {/* Open to everyone: members see their progress on the catalog and need the terms as much as visitors do. */}
         <Route path="/catalog" component={Catalog} />
