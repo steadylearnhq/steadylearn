@@ -1,5 +1,6 @@
-import { ApiError, apiGet, apiPut } from './api'
+import { apiGet, apiPut } from './api'
 import { accessToken } from './auth'
+import { forgetMemberCourse } from './catalog'
 
 /** A course the member is enrolled in, and how far through it they are. */
 export type Enrollment = {
@@ -10,7 +11,7 @@ export type Enrollment = {
   progress: number
 }
 
-/** The member's enrollment in one course, with the codes of the lessons they've done, in syllabus order. */
+/** The member's enrollment in one course, with the codes of the lessons they've done, in syllabus order; it comes with the course. */
 export type CourseEnrollment = Enrollment & { completedLessons: string[] }
 
 // One request per page load, as for the catalog, kept per member so signing in
@@ -34,26 +35,11 @@ export function fetchEnrollments(userId: string): Promise<Enrollment[]> {
   return enrollments.request
 }
 
-const enrollmentPath = (courseId: string) => `/v1/courses/${encodeURIComponent(courseId)}/enrollment`
-
-/**
- * The signed-in member's enrollment in a course, or `null` when they aren't
- * enrolled. Not shared: it is read only by the course's own page, which is
- * where it changes.
- */
-export async function fetchEnrollment(courseId: string): Promise<CourseEnrollment | null> {
-  try {
-    return await apiGet<CourseEnrollment>(enrollmentPath(courseId), await accessToken())
-  } catch (error) {
-    // A course that isn't in the catalog is a 404 too; its page shows it as not found anyway.
-    if (error instanceof ApiError && error.status === 404) return null
-    throw error
-  }
-}
-
 /** Enrolls the signed-in member in a course; enrolling again just returns the enrollment. */
 export async function enroll(courseId: string): Promise<CourseEnrollment> {
-  const enrollment = await apiPut<CourseEnrollment>(enrollmentPath(courseId), await accessToken())
+  const path = `/v1/courses/${encodeURIComponent(courseId)}/enrollment`
+  const enrollment = await apiPut<CourseEnrollment>(path, await accessToken())
   enrollments = undefined
+  forgetMemberCourse(courseId)
   return enrollment
 }

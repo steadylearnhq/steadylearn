@@ -99,7 +99,7 @@
   text-wrap: pretty;
 }
 
-/* Holds the button's height while the enrollment loads, so nothing jumps when it shows. */
+/* Holds the button's height once enrolled too, so the header keeps its size. */
 .cta {
   display: flex;
   flex-direction: column;
