@@ -6,8 +6,9 @@ some.
 
 ## What the enrolled page shows
 
-- Header: no call to action until the lesson player exists (the design's
-  "Resume 2.4 →" opens it).
+- Header: "Resume 2.4 →", naming the first lesson not yet done, and hidden
+  once every lesson is. It does nothing until the lesson player exists for
+  it to open.
 - Stats row: Progress only (lessons done, percentage, a segment per lesson).
   The design's Points, Vs par, Calibration and Next review wait for data.
 - Syllabus:
@@ -52,6 +53,6 @@ some.
 
 ## Later
 
-- "Resume →" with the lesson player; Notes & bookmarks; Badges; the other
+- "Resume →" opening the lesson player; Notes & bookmarks; Badges; the other
   enrolled stats; a "related" kind of recommendation.
 - Rating and enrolled counts on the public page, from the feedback.

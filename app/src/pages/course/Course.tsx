@@ -265,7 +265,6 @@ export default function CoursePage() {
                 <h1 class={styles.title}>{c().title}</h1>
                 <p class={styles.overview}>{c().overview || c().description}</p>
               </div>
-              {/* Enrolled, the design resumes the course here, which waits for the lesson player. */}
               <div class={styles.cta}>
                 <Show when={!enrolled()}>
                   <Button variant="primary" size="md" disabled={enrolling()} onClick={() => void startCourse()}>
@@ -276,6 +275,14 @@ export default function CoursePage() {
                       That didn't go through. Try again.
                     </span>
                   </Show>
+                </Show>
+                {/* Resume opens the next lesson in the lesson player; until that exists, it does nothing. */}
+                <Show when={upNext()}>
+                  {(code) => (
+                    <Button variant="primary" size="md" class={styles.resume}>
+                      Resume {code()} →
+                    </Button>
+                  )}
                 </Show>
               </div>
             </section>
