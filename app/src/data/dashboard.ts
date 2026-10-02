@@ -1,4 +1,5 @@
 import { courseById, type Course } from './catalog'
+import type { LessonStepKey } from './lessonSteps'
 
 // Placeholder progress for the signed-in home page, taken from the design.
 // Nothing tracks lessons, points or followers yet; swap these for API data
@@ -11,23 +12,28 @@ export const KPIS: Kpi[] = [
   { label: 'Points this week', value: '1,240', sub: '+180 vs last week', highlight: true },
   { label: 'Rank', value: '#4', sub: 'of 18 you follow' },
   { label: 'Calibration', value: '0.81', sub: 'right 78% at 90%' },
-  { label: 'Lessons done', value: '38', sub: '5 this week' },
+  { label: 'Lessons done', value: '96', sub: '14 this week' },
 ]
 
-export type UpNext = { course: Course; code: string; title: string; minutes: number }
+export type UpNext = { course: Course; step: LessonStepKey; code: string; title: string; minutes: number }
 
 export const UP_NEXT: UpNext = {
   course: courseById('replication-consensus')!,
-  code: '2.3',
-  title: 'Sizing replicated storage',
-  minutes: 15,
+  step: 'range',
+  code: '2.4',
+  title: 'Raw storage per day',
+  minutes: 4,
 }
 
 export type Enrollment = { course: Course; next: string; progress: number }
 
 export const CONTINUE: Enrollment[] = [
-  { course: courseById('replication-consensus')!, next: 'Next: 2.3 Sizing replicated storage · 15 min', progress: 42 },
-  { course: courseById('storage-engines')!, next: 'Next: 1.4 Page splits and merges · 12 min', progress: 20 },
+  {
+    course: UP_NEXT.course,
+    next: `Next: ${UP_NEXT.code} ${UP_NEXT.title} · ${UP_NEXT.minutes} min`,
+    progress: 50,
+  },
+  { course: courseById('storage-engines')!, next: 'Next: 2.3 Page splits and merges · 6 min', progress: 20 },
   { course: courseById('partitioning-rebalancing')!, next: 'Finished · review bet due Thursday', progress: 100 },
 ]
 
