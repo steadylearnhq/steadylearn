@@ -207,8 +207,18 @@
   letter-spacing: -0.3px;
 }
 
-.syllabus > .sectionTitle {
+.syllabusHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 8px;
+}
+
+.syllabusNote {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--err);
 }
 
 .module {
@@ -317,11 +327,79 @@
   background: var(--hover);
 }
 
+/* Enrolled, each lesson gains a checkbox after the gutter. */
+.lesson.enrolledLesson {
+  grid-template-columns: 20px 18px 32px minmax(0, 1fr) 168px 48px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1.5px solid var(--line3);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--paper);
+  cursor: pointer;
+}
+
+.checkbox svg {
+  opacity: 0;
+}
+
+.checkbox.upNext {
+  border-color: var(--tomato);
+}
+
+.checkbox.checked {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.checkbox.checked svg {
+  opacity: 1;
+}
+
+.checkbox:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--accentText);
+  outline-offset: 2px;
+}
+
+.lessonName {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
 .lessonTitle {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 15px;
+}
+
+.doneTitle {
+  color: var(--muted);
+}
+
+.nextTitle {
+  font-weight: 500;
+}
+
+.upNextLabel {
+  flex: none;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--accentText);
 }
 
 .steps {
@@ -353,6 +431,90 @@
   margin: 20px calc(-1 * var(--to-edge)) 0 -32px;
   padding: 24px var(--to-edge) 0 32px;
   border-top: 1px solid var(--line);
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.panelHead.tight {
+  margin-bottom: 8px;
+}
+
+.panelNote {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.outcome {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 7px 0;
+}
+
+.ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1.5px solid var(--line3);
+  border-radius: 9999px;
+  color: #fff;
+}
+
+.ring svg {
+  opacity: 0;
+}
+
+.unlocked .ring {
+  border-color: var(--tomato);
+  background: var(--tomato);
+}
+
+.unlocked .ring svg {
+  opacity: 1;
+}
+
+.outcomeText {
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.unlocked .outcomeText {
+  color: var(--ink);
+}
+
+.where {
+  padding-top: 4px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.feedbackBlurb {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.feedbackButton {
+  align-self: flex-start;
+  margin-top: 14px;
+  padding: 0 20px;
 }
 
 .numbered,
@@ -600,6 +762,10 @@
 
   .lesson {
     grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .lesson.enrolledLesson {
+    grid-template-columns: 18px 32px minmax(0, 1fr) auto;
   }
 
   .lesson > :first-child,

@@ -72,6 +72,9 @@ export type Catalog = {
   enrollments?: Enrollment[]
 }
 
+/** Something the learner can do after the course; `lesson` is the code of the lesson that teaches it, or empty. */
+export type Outcome = { statement: string; lesson: string }
+
 export type Lesson = {
   code: string
   title: string
@@ -103,9 +106,11 @@ export type CourseDetail = Course & {
   overview: string
   assumes: string
   requirements: Requirement[]
-  outcomes: string[]
+  outcomes: Outcome[]
   breakItDetails: BreakIt[]
   prerequisites: Prerequisite[]
+  /** Courses that take this one as a prerequisite, in catalog order. */
+  followUps: string[]
   modules: Module[]
   /** The member's own, sent only when they are signed in and enrolled. */
   enrollment?: CourseEnrollment

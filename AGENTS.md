@@ -69,7 +69,7 @@ for Cognito auth. Paths in this section are relative to `app/`.
   runtime (a position, a domain hue).
 - **Design tokens** live in `src/index.css` as CSS variables, for light and
   dark themes, and mirror the design's own names: `--paper`, `--ink`,
-  `--muted`, `--faint`, `--line`/`--line2`/`--line3`, `--hover`, `--stroke`,
+  `--muted`, `--faint`/`--faint2`, `--line`/`--line2`/`--line3`, `--hover`, `--stroke`,
   `--fill`/`--onFill`, `--seg`/`--onSeg`, `--tomato`, `--accentText`,
   `--ease`. Use them rather than raw colours, so both themes hold.
 - **The design** is the source of truth for public pages. Match its spacing
