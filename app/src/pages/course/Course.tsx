@@ -21,7 +21,7 @@ import { enroll, leaveFeedback, setLessonDone, type CourseEnrollment, type Feedb
 import { usePageTitle } from '../../lib/title'
 import NotFound from '../NotFound'
 import styles from './Course.module.css'
-import FeedbackDialog from './FeedbackDialog'
+import FeedbackDialog, { RATINGS } from './FeedbackDialog'
 
 /** Watching and reading are how every lesson starts; the other steps are its practice. */
 const practice = (steps: LessonStepKey[]) => steps.filter((s) => s !== 'watch' && s !== 'read')
@@ -98,10 +98,11 @@ export default function CoursePage() {
     return count ? Math.floor((doneCodes().size * 100) / count) : 0
   }
   /** The first lesson, in syllabus order, the enrolled member hasn't done. */
-  const upNext = () => {
+  const nextLesson = () => {
     const c = loaded()
-    return c && enrolled() ? allLessons(c).find((l) => !doneCodes().has(l.code))?.code : undefined
+    return c && enrolled() ? allLessons(c).find((l) => !doneCodes().has(l.code)) : undefined
   }
+  const upNext = () => nextLesson()?.code
   const unlocked = (o: Outcome) => !!o.lesson && doneCodes().has(o.lesson)
   const setEnrollment = (enrollment: CourseEnrollment) =>
     setCourse((prev) => prev && { ...prev, enrollment })
@@ -172,7 +173,7 @@ export default function CoursePage() {
     })
 
   // Every module starts open for a member who isn't enrolled; one who is starts
-  // with only the module of their next lesson open. This is settled when the
+  // with the modules they haven't finished open. This is settled when the
   // course or the enrollment arrives, not as lessons are ticked off, so ticking
   // the last lesson of a module doesn't fold it away.
   // Keyed on a string, which only changes with the course or with enrolling;
@@ -183,8 +184,8 @@ export default function CoursePage() {
     on(openKey, (key) => {
       const c = loaded()
       if (!key || !c) return
-      const next = upNext()
-      setOpen(new Set(c.modules.flatMap((m, i) => (!enrolled() || m.lessons?.some((l) => l.code === next) ? [i] : []))))
+      const finished = (m: Module) => !!enrolled() && !!m.lessons?.every((l) => doneCodes().has(l.code))
+      setOpen(new Set(c.modules.flatMap((m, i) => (finished(m) ? [] : [i]))))
     }),
   )
   const toggle = (i: number) =>
@@ -194,9 +195,24 @@ export default function CoursePage() {
       return next
     })
 
-  /** The side column once enrolled: outcomes as the member unlocks them, and their feedback. */
+  /** The side column once enrolled: progress, counted from the marks so it moves with the checkboxes, outcomes as the member unlocks them, and their feedback. */
   const EnrolledPanels = () => (
     <>
+      <div class={styles.panel}>
+        <div class={styles.progressHead}>
+          <span class={styles.statLabel}>Progress</span>
+          <span class={styles.progressRow}>
+            <span class={styles.statValue}>
+              {doneCodes().size} of {loaded()!.lessonCount}
+            </span>
+            <span class={styles.statSub}>{progress()}%</span>
+          </span>
+          <span class={styles.bar} aria-hidden="true">
+            <For each={allLessons(loaded()!)}>{(l) => <span classList={{ [styles.barDone]: doneCodes().has(l.code) }} />}</For>
+          </span>
+        </div>
+      </div>
+
       <Show when={loaded()?.outcomes.length}>
         <div class={styles.panel}>
           <div class={styles.panelHead}>
@@ -232,19 +248,39 @@ export default function CoursePage() {
 
       <div class={styles.panel}>
         <div class={`${styles.panelHead} ${styles.tight}`}>
-          <h2 class={styles.sectionTitle}>Leave a feedback</h2>
+          <h2 class={styles.sectionTitle}>{enrolled()?.feedback ? 'Your feedback' : 'Leave a feedback'}</h2>
           <Show when={enrolled()?.feedback}>
-            <span class={styles.panelNote}>sent</span>
+            <button type="button" class={styles.edit} onClick={() => setFeedbackOpen(true)}>
+              Edit
+            </button>
           </Show>
         </div>
-        <p class={styles.feedbackBlurb}>
-          <Show when={enrolled()?.feedback} fallback="Tell the course author what is working and what is not. It takes a minute.">
-            {(f) => `You rated this course ${f().rating} of 5. Thanks, it goes straight to the course author.`}
-          </Show>
-        </p>
-        <Button variant="outline" size="md" class={styles.feedbackButton} onClick={() => setFeedbackOpen(true)}>
-          {enrolled()?.feedback ? 'Edit feedback' : 'Leave a feedback'}
-        </Button>
+        <Show
+          when={enrolled()?.feedback}
+          fallback={
+            <>
+              <p class={styles.feedbackBlurb}>Tell the course author what is working and what is not. It takes a minute.</p>
+              <Button variant="outline" size="md" class={styles.feedbackButton} onClick={() => setFeedbackOpen(true)}>
+                Leave a feedback
+              </Button>
+            </>
+          }
+        >
+          {/* The design dates the feedback beside its rating, which waits for the API to send when it was left. */}
+          {(f) => (
+            <div class={styles.sent}>
+              <div class={styles.sentRating}>
+                <span class={styles.sentStars} role="img" aria-label={`${f().rating} of 5 stars`}>
+                  <For each={RATINGS}>{(_, i) => <span classList={{ [styles.lit]: i() < f().rating }}>★</span>}</For>
+                </span>
+                <span class={styles.sentLabel}>{RATINGS[f().rating - 1]}</span>
+              </div>
+              <Show when={f().message.trim()} fallback={<span class={styles.noMessage}>No message added.</span>}>
+                <p class={styles.sentMessage}>{f().message}</p>
+              </Show>
+            </div>
+          )}
+        </Show>
       </div>
     </>
   )
@@ -300,37 +336,12 @@ export default function CoursePage() {
                     </span>
                   </Show>
                 </Show>
-                {/* Resume opens the next lesson in the lesson player; until that exists, it does nothing. */}
-                <Show when={upNext()}>
-                  {(code) => (
-                    <Button variant="primary" size="md" class={styles.resume}>
-                      Resume {code()} →
-                    </Button>
-                  )}
-                </Show>
               </div>
             </section>
 
-            <section class={styles.stats}>
-              {/* Counted from the marks, not the enrollment, so it moves with the checkboxes. */}
-              <Show when={enrolled()}>
-                <div class={styles.stat}>
-                  <span class={styles.statLabel}>Progress</span>
-                  <span class={styles.statValue}>
-                    {doneCodes().size} of {c().lessonCount}
-                  </span>
-                  <span class={styles.progress}>
-                    <span>{progress()}%</span>
-                    <span class={styles.bar} aria-hidden="true">
-                      <For each={allLessons(c())}>
-                        {(l) => <span classList={{ [styles.barDone]: doneCodes().has(l.code) }} />}
-                      </For>
-                    </span>
-                  </span>
-                </div>
-              </Show>
-              {/* Enrolled, the design's other stats (points, vs par, calibration, next review) wait for data. */}
-              <Show when={!enrolled()}>
+            {/* The design's rating and enrolled count wait for the API to send them. */}
+            <Show when={!enrolled()}>
+              <section class={styles.stats}>
                 <div class={styles.stat}>
                   <span class={styles.statLabel}>Level</span>
                   <span class={styles.statValue}>{levelLabel(c().level)}</span>
@@ -345,8 +356,28 @@ export default function CoursePage() {
                     {plural(c().lessonCount, 'lesson')} · {plural(c().modules.length, 'section')}
                   </span>
                 </div>
-              </Show>
-            </section>
+              </section>
+            </Show>
+
+            {/* Resume opens the lesson once there is a lesson player; until then it does nothing. */}
+            <Show when={enrolled() && nextLesson()}>
+              {(l) => (
+                <section class={styles.upNextBand}>
+                  <Critter kind="circle" hue={255} size={48} />
+                  <div class={styles.upNextText}>
+                    <span class={styles.upNextMeta}>
+                      Up next · {STEP_BY_KEY[l().steps[0]]?.name ?? 'Lesson'} · {l().minutes} min
+                    </span>
+                    <span class={styles.upNextTitle}>
+                      {l().code} {l().title}
+                    </span>
+                  </div>
+                  <Button variant="primary" size="md" class={styles.resume}>
+                    Resume lesson →
+                  </Button>
+                </section>
+              )}
+            </Show>
 
             <section class={styles.body}>
               <div class={styles.syllabus}>

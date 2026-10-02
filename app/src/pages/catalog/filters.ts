@@ -23,8 +23,10 @@ type CatalogParams = {
  * views can be linked to, e.g. from the landing page's domain grid. The API
  * returns the whole catalog, so filtering is done here and answers as you type.
  *
- * `own=unenrolled` hides the courses a member is enrolled in; it needs
- * `enrolled`, so it does nothing for visitors.
+ * A member sees only the courses they aren't enrolled in unless `own=all`;
+ * that needs `enrolled`, so visitors always see every course. Clearing the
+ * filters shows every course, so a member enrolled in all of them isn't left
+ * with an empty page.
  */
 export function useCatalogFilters(catalog: () => Catalog | undefined, enrolled?: (c: Course) => boolean) {
   const [params, setParams] = useSearchParams<CatalogParams>()
@@ -34,7 +36,7 @@ export function useCatalogFilters(catalog: () => Catalog | undefined, enrolled?:
   const domain = () => catalog()?.domains.find((d) => d.id === params.domain)?.id
   const level = (): Level | undefined => LEVELS.find((l) => l.id === params.level)?.id
   const length = () => LENGTHS.find((l) => l.id === params.length)
-  const unenrolled = () => !!enrolled && params.own === 'unenrolled'
+  const unenrolled = () => !!enrolled && params.own !== 'all'
   const query = () => params.q ?? ''
 
   const matches = (c: Course) => {
@@ -74,8 +76,8 @@ export function useCatalogFilters(catalog: () => Catalog | undefined, enrolled?:
     setDomain: (d: string | undefined) => update({ domain: d }),
     setLevel: (l: Level | undefined) => update({ level: l }),
     setLength: (l: LengthId | undefined) => update({ length: l }),
-    setUnenrolled: (on: boolean) => update({ own: on ? 'unenrolled' : undefined }),
+    setUnenrolled: (on: boolean) => update({ own: on ? undefined : 'all' }),
     setQuery: (q: string) => update({ q: q || undefined }),
-    clear: () => update({ domain: undefined, level: undefined, length: undefined, own: undefined, q: undefined }),
+    clear: () => update({ domain: undefined, level: undefined, length: undefined, own: 'all', q: undefined }),
   }
 }

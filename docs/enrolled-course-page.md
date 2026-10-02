@@ -6,21 +6,23 @@ some.
 
 ## What the enrolled page shows
 
-- Header: "Resume 2.4 →", naming the first lesson not yet done, and hidden
-  once every lesson is. It does nothing until the lesson player exists for
-  it to open.
-- Stats row: Progress only (lessons done, percentage, a segment per lesson).
-  The design's Points, Vs par, Calibration and Next review wait for data.
+- Header: no call to action; Enroll goes once the member is enrolled.
+- No stats row. In its place, an "Up next" band across the page: the first
+  lesson not yet done ("Up next · Watch · 12 min", then "2.4 Sloppy quorums")
+  and "Resume lesson →", which does nothing until the lesson player exists.
+  The band goes once every lesson is done.
 - Syllabus:
-  - only the module holding the next lesson starts open;
+  - every module the member hasn't finished starts open;
   - each module's meta reads "2 of 4 done · 38 min";
   - each lesson has a checkbox that marks it done or not done;
   - done lessons are muted, and the next one is labelled "Up next".
 - Side column, in place of the public panels:
+  - Progress: lessons done, percentage, a segment per lesson;
   - Outcomes, "1 of 4 unlocked": each outcome is unlocked by finishing the
     lesson that teaches it, shown as "via 2.2" once unlocked, "in 3.2" before;
-  - Leave a feedback: a 1–5 rating and an optional message, which the member
-    can edit afterwards.
+  - Feedback: before any, "Leave a feedback" with its button; after, "Your
+    feedback" with Edit, the stars, the rating's label and the message. The
+    design's date beside the rating waits for the API to send one.
   - The design's Notes & bookmarks and Badges wait for data.
 - "We also recommend: courses that build on this one", in place of
   "Before you start": courses that list this one as a prerequisite.
@@ -53,6 +55,6 @@ some.
 
 ## Later
 
-- "Resume →" opening the lesson player; Notes & bookmarks; Badges; the other
-  enrolled stats; a "related" kind of recommendation.
+- "Resume lesson →" opening the lesson player; Notes & bookmarks; Badges; when
+  feedback was left; a "related" kind of recommendation.
 - Rating and enrolled counts on the public page, from the feedback.

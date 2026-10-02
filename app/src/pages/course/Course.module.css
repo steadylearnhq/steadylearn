@@ -108,17 +108,13 @@
   min-height: 40px;
 }
 
-.resume {
-  padding: 0 20px;
-}
-
 .ctaNote {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--muted);
 }
 
-/* Stats, in the design's four columns whether or not all four have data yet. */
+/* Stats, before enrolling, in the design's four columns whether or not all four have data yet. */
 .stats {
   position: relative;
   display: grid;
@@ -129,7 +125,7 @@
   content: '';
   position: absolute;
   inset: 0 -100vw;
-  border-block: 1px solid var(--line);
+  border-top: 1px solid var(--line);
   pointer-events: none;
 }
 
@@ -165,21 +161,78 @@
   color: var(--muted);
 }
 
-.progress {
+/* Once enrolled, the lesson to take next, on a band that runs the viewport's width. */
+.upNextBand {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
+  padding: 32px 0;
+}
+
+.upNextBand::before {
+  content: '';
+  position: absolute;
+  inset: 0 -100vw;
+  z-index: -1;
+  border-top: 1px solid var(--line);
+  background: var(--hover);
+  pointer-events: none;
+}
+
+.upNextText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.upNextMeta {
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--muted);
 }
 
+.upNextTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.resume {
+  flex: none;
+  margin-left: auto;
+  height: 44px;
+  padding: 0 24px;
+  font-size: 15px;
+}
+
+/* Progress heads the side column once enrolled. */
+.progressHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+
+.progressRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 /* One segment per lesson, filled once it's done. */
 .bar {
-  flex: 1;
   display: flex;
   gap: 2px;
-  height: 6px;
+  height: 10px;
 }
 
 .bar > span {
@@ -192,10 +245,22 @@
   background: var(--tomato);
 }
 
-/* Syllabus and side column */
+/* Syllabus and side column, opening on a full-width rule */
 .body {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 400px;
+}
+
+.body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100vw;
+  right: -100vw;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
 }
 
 .syllabus {
@@ -514,6 +579,67 @@
   align-self: flex-start;
   margin-top: 14px;
   padding: 0 20px;
+}
+
+.edit {
+  padding: 0;
+  border: 0;
+  background: none;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.edit:hover {
+  color: var(--ink);
+}
+
+.sent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sentRating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sentStars {
+  display: flex;
+  gap: 2px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--line2);
+}
+
+.sentStars > .lit {
+  color: var(--tomato);
+}
+
+.sentLabel {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sentMessage {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  font-size: 15px;
+  line-height: 1.5;
+  text-wrap: pretty;
+  white-space: pre-line;
+}
+
+.noMessage {
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .numbered,
