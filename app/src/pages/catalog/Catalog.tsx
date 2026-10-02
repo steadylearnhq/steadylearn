@@ -2,9 +2,12 @@ import { useLocation } from '@solidjs/router'
 import { createResource, For, Match, Show, Switch } from 'solid-js'
 import CourseDrawer from '../../components/course-drawer/CourseDrawer'
 import { useCourseDrawer } from '../../components/course-drawer/useCourseDrawer'
-import { LEVELS, domainDot, plural } from '../../data/catalog'
+import { LEVELS, domainDot, plural, type Course } from '../../data/catalog'
+import { progressOf } from '../../data/dashboard'
+import { user } from '../../lib/auth'
 import { fetchCatalog } from '../../lib/catalog'
 import { usePageTitle } from '../../lib/title'
+import CourseCard from './CourseCard'
 import CourseRow from './CourseRow'
 import { LENGTHS, useCatalogFilters } from './filters'
 import Segmented from './Segmented'
@@ -16,7 +19,10 @@ export default function Catalog() {
   const [catalog, { refetch }] = createResource(fetchCatalog)
   // Reading an errored resource throws, so everything below reads this instead.
   const loaded = () => (catalog.state === 'ready' ? catalog() : undefined)
-  const filters = useCatalogFilters(loaded)
+  // Members see the courses as cards with their progress, and can hide the ones they've started.
+  const member = () => !!user()
+  const started = (c: Course) => member() && progressOf(c.id) !== undefined
+  const filters = useCatalogFilters(loaded, started)
   const drawer = useCourseDrawer(filters.filtered, () => loaded()?.courses ?? [])
 
   const domainName = (id: string) => loaded()?.domains.find((d) => d.id === id)?.name ?? ''
@@ -35,7 +41,10 @@ export default function Catalog() {
           <h1 class={styles.title}>Catalog</h1>
           <span class={styles.subtitle}>
             <Show when={loaded()} fallback={' '}>
-              {(c) => `${plural(c().courses.length, 'course')} across ${plural(c().domains.length, 'domain')}.`}
+              {(c) =>
+                `${plural(c().courses.length, 'course')} across ${plural(c().domains.length, 'domain')}.` +
+                (member() ? ' Every course ends with something to break.' : '')
+              }
             </Show>
           </span>
         </div>
@@ -84,6 +93,18 @@ export default function Catalog() {
             onChange={filters.setLength}
             options={[{ value: undefined, label: 'Any' }, ...LENGTHS.map((l) => ({ value: l.id, label: l.label }))]}
           />
+          <Show when={member()}>
+            <Segmented
+              label="Enrollment"
+              hideLabel
+              value={filters.unenrolled()}
+              onChange={filters.setUnenrolled}
+              options={[
+                { value: false, label: 'All' },
+                { value: true, label: 'Unenrolled' },
+              ]}
+            />
+          </Show>
           <Show when={loaded()}>
             <span class={styles.count} aria-live="polite">
               {plural(filters.filtered().length, 'course')}
@@ -116,11 +137,31 @@ export default function Catalog() {
         </Match>
       </Switch>
 
-      <section class={styles.list}>
-        <For each={filters.filtered()}>
-          {(course) => <CourseRow course={course} domainName={domainName(course.domain)} href={courseHref(course.id)} />}
-        </For>
-      </section>
+      <Show
+        when={member()}
+        fallback={
+          <section class={styles.list}>
+            <For each={filters.filtered()}>
+              {(course) => (
+                <CourseRow course={course} domainName={domainName(course.domain)} href={courseHref(course.id)} />
+              )}
+            </For>
+          </section>
+        }
+      >
+        <section class={styles.grid}>
+          <For each={filters.filtered()}>
+            {(course) => (
+              <CourseCard
+                course={course}
+                domainName={domainName(course.domain)}
+                href={courseHref(course.id)}
+                progress={progressOf(course.id)}
+              />
+            )}
+          </For>
+        </section>
+      </Show>
 
       <Show when={drawer.course()}>
         {(course) => (
