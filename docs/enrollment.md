@@ -67,6 +67,22 @@ held the button's place empty between them.
 - App: the course page reads the enrollment from the course, and after
   enrolling writes the answer into its copy of it.
 
+## Step 5: The enrollments ride with the catalog
+
+The members' catalog made two requests too, the catalog and then
+`GET /v1/enrollments`, and showed no progress until the second answered.
+
+- API: `GET /v1/catalog` takes an optional token and adds `enrollments` for
+  a signed-in caller who has any, as `/v1/enrollments` lists them: a list on
+  the catalog rather than a field on each course, since a course's page
+  already has an `enrollment` of its own shape. The catalog still comes from
+  the cache; the enrollments never do. A member's response is
+  `private, no-cache`.
+- App: the catalog is fetched with the member's token and kept apart from
+  the visitor's; the members' catalog reads progress from it.
+- Once the app is deployed, `GET /v1/enrollments` and
+  `GET /v1/courses/:id/enrollment` have no callers and go.
+
 ## Later
 
 - The dashboard's "Continue" list still uses placeholder data.

@@ -12,28 +12,46 @@ import (
 	"steadylearn-api/src/services"
 )
 
-// publicCacheControl lets browsers and any CDN in front reuse a catalog
-// response for a minute. The catalog is the same for every visitor, so the
-// response is safe to share.
+// publicCacheControl lets browsers and any CDN in front reuse a visitor's
+// catalog or course response for a minute. It is the same for every visitor,
+// so the response is safe to share.
 const publicCacheControl = "public, max-age=60"
 
 // GetCatalog handles listing the catalog
 // @Summary Get the catalog
-// @Description Every published course with the domains they belong to, in display order. Public, and the same for every caller. Served from a cache for up to ten minutes.
+// @Description Every published course with the domains they belong to, in display order. The token is optional: a signed-in caller also gets their enrollments, as GET /v1/enrollments lists them. The catalog is served from a cache for up to ten minutes; the enrollments never are.
 // @Tags catalog
 // @Produce json
+// @Security BearerAuth
 // @Success 200 {object} schemas.CatalogSchema
+// @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /v1/catalog [get]
 func GetCatalog(c *gin.Context) {
-	catalog, err := services.GetCatalog(c.Request.Context())
+	// OptionalAuth sets the user id only for a caller with a valid token.
+	userId, member := c.Get("user_id")
+
+	var catalog schemas.CatalogSchema
+	var err error
+	if member {
+		catalog, err = services.GetMemberCatalog(c.Request.Context(), userId.(uuid.UUID))
+	} else {
+		catalog, err = services.GetCatalog(c.Request.Context())
+	}
 	if err != nil {
 		slog.ErrorContext(c.Request.Context(), "GetCatalog failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load the catalog"})
 		return
 	}
 
-	c.Header("Cache-Control", publicCacheControl)
+	// As for a course: the response depends on the token, and a member's
+	// carries their enrollments.
+	c.Header("Vary", "Authorization")
+	if member {
+		c.Header("Cache-Control", noCacheControl)
+	} else {
+		c.Header("Cache-Control", publicCacheControl)
+	}
 	c.JSON(http.StatusOK, catalog)
 }
 
