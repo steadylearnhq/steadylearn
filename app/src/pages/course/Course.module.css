@@ -38,13 +38,20 @@
   color: var(--ink);
 }
 
-/* Header */
+/* Header: the course on the left, the call to action on the right, level with the overview. */
 .head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 0 22px;
+}
+
+.headText {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  padding: 28px 0 22px;
 }
 
 .crumbs {
@@ -92,6 +99,21 @@
   text-wrap: pretty;
 }
 
+/* Holds the button's height while the enrollment loads, so nothing jumps when it shows. */
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.ctaNote {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* Stats, in the design's four columns whether or not all four have data yet. */
 .stats {
   position: relative;
@@ -137,6 +159,33 @@
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--muted);
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* One segment per lesson, filled once it's done. */
+.bar {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  height: 6px;
+}
+
+.bar > span {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.bar > .barDone {
+  background: var(--tomato);
 }
 
 /* Syllabus and side column */
@@ -530,6 +579,16 @@
 }
 
 @media (max-width: 720px) {
+  /* The call to action drops below the overview. */
+  .head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cta {
+    align-items: flex-start;
+  }
+
   .title {
     font-size: 34px;
     letter-spacing: -1px;

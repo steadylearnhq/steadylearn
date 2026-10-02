@@ -1,11 +1,14 @@
 import { A, useParams } from '@solidjs/router'
 import { createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
+import Button from '../../components/Button'
 import Critter from '../../components/Critter'
 import StepIcon from '../../components/StepIcon'
 import { domainDot, formatLength, levelLabel, plural, type Course, type Lesson, type Module } from '../../data/catalog'
 import { STEP_BY_KEY, type LessonStepKey } from '../../data/lessonSteps'
 import { ApiError } from '../../lib/api'
+import { user } from '../../lib/auth'
 import { fetchCatalog, fetchCourse } from '../../lib/catalog'
+import { enroll, fetchEnrollment } from '../../lib/enrollments'
 import { usePageTitle } from '../../lib/title'
 import NotFound from '../NotFound'
 import styles from './Course.module.css'
@@ -34,7 +37,7 @@ const Chevron = () => (
   </svg>
 )
 
-/** A course's own page, as a member sees it before enrolling. */
+/** A course's own page, as a member sees it, with the button to enroll in it. */
 export default function CoursePage() {
   const params = useParams<{ id: string }>()
   const [course, { refetch }] = createResource(() => params.id, fetchCourse)
@@ -45,6 +48,33 @@ export default function CoursePage() {
   const notFound = () => course.error instanceof ApiError && course.error.status === 404
 
   usePageTitle(() => loaded()?.title ?? '')
+
+  // Keyed on the member too, so signing in as someone else asks again.
+  const [enrollment, { mutate: setEnrollment }] = createResource(
+    () => user() && { userId: user()!.id, courseId: params.id },
+    ({ courseId }) => fetchEnrollment(courseId),
+  )
+  const enrolled = () => (enrollment.state === 'ready' ? enrollment() : undefined)
+  const doneCodes = () => new Set(enrolled()?.completedLessons)
+  // Until the member's enrollment is known the button waits, so it never shows
+  // Enroll to someone who is. If it fails to load, Enroll is offered anyway:
+  // enrolling again is harmless and answers with the enrollment.
+  const enrollmentKnown = () => enrollment.state === 'ready' || enrollment.state === 'errored'
+  const [enrolling, setEnrolling] = createSignal(false)
+  const [enrollFailed, setEnrollFailed] = createSignal(false)
+  const startCourse = async () => {
+    const courseId = params.id
+    setEnrolling(true)
+    setEnrollFailed(false)
+    try {
+      const made = await enroll(courseId)
+      if (courseId === params.id) setEnrollment(made)
+    } catch {
+      if (courseId === params.id) setEnrollFailed(true)
+    } finally {
+      setEnrolling(false)
+    }
+  }
 
   const domainName = (id: string) => listed()?.domains.find((d) => d.id === id)?.name ?? ''
   const prerequisites = () =>
@@ -88,21 +118,54 @@ export default function CoursePage() {
         {(c) => (
           <main class={styles.page}>
             <section class={styles.head}>
-              <nav class={styles.crumbs} aria-label="Breadcrumb">
-                <A href="/catalog" class={styles.crumb}>
-                  Catalog
-                </A>
-                <span aria-hidden="true">/</span>
-                <A href={`/catalog?domain=${c().domain}`} class={styles.crumb}>
-                  <span class={styles.dot} style={{ background: domainDot(c().domain) }} />
-                  {domainName(c().domain)}
-                </A>
-              </nav>
-              <h1 class={styles.title}>{c().title}</h1>
-              <p class={styles.overview}>{c().overview || c().description}</p>
+              <div class={styles.headText}>
+                <nav class={styles.crumbs} aria-label="Breadcrumb">
+                  <A href="/catalog" class={styles.crumb}>
+                    Catalog
+                  </A>
+                  <span aria-hidden="true">/</span>
+                  <A href={`/catalog?domain=${c().domain}`} class={styles.crumb}>
+                    <span class={styles.dot} style={{ background: domainDot(c().domain) }} />
+                    {domainName(c().domain)}
+                  </A>
+                </nav>
+                <h1 class={styles.title}>{c().title}</h1>
+                <p class={styles.overview}>{c().overview || c().description}</p>
+              </div>
+              {/* Enrolled, the design resumes the course here, which waits for the lesson player. */}
+              <div class={styles.cta}>
+                <Show when={enrollmentKnown() && !enrolled()}>
+                  <Button variant="primary" size="md" disabled={enrolling()} onClick={() => void startCourse()}>
+                    {enrolling() ? 'Enrolling…' : 'Enroll →'}
+                  </Button>
+                  <Show when={enrollFailed()}>
+                    <span class={styles.ctaNote} role="alert">
+                      That didn't go through. Try again.
+                    </span>
+                  </Show>
+                </Show>
+              </div>
             </section>
 
             <section class={styles.stats}>
+              <Show when={enrolled()}>
+                {(e) => (
+                  <div class={styles.stat}>
+                    <span class={styles.statLabel}>Progress</span>
+                    <span class={styles.statValue}>
+                      {e().lessonsDone} of {c().lessonCount}
+                    </span>
+                    <span class={styles.progress}>
+                      <span>{e().progress}%</span>
+                      <span class={styles.bar} aria-hidden="true">
+                        <For each={c().modules.flatMap((m) => m.lessons ?? [])}>
+                          {(l) => <span classList={{ [styles.barDone]: doneCodes().has(l.code) }} />}
+                        </For>
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </Show>
               <div class={styles.stat}>
                 <span class={styles.statLabel}>Level</span>
                 <span class={styles.statValue}>{levelLabel(c().level)}</span>
