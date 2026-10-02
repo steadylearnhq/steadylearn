@@ -27,6 +27,36 @@ definitions:
           $ref: '#/definitions/schemas.DomainSchema'
         type: array
     type: object
+  schemas.CourseEnrollmentSchema:
+    properties:
+      completedLessons:
+        description: |-
+          CompletedLessons are the codes of the lessons the caller has completed,
+          as the course's syllabus numbers them, in syllabus order.
+        example:
+        - "1.1"
+        - "1.2"
+        items:
+          type: string
+        type: array
+      courseId:
+        description: CourseId is the course's slug, as the catalog lists it.
+        example: replication-consensus
+        type: string
+      enrolledAt:
+        example: "2026-10-02T14:12:24Z"
+        type: string
+      lessonsDone:
+        description: LessonsDone counts the course's lessons the caller has completed.
+        example: 6
+        type: integer
+      progress:
+        description: |-
+          Progress is LessonsDone as a percentage of the course's lessons, rounded
+          down, so 100 means every lesson is done.
+        example: 50
+        type: integer
+    type: object
   schemas.CourseSchema:
     properties:
       assumes:
@@ -413,9 +443,46 @@ paths:
       tags:
       - catalog
   /v1/courses/{id}/enrollment:
-    put:
-      description: 'Enroll the caller in a course in the catalog. Idempotent: 201
-        when the caller was not enrolled, 200 when they already were.'
+    delete:
+      description: Take the caller out of a course in the catalog. Idempotent. Enrolling
+        again starts with no lessons completed.
+      parameters:
+      - description: Course slug
+        example: replication-consensus
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unenroll from a course
+      tags:
+      - enrollments
+    get:
+      description: The caller's enrollment in a course in the catalog, with its progress
+        and the codes of the lessons they have completed, in syllabus order. A 404
+        means the course is not in the catalog or the caller is not enrolled in it.
       parameters:
       - description: Course slug
         example: replication-consensus
@@ -429,11 +496,52 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/schemas.EnrollmentSchema'
+            $ref: '#/definitions/schemas.CourseEnrollmentSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get my enrollment in a course
+      tags:
+      - enrollments
+    put:
+      description: 'Enroll the caller in a course in the catalog, and return the enrollment
+        with the lessons they have completed. Idempotent: 201 when the caller was
+        not enrolled, 200 when they already were.'
+      parameters:
+      - description: Course slug
+        example: replication-consensus
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.CourseEnrollmentSchema'
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/schemas.EnrollmentSchema'
+            $ref: '#/definitions/schemas.CourseEnrollmentSchema'
         "401":
           description: Unauthorized
           schema:
@@ -458,6 +566,59 @@ paths:
       tags:
       - enrollments
   /v1/courses/{id}/lessons/{code}/completion:
+    delete:
+      description: Mark a lesson of a course the caller is enrolled in as not done,
+        and return the enrollment with its progress. Idempotent. A 409 means the caller
+        is not enrolled in the course.
+      parameters:
+      - description: Course slug
+        example: replication-consensus
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Lesson code, as the syllabus numbers it
+        example: "2.4"
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.CourseEnrollmentSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Uncomplete a lesson
+      tags:
+      - enrollments
     put:
       description: Mark a lesson of a course the caller is enrolled in as done, and
         return the enrollment with its progress. Idempotent. A 409 means the caller
@@ -481,7 +642,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/schemas.EnrollmentSchema'
+            $ref: '#/definitions/schemas.CourseEnrollmentSchema'
         "401":
           description: Unauthorized
           schema:

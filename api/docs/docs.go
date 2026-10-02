@@ -173,13 +173,73 @@ const docTemplate = `{
             }
         },
         "/v1/courses/{id}/enrollment": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The caller's enrollment in a course in the catalog, with its progress and the codes of the lessons they have completed, in syllabus order. A 404 means the course is not in the catalog or the caller is not enrolled in it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Get my enrollment in a course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "replication-consensus",
+                        "description": "Course slug",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.CourseEnrollmentSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Enroll the caller in a course in the catalog. Idempotent: 201 when the caller was not enrolled, 200 when they already were.",
+                "description": "Enroll the caller in a course in the catalog, and return the enrollment with the lessons they have completed. Idempotent: 201 when the caller was not enrolled, 200 when they already were.",
                 "produces": [
                     "application/json"
                 ],
@@ -201,14 +261,68 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/schemas.EnrollmentSchema"
+                            "$ref": "#/definitions/schemas.CourseEnrollmentSchema"
                         }
                     },
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/schemas.EnrollmentSchema"
+                            "$ref": "#/definitions/schemas.CourseEnrollmentSchema"
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Take the caller out of a course in the catalog. Idempotent. Enrolling again starts with no lessons completed.",
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Unenroll from a course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "replication-consensus",
+                        "description": "Course slug",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -277,7 +391,84 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/schemas.EnrollmentSchema"
+                            "$ref": "#/definitions/schemas.CourseEnrollmentSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark a lesson of a course the caller is enrolled in as not done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Uncomplete a lesson",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "replication-consensus",
+                        "description": "Course slug",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "2.4",
+                        "description": "Lesson code, as the syllabus numbers it",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.CourseEnrollmentSchema"
                         }
                     },
                     "401": {
@@ -492,6 +683,41 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/schemas.DomainSchema"
                     }
+                }
+            }
+        },
+        "schemas.CourseEnrollmentSchema": {
+            "type": "object",
+            "properties": {
+                "completedLessons": {
+                    "description": "CompletedLessons are the codes of the lessons the caller has completed,\nas the course's syllabus numbers them, in syllabus order.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "1.1",
+                        "1.2"
+                    ]
+                },
+                "courseId": {
+                    "description": "CourseId is the course's slug, as the catalog lists it.",
+                    "type": "string",
+                    "example": "replication-consensus"
+                },
+                "enrolledAt": {
+                    "type": "string",
+                    "example": "2026-10-02T14:12:24Z"
+                },
+                "lessonsDone": {
+                    "description": "LessonsDone counts the course's lessons the caller has completed.",
+                    "type": "integer",
+                    "example": 6
+                },
+                "progress": {
+                    "description": "Progress is LessonsDone as a percentage of the course's lessons, rounded\ndown, so 100 means every lesson is done.",
+                    "type": "integer",
+                    "example": 50
                 }
             }
         },

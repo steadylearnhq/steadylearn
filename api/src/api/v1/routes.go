@@ -23,7 +23,10 @@ func RegisterV1Routes(router *gin.Engine) {
 
 		// Enrollments are the caller's own.
 		v1.GET("/enrollments", middleware.RequireAuth(), controllers.GetEnrollments)
+		v1.GET("/courses/:id/enrollment", middleware.RequireAuth(), controllers.GetEnrollment)
 		v1.PUT("/courses/:id/enrollment", middleware.RequireAuth(), controllers.Enroll)
+		v1.DELETE("/courses/:id/enrollment", middleware.RequireAuth(), controllers.Unenroll)
 		v1.PUT("/courses/:id/lessons/:code/completion", middleware.RequireAuth(), controllers.CompleteLesson)
+		v1.DELETE("/courses/:id/lessons/:code/completion", middleware.RequireAuth(), controllers.UncompleteLesson)
 	}
 }
