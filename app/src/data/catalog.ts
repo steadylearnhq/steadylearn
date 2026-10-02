@@ -76,15 +76,33 @@ export type Lesson = {
   minutes: number
 }
 
-/** A syllabus module. `lessons` is null unless the course's syllabus is open to visitors. */
+/** A syllabus module. `lessons` is null for a visitor unless the course's syllabus is open to them; members get every lesson. */
 export type Module = {
   title: string
   lessonCount: number
   lessons: Lesson[] | null
 }
 
-/** A course with its syllabus (GET /v1/courses/:id). */
+export type Requirement = { title: string; detail: string }
+
+/** A break-it as the course's page describes it. `par` is null when the simulation sets none. */
+export type BreakIt = { name: string; description: string; par: number | null }
+
+/** A course in the catalog that makes this one easier to take. */
+export type Prerequisite = { id: string; optional: boolean }
+
+/**
+ * A course with its syllabus and the copy its own page shows (GET
+ * /v1/courses/:id). A course without some of that copy has empty strings and
+ * lists, and the page leaves those parts out.
+ */
 export type CourseDetail = Course & {
+  overview: string
+  assumes: string
+  requirements: Requirement[]
+  outcomes: string[]
+  breakItDetails: BreakIt[]
+  prerequisites: Prerequisite[]
   modules: Module[]
 }
 

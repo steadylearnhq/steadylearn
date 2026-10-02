@@ -9,7 +9,7 @@ import { user } from '../../lib/auth'
 import { usePageTitle } from '../../lib/title'
 import styles from './Dashboard.module.css'
 
-const courseHref = (id: string) => `/catalog?course=${id}`
+const courseHref = (id: string) => `/courses/${id}`
 
 const greeting = (hour: number) => (hour < 5 ? 'Good evening' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening')
 

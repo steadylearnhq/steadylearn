@@ -6,7 +6,7 @@ import styles from './CourseCard.module.css'
 /** A course in the members' catalog grid, with the member's progress once they've started it. */
 export default function CourseCard(props: { course: Course; domainName: string; href: string; progress?: number }) {
   return (
-    <A href={props.href} noScroll class={styles.card}>
+    <A href={props.href} class={styles.card}>
       <div class={styles.meta}>
         <span class={styles.dot} style={{ background: domainDot(props.course.domain) }} />
         <span class={styles.domain}>{props.domainName}</span>
