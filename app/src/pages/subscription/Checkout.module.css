@@ -1,0 +1,164 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 56px 48px;
+}
+
+.column {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.back {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--ink);
+}
+
+.logo,
+.logo:hover {
+  font-size: 18px;
+  letter-spacing: -0.5px;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.title {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -1.6px;
+}
+
+.priceLine {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.price {
+  font-size: 72px;
+  line-height: 0.9;
+  font-weight: 800;
+  letter-spacing: -3.4px;
+}
+
+.period {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.listTitle {
+  margin: 0;
+  padding-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.features {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.feature {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.check {
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  color: var(--ok);
+}
+
+.featureLabel {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.featureMeta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pay {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.payButton {
+  height: 52px;
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 32px var(--page-pad);
+  }
+
+  .title {
+    font-size: 32px;
+    letter-spacing: -1.2px;
+  }
+
+  .price {
+    font-size: 56px;
+    letter-spacing: -2.6px;
+  }
+
+  .feature {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .featureMeta {
+    grid-column: 2;
+  }
+}

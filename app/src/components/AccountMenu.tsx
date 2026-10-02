@@ -1,4 +1,4 @@
-import { useLocation } from '@solidjs/router'
+import { A, useLocation } from '@solidjs/router'
 import { createEffect, createSignal, on, onCleanup, Show } from 'solid-js'
 import type { User } from '../lib/auth'
 import styles from './AccountMenu.module.css'
@@ -14,8 +14,9 @@ const initials = (name: string) =>
     .toUpperCase() || '?'
 
 /**
- * The signed-in member's avatar. In the design it opens their profile, where
- * they sign out; until that page exists, it opens this menu instead.
+ * The signed-in member's avatar, opening a menu with who they are, their
+ * subscription and Log out. Billing doesn't exist yet, so every member's plan
+ * is free.
  */
 export default function AccountMenu(props: { user: User; onSignOut: () => void }) {
   const location = useLocation()
@@ -55,7 +56,7 @@ export default function AccountMenu(props: { user: User; onSignOut: () => void }
         ref={avatar}
         type="button"
         class={styles.avatar}
-        aria-label="Account"
+        aria-label="Profile and settings"
         aria-expanded={open()}
         aria-controls="account-menu"
         onClick={() => setOpen((o) => !o)}
@@ -70,9 +71,13 @@ export default function AccountMenu(props: { user: User; onSignOut: () => void }
               <span class={styles.email}>{props.user.email}</span>
             </Show>
           </div>
+          <A href="/subscription" class={styles.item}>
+            <span>Subscription</span>
+            <span class={styles.tag}>free</span>
+          </A>
           <span class={styles.rule} />
-          <button type="button" class={styles.item} onClick={() => props.onSignOut()}>
-            Sign out
+          <button type="button" class={`${styles.item} ${styles.logOut}`} onClick={() => props.onSignOut()}>
+            Log out
           </button>
         </div>
       </Show>
