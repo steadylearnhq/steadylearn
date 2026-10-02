@@ -160,6 +160,26 @@ definitions:
         example: Distributed systems
         type: string
     type: object
+  schemas.EnrollmentSchema:
+    properties:
+      courseId:
+        description: CourseId is the course's slug, as the catalog lists it.
+        example: replication-consensus
+        type: string
+      enrolledAt:
+        example: "2026-10-02T14:12:24Z"
+        type: string
+      lessonsDone:
+        description: LessonsDone counts the course's lessons the caller has completed.
+        example: 6
+        type: integer
+      progress:
+        description: |-
+          Progress is LessonsDone as a percentage of the course's lessons, rounded
+          down, so 100 means every lesson is done.
+        example: 50
+        type: integer
+    type: object
   schemas.HealthSchema:
     properties:
       status:
@@ -392,6 +412,136 @@ paths:
       summary: Get a course
       tags:
       - catalog
+  /v1/courses/{id}/enrollment:
+    put:
+      description: 'Enroll the caller in a course in the catalog. Idempotent: 201
+        when the caller was not enrolled, 200 when they already were.'
+      parameters:
+      - description: Course slug
+        example: replication-consensus
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.EnrollmentSchema'
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/schemas.EnrollmentSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Enroll in a course
+      tags:
+      - enrollments
+  /v1/courses/{id}/lessons/{code}/completion:
+    put:
+      description: Mark a lesson of a course the caller is enrolled in as done, and
+        return the enrollment with its progress. Idempotent. A 409 means the caller
+        is not enrolled in the course.
+      parameters:
+      - description: Course slug
+        example: replication-consensus
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Lesson code, as the syllabus numbers it
+        example: "2.4"
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.EnrollmentSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Complete a lesson
+      tags:
+      - enrollments
+  /v1/enrollments:
+    get:
+      description: Every course in the catalog the caller is enrolled in, most recently
+        enrolled first, with how many of its lessons they have completed. Progress
+        is that count as a percentage of the course's lessons, rounded down.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/schemas.EnrollmentSchema'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List my enrollments
+      tags:
+      - enrollments
   /v1/users:
     post:
       consumes:

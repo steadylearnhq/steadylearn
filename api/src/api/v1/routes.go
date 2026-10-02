@@ -20,5 +20,10 @@ func RegisterV1Routes(router *gin.Engine) {
 		// A signed-in caller sees more of a course, every lesson of its syllabus.
 		v1.GET("/catalog", controllers.GetCatalog)
 		v1.GET("/courses/:id", middleware.OptionalAuth(), controllers.GetCourse)
+
+		// Enrollments are the caller's own.
+		v1.GET("/enrollments", middleware.RequireAuth(), controllers.GetEnrollments)
+		v1.PUT("/courses/:id/enrollment", middleware.RequireAuth(), controllers.Enroll)
+		v1.PUT("/courses/:id/lessons/:code/completion", middleware.RequireAuth(), controllers.CompleteLesson)
 	}
 }

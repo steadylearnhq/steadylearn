@@ -172,6 +172,199 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/courses/{id}/enrollment": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Enroll the caller in a course in the catalog. Idempotent: 201 when the caller was not enrolled, 200 when they already were.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Enroll in a course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "replication-consensus",
+                        "description": "Course slug",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.EnrollmentSchema"
+                        }
+                    },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.EnrollmentSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/courses/{id}/lessons/{code}/completion": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark a lesson of a course the caller is enrolled in as done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Complete a lesson",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "replication-consensus",
+                        "description": "Course slug",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "2.4",
+                        "description": "Lesson code, as the syllabus numbers it",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.EnrollmentSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/enrollments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Every course in the catalog the caller is enrolled in, most recently enrolled first, with how many of its lessons they have completed. Progress is that count as a percentage of the course's lessons, rounded down.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "List my enrollments",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/schemas.EnrollmentSchema"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/users": {
             "post": {
                 "security": [
@@ -473,6 +666,30 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Distributed systems"
+                }
+            }
+        },
+        "schemas.EnrollmentSchema": {
+            "type": "object",
+            "properties": {
+                "courseId": {
+                    "description": "CourseId is the course's slug, as the catalog lists it.",
+                    "type": "string",
+                    "example": "replication-consensus"
+                },
+                "enrolledAt": {
+                    "type": "string",
+                    "example": "2026-10-02T14:12:24Z"
+                },
+                "lessonsDone": {
+                    "description": "LessonsDone counts the course's lessons the caller has completed.",
+                    "type": "integer",
+                    "example": 6
+                },
+                "progress": {
+                    "description": "Progress is LessonsDone as a percentage of the course's lessons, rounded\ndown, so 100 means every lesson is done.",
+                    "type": "integer",
+                    "example": 50
                 }
             }
         },

@@ -52,7 +52,8 @@ func GetCatalog(c *gin.Context) {
 // @Router /v1/courses/{id} [get]
 func GetCourse(c *gin.Context) {
 	slug := c.Param("id")
-	member := c.GetString("user_id") != ""
+	// OptionalAuth sets the user id only for a caller with a valid token.
+	_, member := c.Get("user_id")
 
 	course, err := services.GetCourse(c.Request.Context(), slug, member)
 	if errors.Is(err, services.ErrCourseNotFound) {
