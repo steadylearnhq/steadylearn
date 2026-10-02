@@ -118,7 +118,46 @@ ORDER BY s.module, s.lesson`,
 		return schemas.CourseEnrollmentSchema{}, fmt.Errorf("failed to list completed lessons: %w", err)
 	}
 
-	return schemas.CourseEnrollmentSchema{EnrollmentSchema: row.schema(), CompletedLessons: completed}, nil
+	var feedback []schemas.FeedbackSchema
+	err = db.Raw(`SELECT rating, message FROM course_feedbacks WHERE enrollment_id = ? AND deleted_at IS NULL`,
+		row.Id).Scan(&feedback).Error
+	if err != nil {
+		return schemas.CourseEnrollmentSchema{}, fmt.Errorf("failed to load feedback: %w", err)
+	}
+
+	enrollment := schemas.CourseEnrollmentSchema{EnrollmentSchema: row.schema(), CompletedLessons: completed}
+	if len(feedback) > 0 {
+		enrollment.Feedback = &feedback[0]
+	}
+	return enrollment, nil
+}
+
+// SetFeedback records the learner's feedback on a course they are taking,
+// replacing any they left before, and returns the enrollment with it.
+func SetFeedback(ctx context.Context, userId uuid.UUID, slug string, rating int, message string) (schemas.CourseEnrollmentSchema, error) {
+	db := core.DB.WithContext(ctx)
+
+	enrollmentId, err := enrollmentIn(db, userId, slug)
+	if err != nil {
+		return schemas.CourseEnrollmentSchema{}, err
+	}
+
+	feedback := models.CourseFeedback{
+		BaseModel:    models.BaseModel{Id: uuid.New()},
+		EnrollmentId: enrollmentId,
+		Rating:       rating,
+		Message:      message,
+	}
+	err = db.Clauses(clause.OnConflict{
+		Columns:     []clause.Column{{Name: "enrollment_id"}},
+		TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Expr{SQL: "deleted_at IS NULL"}}},
+		DoUpdates:   clause.Assignments(map[string]any{"rating": rating, "message": message, "updated_at": gorm.Expr("now()")}),
+	}).Omit(clause.Associations).Create(&feedback).Error
+	if err != nil {
+		return schemas.CourseEnrollmentSchema{}, fmt.Errorf("failed to save feedback: %w", err)
+	}
+
+	return getEnrollment(ctx, userId, slug)
 }
 
 // catalogCourseId is the id of the course in the catalog with the given slug.
@@ -250,16 +289,33 @@ func enrolledLesson(db *gorm.DB, userId uuid.UUID, slug string, code string) (en
 		return uuid.Nil, uuid.Nil, err
 	}
 
+	enrollmentId, err = liveEnrollment(db, userId, courseId)
+	return enrollmentId, lessonId, err
+}
+
+// enrollmentIn is the id of the learner's enrollment in a course in the
+// catalog.
+func enrollmentIn(db *gorm.DB, userId uuid.UUID, slug string) (uuid.UUID, error) {
+	courseId, err := catalogCourseId(db, slug)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return liveEnrollment(db, userId, courseId)
+}
+
+// liveEnrollment is the id of the learner's enrollment in the course, or
+// ErrNotEnrolled.
+func liveEnrollment(db *gorm.DB, userId uuid.UUID, courseId uuid.UUID) (uuid.UUID, error) {
 	var enrollments []struct{ Id uuid.UUID }
-	err = db.Raw(`SELECT id FROM enrollments WHERE user_id = ? AND course_id = ? AND deleted_at IS NULL`,
+	err := db.Raw(`SELECT id FROM enrollments WHERE user_id = ? AND course_id = ? AND deleted_at IS NULL`,
 		userId, courseId).Scan(&enrollments).Error
 	if err != nil {
-		return uuid.Nil, uuid.Nil, fmt.Errorf("failed to find enrollment: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to find enrollment: %w", err)
 	}
 	if len(enrollments) == 0 {
-		return uuid.Nil, uuid.Nil, ErrNotEnrolled
+		return uuid.Nil, ErrNotEnrolled
 	}
-	return enrollments[0].Id, lessonId, nil
+	return enrollments[0].Id, nil
 }
 
 // syllabusLessons numbers the lessons of the course @course as its syllabus

@@ -85,12 +85,15 @@ type CourseRequirement struct {
 }
 
 // CourseOutcome is something a learner can do after the course: "You'll be
-// able to".
+// able to". LessonId is the lesson that teaches it, which unlocks it for a
+// learner who completes it; an outcome may have none.
 type CourseOutcome struct {
 	BaseModel
-	CourseId  uuid.UUID `gorm:"type:uuid;not null;index"`
-	Position  int       `gorm:"not null"`
-	Statement string    `gorm:"not null"`
+	CourseId  uuid.UUID  `gorm:"type:uuid;not null;index"`
+	Position  int        `gorm:"not null"`
+	Statement string     `gorm:"not null"`
+	LessonId  *uuid.UUID `gorm:"type:uuid;index"`
+	Lesson    *Lesson    `gorm:"constraint:OnDelete:SET NULL"`
 }
 
 // CoursePrerequisite is a course that makes this one easier to take: one the

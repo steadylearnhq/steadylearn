@@ -54,6 +54,11 @@ definitions:
       enrolledAt:
         example: "2026-10-02T14:12:24Z"
         type: string
+      feedback:
+        allOf:
+        - $ref: '#/definitions/schemas.FeedbackSchema'
+        description: Feedback is what the caller thinks of the course, once they have
+          said.
       lessonsDone:
         description: LessonsDone counts the course's lessons the caller has completed.
         example: 6
@@ -97,6 +102,16 @@ definitions:
           Enrollment is the caller's own, with the lessons they have completed. It
           is sent only to a signed-in caller who is enrolled in the course, and is
           never cached with the rest.
+      followUps:
+        description: |-
+          FollowUps are the slugs of courses in the catalog that take this one as a
+          prerequisite, in catalog order: what to take next.
+        example:
+        - distributed-transactions
+        - crdts-local-first
+        items:
+          type: string
+        type: array
       id:
         example: replication-consensus
         type: string
@@ -127,10 +142,8 @@ definitions:
           $ref: '#/definitions/schemas.ModuleSchema'
         type: array
       outcomes:
-        example:
-        - Size R and W for a given N and say what each choice costs
         items:
-          type: string
+          $ref: '#/definitions/schemas.OutcomeSchema'
         type: array
       overview:
         description: Overview leads the course's page; it is empty until the course
@@ -225,6 +238,29 @@ definitions:
         example: 50
         type: integer
     type: object
+  schemas.FeedbackRequest:
+    properties:
+      message:
+        example: The quorum simulation made R + W > N click.
+        maxLength: 2000
+        type: string
+      rating:
+        example: 4
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - rating
+    type: object
+  schemas.FeedbackSchema:
+    properties:
+      message:
+        example: The quorum simulation made R + W > N click.
+        type: string
+      rating:
+        example: 4
+        type: integer
+    type: object
   schemas.HealthSchema:
     properties:
       status:
@@ -278,6 +314,18 @@ definitions:
         type: array
       title:
         example: Quorums
+        type: string
+    type: object
+  schemas.OutcomeSchema:
+    properties:
+      lesson:
+        description: |-
+          Lesson is the code of the lesson that teaches it, as the syllabus numbers
+          it, or empty. Completing that lesson unlocks the outcome.
+        example: "2.2"
+        type: string
+      statement:
+        example: Size R and W for a given N and say what each choice costs
         type: string
     type: object
   schemas.PrerequisiteSchema:
@@ -547,6 +595,69 @@ paths:
       security:
       - BearerAuth: []
       summary: Enroll in a course
+      tags:
+      - enrollments
+  /v1/courses/{id}/feedback:
+    put:
+      consumes:
+      - application/json
+      description: Set the caller's feedback on a course they are enrolled in, a rating
+        from 1 to 5 and an optional message of up to 2,000 characters, replacing any
+        they left before. Returns the enrollment with it. A 409 means the caller is
+        not enrolled in the course.
+      parameters:
+      - description: Course slug
+        example: replication-consensus
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rating and message
+        in: body
+        name: feedback
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.FeedbackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.CourseEnrollmentSchema'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Leave feedback on a course
       tags:
       - enrollments
   /v1/courses/{id}/lessons/{code}/completion:

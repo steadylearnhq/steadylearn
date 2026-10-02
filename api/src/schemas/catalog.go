@@ -53,6 +53,14 @@ type ModuleSchema struct {
 }
 
 // RequirementSchema is something to know before starting the course.
+// OutcomeSchema is something a learner can do after the course.
+type OutcomeSchema struct {
+	Statement string `json:"statement" example:"Size R and W for a given N and say what each choice costs"`
+	// Lesson is the code of the lesson that teaches it, as the syllabus numbers
+	// it, or empty. Completing that lesson unlocks the outcome.
+	Lesson string `json:"lesson" example:"2.2"`
+}
+
 type RequirementSchema struct {
 	Title  string `json:"title" example:"Networks drop and reorder messages"`
 	Detail string `json:"detail" example:"You know a request can time out even though the server applied it."`
@@ -82,10 +90,13 @@ type CourseSchema struct {
 	// Assumes is the background the level takes for granted, or empty.
 	Assumes        string               `json:"assumes" example:"assumes basic networking"`
 	Requirements   []RequirementSchema  `json:"requirements"`
-	Outcomes       []string             `json:"outcomes" example:"Size R and W for a given N and say what each choice costs"`
+	Outcomes       []OutcomeSchema      `json:"outcomes"`
 	BreakItDetails []BreakItSchema      `json:"breakItDetails"`
 	Prerequisites  []PrerequisiteSchema `json:"prerequisites"`
-	Modules        []ModuleSchema       `json:"modules"`
+	// FollowUps are the slugs of courses in the catalog that take this one as a
+	// prerequisite, in catalog order: what to take next.
+	FollowUps []string       `json:"followUps" example:"distributed-transactions,crdts-local-first"`
+	Modules   []ModuleSchema `json:"modules"`
 	// Enrollment is the caller's own, with the lessons they have completed. It
 	// is sent only to a signed-in caller who is enrolled in the course, and is
 	// never cached with the rest.

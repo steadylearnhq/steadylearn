@@ -40,7 +40,7 @@ func CourseCacheKey(slug string, member bool) string {
 	if member {
 		view = "member"
 	}
-	return core.CacheKey("course", "v2", slug, view)
+	return core.CacheKey("course", "v3", slug, view)
 }
 
 // GetCatalog is every published course, with the domains they belong to,
@@ -294,11 +294,15 @@ ORDER BY position`, courseId).Scan(&course.Requirements).Error
 		return fmt.Errorf("failed to list requirements: %w", err)
 	}
 
-	course.Outcomes = []string{}
+	// An outcome's lesson is named by its code; one whose lesson is deleted has
+	// none.
+	course.Outcomes = []schemas.OutcomeSchema{}
 	err = db.Raw(`
-SELECT statement FROM course_outcomes
-WHERE course_id = ? AND deleted_at IS NULL
-ORDER BY position`, courseId).Scan(&course.Outcomes).Error
+SELECT o.statement, COALESCE(s.module || '.' || s.lesson, '') AS lesson
+FROM course_outcomes o
+LEFT JOIN (`+syllabusLessons+`) s ON s.id = o.lesson_id
+WHERE o.course_id = @course AND o.deleted_at IS NULL
+ORDER BY o.position`, map[string]any{"course": courseId}).Scan(&course.Outcomes).Error
 	if err != nil {
 		return fmt.Errorf("failed to list outcomes: %w", err)
 	}
@@ -324,6 +328,20 @@ WHERE cp.course_id = @course AND cp.deleted_at IS NULL
 ORDER BY cp.position`, map[string]any{"course": courseId, "now": now}).Scan(&course.Prerequisites).Error
 	if err != nil {
 		return fmt.Errorf("failed to list prerequisites: %w", err)
+	}
+
+	// Follow-ups are the other way round: courses in the catalog that list
+	// this one as a prerequisite.
+	course.FollowUps = []string{}
+	err = db.Raw(`
+SELECT f.slug
+FROM course_prerequisites cp
+JOIN courses f ON f.id = cp.course_id AND f.deleted_at IS NULL AND f.published_at <= @now
+JOIN domains d ON d.id = f.domain_id AND d.deleted_at IS NULL
+WHERE cp.prerequisite_id = @course AND cp.deleted_at IS NULL
+ORDER BY d.position, f.position`, map[string]any{"course": courseId, "now": now}).Scan(&course.FollowUps).Error
+	if err != nil {
+		return fmt.Errorf("failed to list follow-ups: %w", err)
 	}
 
 	return nil

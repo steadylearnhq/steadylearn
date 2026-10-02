@@ -27,5 +27,6 @@ func RegisterV1Routes(router *gin.Engine) {
 		v1.DELETE("/courses/:id/enrollment", middleware.RequireAuth(), controllers.Unenroll)
 		v1.PUT("/courses/:id/lessons/:code/completion", middleware.RequireAuth(), controllers.CompleteLesson)
 		v1.DELETE("/courses/:id/lessons/:code/completion", middleware.RequireAuth(), controllers.UncompleteLesson)
+		v1.PUT("/courses/:id/feedback", middleware.RequireAuth(), controllers.SetFeedback)
 	}
 }

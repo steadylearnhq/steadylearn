@@ -272,7 +272,7 @@ func TestGetCoursePageCopy(t *testing.T) {
 	require.NoError(t, core.DB.Exec("UPDATE domains SET deleted_at = now() WHERE slug = 'hidden'").Error)
 
 	// Created out of order, so the order has to come from the positions.
-	addCourse(t, dist, models.Course{
+	full := addCourse(t, dist, models.Course{
 		Slug:        "full",
 		Position:    1,
 		PublishedAt: ago(time.Hour),
@@ -286,7 +286,13 @@ func TestGetCoursePageCopy(t *testing.T) {
 			{Position: 2, Title: "Second"},
 			{Position: 1, Title: "First", Detail: "Why"},
 		},
-		Outcomes: []models.CourseOutcome{{Position: 2, Statement: "Later"}, {Position: 1, Statement: "Sooner"}},
+		Outcomes: []models.CourseOutcome{
+			{Position: 2, Statement: "Later"},
+			{Position: 1, Statement: "Sooner"},
+			{Position: 3, Statement: "Taught"},
+			{Position: 4, Statement: "Taught by a deleted lesson"},
+		},
+		Modules: []models.CourseModule{{Position: 1, Title: "One", Lessons: lessons(3)}},
 		Prerequisites: []models.CoursePrerequisite{
 			{Position: 5, PrerequisiteId: optional.Id, Optional: true},
 			{Position: 1, PrerequisiteId: recommended.Id},
@@ -296,6 +302,22 @@ func TestGetCoursePageCopy(t *testing.T) {
 		},
 	})
 	addCourse(t, dist, models.Course{Slug: "bare", Position: 6, PublishedAt: ago(time.Hour)})
+	// Outcomes 3 and 4 are taught by lessons 1.2 and 1.3; then 1.3 is deleted.
+	require.NoError(t, core.DB.Exec(`
+UPDATE course_outcomes o SET lesson_id = l.id
+FROM courses c, course_modules m, lessons l
+WHERE c.slug = 'full' AND o.course_id = c.id AND m.course_id = c.id AND l.module_id = m.id
+	AND l.position = o.position - 1 AND o.position IN (3, 4)`).Error)
+	require.NoError(t, core.DB.Exec(`UPDATE lessons SET deleted_at = now()
+WHERE position = 3 AND module_id IN (SELECT m.id FROM course_modules m JOIN courses c ON c.id = m.course_id WHERE c.slug = 'full')`).Error)
+	// Follow-ups: courses that take "full" as a prerequisite, if in the catalog.
+	for i, slug := range []string{"later-next", "next", "draft-next"} {
+		next := models.Course{Slug: slug, Position: 9 - i, Prerequisites: []models.CoursePrerequisite{{Position: 1, PrerequisiteId: full.Id}}}
+		if slug != "draft-next" {
+			next.PublishedAt = ago(time.Hour)
+		}
+		addCourse(t, dist, next)
+	}
 
 	course, err := services.GetCourse(context.Background(), "full", false)
 	require.NoError(t, err)
@@ -303,7 +325,12 @@ func TestGetCoursePageCopy(t *testing.T) {
 	assert.Equal(t, "What this course is about.", course.Overview)
 	assert.Equal(t, "assumes basic networking", course.Assumes)
 	assert.Equal(t, []schemas.RequirementSchema{{Title: "First", Detail: "Why"}, {Title: "Second", Detail: ""}}, course.Requirements)
-	assert.Equal(t, []string{"Sooner", "Later"}, course.Outcomes)
+	assert.Equal(t, []schemas.OutcomeSchema{
+		{Statement: "Sooner"},
+		{Statement: "Later"},
+		{Statement: "Taught", Lesson: "1.2"},
+		{Statement: "Taught by a deleted lesson"},
+	}, course.Outcomes)
 	assert.Equal(t, []schemas.BreakItSchema{
 		{Name: "Scored", Description: "Break it", Par: &par},
 		{Name: "Unscored", Description: "", Par: nil},
@@ -312,12 +339,14 @@ func TestGetCoursePageCopy(t *testing.T) {
 		{Id: "recommended", Optional: false},
 		{Id: "optional", Optional: true},
 	}, course.Prerequisites, "only prerequisites that are in the catalog")
+	assert.Equal(t, []string{"next", "later-next"}, course.FollowUps, "in catalog order, only those in the catalog")
 
 	bare, err := services.GetCourse(context.Background(), "bare", false)
 	require.NoError(t, err)
 	assert.Empty(t, bare.Overview)
 	assert.Equal(t, []schemas.RequirementSchema{}, bare.Requirements, "empty lists, not null")
-	assert.Equal(t, []string{}, bare.Outcomes)
+	assert.Equal(t, []schemas.OutcomeSchema{}, bare.Outcomes)
+	assert.Equal(t, []string{}, bare.FollowUps)
 	assert.Equal(t, []schemas.BreakItSchema{}, bare.BreakItDetails)
 	assert.Equal(t, []schemas.PrerequisiteSchema{}, bare.Prerequisites)
 }
@@ -409,6 +438,15 @@ func TestSeededCatalog(t *testing.T) {
 		for _, p := range course.Prerequisites {
 			assert.True(t, listed[p.Id], "%s: prerequisite %s is in the catalog", summary.Id, p.Id)
 		}
+		codes := map[string]bool{}
+		for _, m := range course.Modules {
+			for _, l := range m.Lessons {
+				codes[l.Code] = true
+			}
+		}
+		for _, o := range course.Outcomes {
+			assert.True(t, o.Lesson == "" || codes[o.Lesson], "%s: outcome %q is taught by a lesson of the course", summary.Id, o.Statement)
+		}
 
 		total := 0
 		for _, m := range course.Modules {
@@ -417,4 +455,13 @@ func TestSeededCatalog(t *testing.T) {
 		}
 		assert.Equal(t, summary.LessonCount, total, summary.Id)
 	}
+
+	course, err := services.GetCourse(ctx, "replication-consensus", true)
+	require.NoError(t, err)
+	taughtIn := make([]string, len(course.Outcomes))
+	for i, o := range course.Outcomes {
+		taughtIn[i] = o.Lesson
+	}
+	assert.Equal(t, []string{"2.2", "3.2", "4.2", "2.3"}, taughtIn)
+	assert.Equal(t, []string{"distributed-transactions", "crdts-local-first"}, course.FollowUps)
 }

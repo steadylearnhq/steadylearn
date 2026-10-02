@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -118,6 +119,46 @@ func UncompleteLesson(c *gin.Context) {
 
 	enrollment, err := services.UncompleteLesson(c.Request.Context(), userId, slug, code)
 	respondLessonChange(c, "UncompleteLesson", enrollment, err)
+}
+
+// SetFeedback handles the caller's feedback on a course
+// @Summary Leave feedback on a course
+// @Description Set the caller's feedback on a course they are enrolled in, a rating from 1 to 5 and an optional message of up to 2,000 characters, replacing any they left before. Returns the enrollment with it. A 409 means the caller is not enrolled in the course.
+// @Tags enrollments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Course slug" example(replication-consensus)
+// @Param feedback body schemas.FeedbackRequest true "Rating and message"
+// @Success 200 {object} schemas.CourseEnrollmentSchema
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /v1/courses/{id}/feedback [put]
+func SetFeedback(c *gin.Context) {
+	userId := c.MustGet("user_id").(uuid.UUID)
+	slug := c.Param("id")
+
+	var request schemas.FeedbackRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "A rating from 1 to 5 is required, and a message of up to 2,000 characters"})
+		return
+	}
+
+	enrollment, err := services.SetFeedback(c.Request.Context(), userId, slug, request.Rating, strings.TrimSpace(request.Message))
+	switch {
+	case errors.Is(err, services.ErrCourseNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
+	case errors.Is(err, services.ErrNotEnrolled):
+		c.JSON(http.StatusConflict, gin.H{"error": "Not enrolled in the course"})
+	case err != nil:
+		slog.ErrorContext(c.Request.Context(), "SetFeedback failed", "user_id", userId, "course", slug, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save the feedback"})
+	default:
+		c.JSON(http.StatusOK, enrollment)
+	}
 }
 
 // respondLessonChange writes the response to marking a lesson done or not.

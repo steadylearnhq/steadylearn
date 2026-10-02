@@ -438,3 +438,41 @@ func TestGetMemberCatalog(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, catalog.Enrollments, 2)
 }
+
+func TestSetFeedback(t *testing.T) {
+	useEmptyCatalog(t)
+	ctx := context.Background()
+	addSyllabusCourse(t, addDomain(t, "dist", 1), "course")
+	userId := uuid.New()
+
+	_, err := services.SetFeedback(ctx, userId, "course", 4, "")
+	assert.ErrorIs(t, err, services.ErrNotEnrolled, "only a learner taking the course leaves feedback")
+
+	enrollment, _, err := services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+	assert.Nil(t, enrollment.Feedback, "none until they leave some")
+
+	enrollment, err = services.SetFeedback(ctx, userId, "course", 4, "Good")
+	require.NoError(t, err)
+	assert.Equal(t, &schemas.FeedbackSchema{Rating: 4, Message: "Good"}, enrollment.Feedback)
+
+	enrollment, err = services.SetFeedback(ctx, userId, "course", 2, "")
+	require.NoError(t, err)
+	assert.Equal(t, &schemas.FeedbackSchema{Rating: 2, Message: ""}, enrollment.Feedback, "leaving it again replaces it")
+	var count int64
+	require.NoError(t, core.DB.Model(&models.CourseFeedback{}).Count(&count).Error)
+	assert.EqualValues(t, 1, count)
+
+	enrollment, err = services.CompleteLesson(ctx, userId, "course", "1.1")
+	require.NoError(t, err)
+	assert.Equal(t, 2, enrollment.Feedback.Rating, "the enrollment carries it everywhere")
+
+	// Enrolling again after unenrolling starts without it.
+	require.NoError(t, services.Unenroll(ctx, userId, "course"))
+	enrollment, _, err = services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+	assert.Nil(t, enrollment.Feedback)
+
+	_, err = services.SetFeedback(ctx, userId, "missing", 4, "")
+	assert.ErrorIs(t, err, services.ErrCourseNotFound)
+}
