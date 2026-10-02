@@ -38,8 +38,27 @@ through each they are. Until now that came from placeholder data in
   bar, 0% included, and "Unenrolled" hides every enrolled course. A failed
   request leaves the cards without progress rather than failing the page.
 
+## Step 3: Enroll on the course page (`app/`)
+
+- The course page reads the member's enrollment
+  (`GET /v1/courses/:id/enrollment`, a 404 meaning not enrolled) and, until
+  it knows, holds the button's place empty so it never offers Enroll to
+  someone already enrolled.
+- Not enrolled: an "Enroll →" button at the right of the header, as in the
+  v9 design, which `PUT`s the enrollment. A failed
+  enrollment says so beside the button; a failed read offers Enroll anyway,
+  since enrolling again is a no-op.
+- Enrolled: the stats row opens with Progress, lessons done of the course's,
+  its percentage and one bar segment per lesson. The design's other enrolled
+  stats (points, vs par, calibration, next review) have no data yet.
+- Enrolling drops the shared `GET /v1/enrollments` request, so the catalog
+  shows the new enrollment when the member goes back to it.
+
 ## Later
 
-- The dashboard's "Continue" list and the course page's enrolled state
-  still use placeholder data, and the course page has no Enroll button yet.
+- The dashboard's "Continue" list still uses placeholder data.
+- The design's "Resume 2.4 →" button takes the Enroll button's place once
+  enrolled; it needs the lesson player to point at.
+- The enrolled page doesn't mark done lessons in its syllabus, and has no
+  way to unenroll, though the API serves both.
 - Nothing in the app marks lessons done until the lesson player exists.

@@ -84,8 +84,8 @@ for Cognito auth. Paths in this section are relative to `app/`.
   flashes before a redirect.
 - **Page titles** come from `usePageTitle` in `src/lib/title.ts`, never by
   setting `document.title` directly.
-- **API calls** go through `apiGet` in `src/lib/api.ts`, which reads
-  `VITE_API_URL`. Endpoint functions live in `src/lib/` (e.g.
+- **API calls** go through `apiGet` / `apiPut` in `src/lib/api.ts`, which
+  read `VITE_API_URL`. Endpoint functions live in `src/lib/` (e.g.
   `src/lib/catalog.ts`) and share one request per page load.
 - **Env vars** are `VITE_` values compiled into the bundle. The Docker image
   is built with placeholders that `docker/50-inject-env.sh` replaces at
