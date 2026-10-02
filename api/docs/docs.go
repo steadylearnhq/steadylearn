@@ -83,7 +83,12 @@ const docTemplate = `{
         },
         "/v1/catalog": {
             "get": {
-                "description": "Every published course with the domains they belong to, in display order. Public, and the same for every caller. Served from a cache for up to ten minutes.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Every published course with the domains they belong to, in display order. The token is optional: a signed-in caller also gets their enrollments, as GET /v1/enrollments lists them. The catalog is served from a cache for up to ten minutes; the enrollments never are.",
                 "produces": [
                     "application/json"
                 ],
@@ -96,6 +101,15 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/schemas.CatalogSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "500": {
@@ -683,6 +697,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/schemas.DomainSchema"
+                    }
+                },
+                "enrollments": {
+                    "description": "Enrollments are the caller's own, most recently enrolled first. They are\nsent only to a signed-in caller who has some, and are never cached with\nthe rest.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.EnrollmentSchema"
                     }
                 }
             }

@@ -26,6 +26,14 @@ definitions:
         items:
           $ref: '#/definitions/schemas.DomainSchema'
         type: array
+      enrollments:
+        description: |-
+          Enrollments are the caller's own, most recently enrolled first. They are
+          sent only to a signed-in caller who has some, and are never cached with
+          the rest.
+        items:
+          $ref: '#/definitions/schemas.EnrollmentSchema'
+        type: array
     type: object
   schemas.CourseEnrollmentSchema:
     properties:
@@ -386,9 +394,10 @@ paths:
       - health
   /v1/catalog:
     get:
-      description: Every published course with the domains they belong to, in display
-        order. Public, and the same for every caller. Served from a cache for up to
-        ten minutes.
+      description: 'Every published course with the domains they belong to, in display
+        order. The token is optional: a signed-in caller also gets their enrollments,
+        as GET /v1/enrollments lists them. The catalog is served from a cache for
+        up to ten minutes; the enrollments never are.'
       produces:
       - application/json
       responses:
@@ -396,12 +405,20 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/schemas.CatalogSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: Get the catalog
       tags:
       - catalog

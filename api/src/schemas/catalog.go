@@ -29,6 +29,10 @@ type CatalogSchema struct {
 	// Domains are those with at least one course in the catalog, in display order.
 	Domains []DomainSchema        `json:"domains"`
 	Courses []CourseSummarySchema `json:"courses"`
+	// Enrollments are the caller's own, most recently enrolled first. They are
+	// sent only to a signed-in caller who has some, and are never cached with
+	// the rest.
+	Enrollments []EnrollmentSchema `json:"enrollments,omitempty"`
 }
 
 type LessonSchema struct {

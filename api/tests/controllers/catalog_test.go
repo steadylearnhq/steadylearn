@@ -39,6 +39,48 @@ func getCourse(t *testing.T, slug string, userId uuid.UUID) (*httptest.ResponseR
 	return rec, course
 }
 
+// getCatalog serves GET /catalog as getCourse serves a course.
+func getCatalog(t *testing.T, userId uuid.UUID) (*httptest.ResponseRecorder, schemas.CatalogSchema) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/catalog", func(c *gin.Context) {
+		if userId != uuid.Nil {
+			c.Set("user_id", userId)
+		}
+	}, controllers.GetCatalog)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/catalog", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var catalog schemas.CatalogSchema
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &catalog))
+	return rec, catalog
+}
+
+func TestGetCatalogServesAMemberTheirEnrollments(t *testing.T) {
+	testutil.UseDB(t)
+	testutil.UseCache(t)
+	userId := uuid.New()
+	_, _, err := services.Enroll(context.Background(), userId, "storage-engines")
+	require.NoError(t, err)
+
+	rec, visitor := getCatalog(t, uuid.Nil)
+	assert.Equal(t, "public, max-age=60", rec.Header().Get("Cache-Control"))
+	assert.NotEmpty(t, visitor.Courses)
+	assert.Nil(t, visitor.Enrollments)
+
+	rec, member := getCatalog(t, userId)
+	assert.Equal(t, "private, no-cache", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, visitor.Courses, member.Courses)
+	require.Len(t, member.Enrollments, 1)
+	assert.Equal(t, "storage-engines", member.Enrollments[0].CourseId)
+
+	_, other := getCatalog(t, uuid.New())
+	assert.Nil(t, other.Enrollments, "another member doesn't get them")
+}
+
 func TestGetCourseServesAMemberTheFullSyllabus(t *testing.T) {
 	testutil.UseDB(t)
 	testutil.UseCache(t)

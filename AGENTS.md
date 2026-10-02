@@ -211,8 +211,9 @@ token against the pool's JWKS and stores the `sub` claim under the Gin context k
 `user_id`. The user's id **is** the Cognito sub; `POST /v1/users` creates the local
 row, and so does enrolling in a course (`PUT /v1/courses/:id/enrollment`), since
 the app does not call setup. `GET /v1/catalog` and `GET /v1/courses/:id` are public;
-the course takes an optional token (`OptionalAuth`), and a signed-in caller
-gets every lesson of its syllabus and, when enrolled, their enrollment in it.
+both take an optional token (`OptionalAuth`). A signed-in caller also gets
+their enrollments with the catalog, and every lesson of a course's syllabus
+with, when enrolled, their enrollment in it.
 
 ### Key Patterns
 

@@ -394,3 +394,40 @@ func TestGetMemberCourse(t *testing.T) {
 	_, err = services.GetMemberCourse(ctx, "missing", userId)
 	assert.ErrorIs(t, err, services.ErrCourseNotFound)
 }
+
+func TestGetMemberCatalog(t *testing.T) {
+	useEmptyCatalog(t)
+	cache := testutil.UseCache(t)
+	ctx := context.Background()
+	dist := addDomain(t, "dist", 1)
+	addSyllabusCourse(t, dist, "course")
+	addSyllabusCourse(t, dist, "other")
+	userId := uuid.New()
+	_, _, err := services.Enroll(ctx, userId, "course")
+	require.NoError(t, err)
+	_, err = services.CompleteLesson(ctx, userId, "course", "1.1")
+	require.NoError(t, err)
+
+	catalog, err := services.GetMemberCatalog(ctx, userId)
+	require.NoError(t, err)
+	assert.Len(t, catalog.Courses, 2)
+	require.Len(t, catalog.Enrollments, 1)
+	assert.Equal(t, "course", catalog.Enrollments[0].CourseId)
+	assert.Equal(t, 1, catalog.Enrollments[0].LessonsDone)
+	assert.True(t, cache.Exists(services.CatalogCacheKey()))
+
+	// The cached catalog carries no one's enrollments.
+	cachedCatalog, err := services.GetCatalog(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, cachedCatalog.Enrollments)
+	other, err := services.GetMemberCatalog(ctx, uuid.New())
+	require.NoError(t, err)
+	assert.Empty(t, other.Enrollments, "a member with none gets none")
+
+	// The enrollments are read afresh each time, though the catalog is cached.
+	_, _, err = services.Enroll(ctx, userId, "other")
+	require.NoError(t, err)
+	catalog, err = services.GetMemberCatalog(ctx, userId)
+	require.NoError(t, err)
+	assert.Len(t, catalog.Enrollments, 2)
+}

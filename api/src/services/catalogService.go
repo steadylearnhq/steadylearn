@@ -51,6 +51,22 @@ func GetCatalog(ctx context.Context) (schemas.CatalogSchema, error) {
 	})
 }
 
+// GetMemberCatalog is the catalog as GetCatalog gives it, with the member's
+// enrollments in it. The catalog comes through the cache; the enrollments,
+// which change with every lesson completed, never do.
+func GetMemberCatalog(ctx context.Context, userId uuid.UUID) (schemas.CatalogSchema, error) {
+	catalog, err := GetCatalog(ctx)
+	if err != nil {
+		return catalog, err
+	}
+	enrollments, err := GetEnrollments(ctx, userId)
+	if err != nil {
+		return schemas.CatalogSchema{}, err
+	}
+	catalog.Enrollments = enrollments
+	return catalog, nil
+}
+
 // GetCourse is one published course with its syllabus and page copy, read
 // through the cache. A member sees every lesson; to a visitor who is not
 // signed in, a course that keeps its syllabus private lists its modules but
