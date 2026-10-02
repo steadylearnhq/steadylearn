@@ -3,7 +3,7 @@ import { Show } from 'solid-js'
 import { domainDot, formatLength, levelLabel, type Course } from '../../data/catalog'
 import styles from './CourseCard.module.css'
 
-/** A course in the members' catalog grid, with the member's progress once they've started it. */
+/** A course in the members' catalog grid, with the member's progress once they've enrolled, 0% included. */
 export default function CourseCard(props: { course: Course; domainName: string; href: string; progress?: number }) {
   return (
     <A href={props.href} class={styles.card}>
@@ -22,15 +22,13 @@ export default function CourseCard(props: { course: Course; domainName: string; 
         <span>{formatLength(props.course.minutes)}</span>
         <span>{props.course.lessonCount} lessons</span>
         <span class={styles.spacer} />
-        <Show when={props.progress}>
-          {(pct) => (
-            <span class={styles.progress}>
-              <span class={styles.track} aria-hidden="true">
-                <span class={styles.fill} style={{ width: `${pct()}%` }} />
-              </span>
-              {pct()}%<span class="visually-hidden"> done</span>
+        <Show when={props.progress !== undefined}>
+          <span class={styles.progress}>
+            <span class={styles.track} aria-hidden="true">
+              <span class={styles.fill} style={{ width: `${props.progress}%` }} />
             </span>
-          )}
+            {props.progress}%<span class="visually-hidden"> done</span>
+          </span>
         </Show>
       </div>
     </A>
