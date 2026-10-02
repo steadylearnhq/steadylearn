@@ -17,9 +17,14 @@ import (
 // so the response is safe to share.
 const publicCacheControl = "public, max-age=60"
 
+// noCacheControl keeps a member's response, which carries their enrollments, to
+// their own browser, and has it ask again each time: the enrollments change
+// with every lesson completed.
+const noCacheControl = "private, no-cache"
+
 // GetCatalog handles listing the catalog
 // @Summary Get the catalog
-// @Description Every published course with the domains they belong to, in display order. The token is optional: a signed-in caller also gets their enrollments, as GET /v1/enrollments lists them. The catalog is served from a cache for up to ten minutes; the enrollments never are.
+// @Description Every published course with the domains they belong to, in display order. The token is optional: a signed-in caller also gets their enrollments in it, most recently enrolled first, each with its progress. The catalog is served from a cache for up to ten minutes; the enrollments never are.
 // @Tags catalog
 // @Produce json
 // @Security BearerAuth

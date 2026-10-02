@@ -80,8 +80,8 @@ The members' catalog made two requests too, the catalog and then
   `private, no-cache`.
 - App: the catalog is fetched with the member's token and kept apart from
   the visitor's; the members' catalog reads progress from it.
-- Once the app is deployed, `GET /v1/enrollments` and
-  `GET /v1/courses/:id/enrollment` have no callers and go.
+- `GET /v1/enrollments` and `GET /v1/courses/:id/enrollment` are removed:
+  nothing in the app calls them, and no deployed app ever did.
 
 ## Later
 

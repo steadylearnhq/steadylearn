@@ -395,9 +395,9 @@ paths:
   /v1/catalog:
     get:
       description: 'Every published course with the domains they belong to, in display
-        order. The token is optional: a signed-in caller also gets their enrollments,
-        as GET /v1/enrollments lists them. The catalog is served from a cache for
-        up to ten minutes; the enrollments never are.'
+        order. The token is optional: a signed-in caller also gets their enrollments
+        in it, most recently enrolled first, each with its progress. The catalog is
+        served from a cache for up to ten minutes; the enrollments never are.'
       produces:
       - application/json
       responses:
@@ -502,50 +502,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Unenroll from a course
-      tags:
-      - enrollments
-    get:
-      deprecated: true
-      description: The caller's enrollment in a course in the catalog, with its progress
-        and the codes of the lessons they have completed, in syllabus order. A 404
-        means the course is not in the catalog or the caller is not enrolled in it.
-        Superseded by the enrollment GET /v1/courses/{id} returns; kept until the
-        app reads that one.
-      parameters:
-      - description: Course slug
-        example: replication-consensus
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/schemas.CourseEnrollmentSchema'
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get my enrollment in a course
       tags:
       - enrollments
     put:
@@ -698,37 +654,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Complete a lesson
-      tags:
-      - enrollments
-  /v1/enrollments:
-    get:
-      description: Every course in the catalog the caller is enrolled in, most recently
-        enrolled first, with how many of its lessons they have completed. Progress
-        is that count as a percentage of the course's lessons, rounded down.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/schemas.EnrollmentSchema'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List my enrollments
       tags:
       - enrollments
   /v1/users:
