@@ -24,6 +24,7 @@ func main() {
 		&models.LessonStep{},
 		&models.Enrollment{},
 		&models.LessonCompletion{},
+		&models.CourseFeedback{},
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load gorm schema: %v\n", err)

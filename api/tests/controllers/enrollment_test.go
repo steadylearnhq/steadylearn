@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +29,7 @@ func enrollmentRouter(userId uuid.UUID) *gin.Engine {
 	router.DELETE("/courses/:id/enrollment", controllers.Unenroll)
 	router.PUT("/courses/:id/lessons/:code/completion", controllers.CompleteLesson)
 	router.DELETE("/courses/:id/lessons/:code/completion", controllers.UncompleteLesson)
+	router.PUT("/courses/:id/feedback", controllers.SetFeedback)
 	return router
 }
 
@@ -74,4 +76,38 @@ func TestEnrollmentRoutes(t *testing.T) {
 			assert.Equal(t, "private, no-cache", rec.Header().Get("Cache-Control"), step.name)
 		}
 	}
+}
+
+func TestSetFeedbackRoute(t *testing.T) {
+	testutil.UseDB(t)
+	router := enrollmentRouter(uuid.New())
+	const course = "/courses/storage-engines"
+	put := func(path, body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPut, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(rec, req)
+		return rec
+	}
+
+	assert.Equal(t, http.StatusConflict, put(course+"/feedback", `{"rating":4}`).Code, "not enrolled")
+	require.Equal(t, http.StatusCreated, put(course+"/enrollment", "").Code)
+
+	for name, body := range map[string]string{
+		"no rating":    `{"message":"Hi"}`,
+		"rating 0":     `{"rating":0}`,
+		"rating 6":     `{"rating":6}`,
+		"long message": `{"rating":4,"message":"` + strings.Repeat("a", 2001) + `"}`,
+		"not json":     `rating=4`,
+	} {
+		assert.Equal(t, http.StatusBadRequest, put(course+"/feedback", body).Code, name)
+	}
+
+	rec := put(course+"/feedback", `{"rating":5,"message":"  Clear and hands-on.  "}`)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var enrollment schemas.CourseEnrollmentSchema
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &enrollment))
+	assert.Equal(t, &schemas.FeedbackSchema{Rating: 5, Message: "Clear and hands-on."}, enrollment.Feedback)
+
+	assert.Equal(t, http.StatusNotFound, put("/courses/missing/feedback", `{"rating":4}`).Code)
 }

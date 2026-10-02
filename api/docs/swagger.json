@@ -366,6 +366,98 @@
                 }
             }
         },
+        "/v1/courses/{id}/feedback": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Set the caller's feedback on a course they are enrolled in, a rating from 1 to 5 and an optional message of up to 2,000 characters, replacing any they left before. Returns the enrollment with it. A 409 means the caller is not enrolled in the course.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Leave feedback on a course",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "replication-consensus",
+                        "description": "Course slug",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Rating and message",
+                        "name": "feedback",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.FeedbackRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.CourseEnrollmentSchema"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/courses/{id}/lessons/{code}/completion": {
             "put": {
                 "security": [
@@ -728,6 +820,14 @@
                     "type": "string",
                     "example": "2026-10-02T14:12:24Z"
                 },
+                "feedback": {
+                    "description": "Feedback is what the caller thinks of the course, once they have said.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.FeedbackSchema"
+                        }
+                    ]
+                },
                 "lessonsDone": {
                     "description": "LessonsDone counts the course's lessons the caller has completed.",
                     "type": "integer",
@@ -782,6 +882,17 @@
                         }
                     ]
                 },
+                "followUps": {
+                    "description": "FollowUps are the slugs of courses in the catalog that take this one as a\nprerequisite, in catalog order: what to take next.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "distributed-transactions",
+                        "crdts-local-first"
+                    ]
+                },
                 "id": {
                     "type": "string",
                     "example": "replication-consensus"
@@ -821,11 +932,8 @@
                 "outcomes": {
                     "type": "array",
                     "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "Size R and W for a given N and say what each choice costs"
-                    ]
+                        "$ref": "#/definitions/schemas.OutcomeSchema"
+                    }
                 },
                 "overview": {
                     "description": "Overview leads the course's page; it is empty until the course has one.",
@@ -946,6 +1054,38 @@
                 }
             }
         },
+        "schemas.FeedbackRequest": {
+            "type": "object",
+            "required": [
+                "rating"
+            ],
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "example": "The quorum simulation made R + W \u003e N click."
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1,
+                    "example": 4
+                }
+            }
+        },
+        "schemas.FeedbackSchema": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "The quorum simulation made R + W \u003e N click."
+                },
+                "rating": {
+                    "type": "integer",
+                    "example": 4
+                }
+            }
+        },
         "schemas.HealthSchema": {
             "type": "object",
             "properties": {
@@ -1012,6 +1152,20 @@
                 "title": {
                     "type": "string",
                     "example": "Quorums"
+                }
+            }
+        },
+        "schemas.OutcomeSchema": {
+            "type": "object",
+            "properties": {
+                "lesson": {
+                    "description": "Lesson is the code of the lesson that teaches it, as the syllabus numbers\nit, or empty. Completing that lesson unlocks the outcome.",
+                    "type": "string",
+                    "example": "2.2"
+                },
+                "statement": {
+                    "type": "string",
+                    "example": "Size R and W for a given N and say what each choice costs"
                 }
             }
         },

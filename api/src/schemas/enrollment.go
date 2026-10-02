@@ -22,4 +22,19 @@ type CourseEnrollmentSchema struct {
 	// CompletedLessons are the codes of the lessons the caller has completed,
 	// as the course's syllabus numbers them, in syllabus order.
 	CompletedLessons []string `json:"completedLessons" example:"1.1,1.2"`
+	// Feedback is what the caller thinks of the course, once they have said.
+	Feedback *FeedbackSchema `json:"feedback,omitempty"`
+}
+
+// FeedbackSchema is a learner's feedback on a course they are taking.
+type FeedbackSchema struct {
+	Rating  int    `json:"rating" example:"4"`
+	Message string `json:"message" example:"The quorum simulation made R + W > N click."`
+}
+
+// FeedbackRequest sets the caller's feedback on a course. The message is
+// optional.
+type FeedbackRequest struct {
+	Rating  int    `json:"rating" binding:"required,min=1,max=5" example:"4"`
+	Message string `json:"message" binding:"max=2000" example:"The quorum simulation made R + W > N click."`
 }
