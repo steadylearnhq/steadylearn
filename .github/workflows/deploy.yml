@@ -1,0 +1,152 @@
+name: deploy
+# The changes job finds the last deploy to this environment by this title.
+run-name: Deploy to ${{ inputs.environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: The GitHub environment to deploy to; its secrets name the database and Render services
+        type: environment
+        required: true
+      force:
+        description: Migrate and deploy both services even if nothing changed
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+  actions: read
+
+# One deploy at a time per environment; different environments run side by side.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    name: Detect changes
+    # Only main ships; the "Run workflow" branch picker would otherwise deploy
+    # any branch. Both deploy jobs need this one, so they are skipped with it.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.diff.outputs.api }}
+      app: ${{ steps.diff.outputs.app }}
+      migrations: ${{ steps.diff.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # The baseline is the last successful run on main to this environment,
+      # found by its run-name. A run that skipped a service had no changes to
+      # it up to that commit, so diffing from there misses nothing; a failed
+      # run leaves the baseline where it was, so the next one redeploys. No
+      # baseline, or one lost to a force-push, deploys. Migrations share the
+      # baseline, so a failed migration is retried too.
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force }}
+          TITLE: Deploy to ${{ inputs.environment }}
+        run: |
+          base=$(gh run list --workflow deploy.yml --branch main --status success \
+            --limit 100 --json headSha,displayTitle \
+            --jq '[.[] | select(.displayTitle == env.TITLE)][0].headSha // empty')
+          echo "Last successful deploy to this environment: ${base:-none}"
+          for dir in api app api/migrations; do
+            if [ "$FORCE" = true ] || [ -z "$base" ] \
+              || ! git cat-file -e "$base^{commit}" 2>/dev/null \
+              || ! git diff --quiet "$base" HEAD -- "$dir"; then
+              changed=true
+            else
+              changed=false
+            fi
+            echo "$dir: $changed"
+            echo "${dir##*/}=$changed" >> "$GITHUB_OUTPUT"
+          done
+
+  # The jobs below read secrets, so each runs in the chosen environment: its
+  # secrets are DATABASE_URL and the two deploy hooks, and its protection
+  # rules (reviewers, allowed branches) gate each job.
+  migrate:
+    name: Migrate database
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ariga/setup-atlas@v0
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL is not set; not deploying against an unmigrated database"
+            exit 1
+          fi
+          atlas migrate apply --dir file://api/migrations --url "$DATABASE_URL"
+
+  api:
+    name: Deploy API
+    needs: [changes, migrate]
+    if: >-
+      !cancelled()
+      && needs.changes.result == 'success'
+      && needs.changes.outputs.api == 'true'
+      && needs.migrate.result != 'failure'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/steadylearn-api:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/build-image
+        with:
+          context: api
+          push: true
+          image: ${{ env.IMAGE }}
+          registry-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/deploy-to-render
+        with:
+          hook: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          hook-name: RENDER_DEPLOY_HOOK_API
+          image: ${{ env.IMAGE }}
+
+  app:
+    name: Deploy App
+    # After the API, so it ships first, but not skipped along with it: a
+    # skipped need skips its dependents unless the condition says otherwise.
+    needs: [changes, migrate, api]
+    if: >-
+      !cancelled()
+      && needs.changes.result == 'success'
+      && needs.changes.outputs.app == 'true'
+      && needs.migrate.result != 'failure'
+      && needs.api.result != 'failure'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/steadylearn-app:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/build-image
+        with:
+          context: app
+          push: true
+          image: ${{ env.IMAGE }}
+          registry-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/deploy-to-render
+        with:
+          hook: ${{ secrets.RENDER_DEPLOY_HOOK_APP }}
+          hook-name: RENDER_DEPLOY_HOOK_APP
+          image: ${{ env.IMAGE }}

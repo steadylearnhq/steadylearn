@@ -1,0 +1,31 @@
+name: Deploy to Render
+description: Point a Render service at an image through its deploy hook.
+
+# Without the hook the image is still pushed, just not deployed: the first run
+# creates the package before Render can be pointed at it.
+
+inputs:
+  hook:
+    description: The service's deploy hook URL, from a secret
+    default: ""
+  hook-name:
+    description: The name of the secret the hook comes from, for the warning when it is not set
+    required: true
+  image:
+    description: The full image reference to deploy
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HOOK: ${{ inputs.hook }}
+        HOOK_NAME: ${{ inputs.hook-name }}
+        IMAGE: ${{ inputs.image }}
+      run: |
+        if [ -z "$HOOK" ]; then
+          echo "::warning::$HOOK_NAME is not set; pushed $IMAGE without deploying"
+          exit 0
+        fi
+        curl -fsS -X POST -G --data-urlencode "imgURL=$IMAGE" "$HOOK"

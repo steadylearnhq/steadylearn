@@ -24,7 +24,8 @@ checks below run in parallel, each only when its area changed. A skipped
 check starts no runner, and the one required check is `PR Checks`, which
 fails unless `PR Scope` passed and every other check passed or was skipped.
 Each check's steps are a composite action in `.github/actions/`, so another
-workflow can reuse one without copying it.
+workflow can reuse one without copying it (`deploy.yml` builds its images
+with `build-image`).
 
 - `Go Linter` (when `api/` changes) runs `golangci-lint run` in `api/`,
   which covers both linters and formatters. Run `make lint` in `api/` before
@@ -39,6 +40,20 @@ workflow can reuse one without copying it.
   Prettier yet; when it gets them, they join this check.
 - `Build API` and `Build App` build the Docker image of each side a PR
   changes (both when `.github/` changes) without pushing it.
+
+## Deploying
+
+`.github/workflows/deploy.yml` ships `main` to Render; it is run by hand
+from the Actions tab, for one GitHub environment picked at launch, and
+refuses any other branch. It diffs `main` against the last successful deploy
+to that environment and acts only on what changed: Atlas applies new
+`api/migrations` first, then each changed side's image is pushed to GHCR as
+`steadylearn-api` / `steadylearn-app` tagged with the commit, and its Render
+service is pointed at it through a deploy hook, the API before the app.
+`force` redeploys both. Each environment holds its own three secrets,
+`DATABASE_URL`, `RENDER_DEPLOY_HOOK_API` and `RENDER_DEPLOY_HOOK_APP`, so
+adding an environment in the repository settings is all a new target needs.
+Without a hook, the image is pushed but not deployed.
 
 ---
 
