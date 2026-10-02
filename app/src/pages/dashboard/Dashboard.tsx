@@ -4,6 +4,7 @@ import Button from '../../components/Button'
 import Critter from '../../components/Critter'
 import { domainDot, domainName, domainStyle, formatLength, levelLabel } from '../../data/catalog'
 import { BOARDS, CONTINUE, KPIS, RECOMMENDED, UP_NEXT } from '../../data/dashboard'
+import { STEP_BY_KEY } from '../../data/lessonSteps'
 import { user } from '../../lib/auth'
 import { usePageTitle } from '../../lib/title'
 import styles from './Dashboard.module.css'
@@ -51,7 +52,7 @@ export default function Dashboard() {
           <Critter kind={upNextDomain.kind} hue={upNextDomain.hue} size={56} />
           <div class={styles.upNextText}>
             <span class={styles.upNextMeta}>
-              Up next · {upNext.course.title} · {upNext.minutes} min
+              Up next · {STEP_BY_KEY[upNext.step].name} · {upNext.course.title} · {upNext.minutes} min
             </span>
             <span class={styles.upNextTitle}>
               {upNext.code} {upNext.title}
@@ -155,7 +156,7 @@ export default function Dashboard() {
 
       <section class={styles.recs}>
         <div class={styles.sectionHead}>
-          <h2 class={styles.sectionTitle}>Broaden your T</h2>
+          <h2 class={styles.sectionTitle}>Broaden your T-shape</h2>
           <A href="/catalog" class={styles.more}>
             Full catalog →
           </A>
@@ -178,7 +179,6 @@ export default function Dashboard() {
                   <span class={styles.level}>{levelLabel(c.level)}</span>
                   <span>{formatLength(c.minutes)}</span>
                   <span>{c.lessonCount} lessons</span>
-                  <span class={styles.breaks}>✕ {c.breakIts.length}</span>
                 </div>
               </A>
             )}
