@@ -1,5 +1,5 @@
 import { A, useParams } from '@solidjs/router'
-import { createEffect, createMemo, createResource, createSignal, For, Match, on, Show, Switch } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, For, Match, on, onMount, Show, Switch } from 'solid-js'
 import Button from '../../components/Button'
 import Critter from '../../components/Critter'
 import StepIcon from '../../components/StepIcon'
@@ -16,6 +16,7 @@ import {
 } from '../../data/catalog'
 import { STEP_BY_KEY, type LessonStepKey } from '../../data/lessonSteps'
 import { ApiError } from '../../lib/api'
+import { canTake, CHECKOUT_HREF, loadBilling } from '../../lib/billing'
 import { fetchCatalog, fetchCourse } from '../../lib/catalog'
 import { enroll, leaveFeedback, setLessonDone, type CourseEnrollment, type Feedback } from '../../lib/enrollments'
 import { usePageTitle } from '../../lib/title'
@@ -43,6 +44,9 @@ const moduleMeta = (m: Module, done?: ReadonlySet<string>) => {
 }
 
 const allLessons = (c: CourseDetail) => c.modules.flatMap((m) => m.lessons ?? [])
+
+/** The API's answer to a change on a course that needs a subscription the member doesn't have. */
+const paymentRequired = (error: unknown) => error instanceof ApiError && error.status === 402
 
 // Break-its don't carry a critter of their own, so each takes the next hue in turn.
 const BREAK_HUES = [255, 165, 85, 205, 290, 35]
@@ -76,6 +80,26 @@ export default function CoursePage() {
 
   // The course carries the member's enrollment, so it is known as soon as the page is.
   const enrolled = () => loaded()?.enrollment
+
+  // A course that isn't free needs a subscription. Until the member's billing
+  // state is known nothing shows locked; if it can't be had, the page offers
+  // what it would without the lock and leaves the API to say no. A 402 means
+  // billing changed since it loaded, so it is asked for again.
+  const [billingFailed, setBillingFailed] = createSignal(false)
+  const refreshBilling = (fresh = false) =>
+    void loadBilling(fresh).then(
+      () => setBillingFailed(false),
+      () => setBillingFailed(true),
+    )
+  onMount(() => refreshBilling())
+  /** Whether the member may take the course; undefined until that's known. */
+  const access = () => {
+    const c = loaded()
+    if (!c) return undefined
+    return billingFailed() || canTake(c)
+  }
+  /** An enrolled member keeps their progress here, but can't change it until they subscribe. */
+  const locked = () => access() === false
   // A lesson shows as done or not the moment it is marked; until every change
   // sent for it has been answered, its mark wins over the enrollment. Marks are
   // keyed by course too, so an answer arriving after the member has moved on
@@ -115,7 +139,8 @@ export default function CoursePage() {
     try {
       const made = await enroll(courseId)
       if (courseId === params.id) setEnrollment(made)
-    } catch {
+    } catch (error) {
+      if (paymentRequired(error)) refreshBilling(true)
       if (courseId === params.id) setEnrollFailed(true)
     } finally {
       setEnrolling(false)
@@ -137,7 +162,8 @@ export default function CoursePage() {
       try {
         const changed = await setLessonDone(courseId, code, done)
         if (courseId === params.id) setEnrollment(changed)
-      } catch {
+      } catch (error) {
+        if (paymentRequired(error)) refreshBilling(true)
         if (courseId === params.id) setMarkFailed(true)
       } finally {
         setMarks((prev) => {
@@ -154,8 +180,13 @@ export default function CoursePage() {
   const [feedbackOpen, setFeedbackOpen] = createSignal(false)
   const sendFeedback = async (feedback: Feedback) => {
     const courseId = params.id
-    const changed = await leaveFeedback(courseId, feedback)
-    if (courseId === params.id) setEnrollment(changed)
+    try {
+      const changed = await leaveFeedback(courseId, feedback)
+      if (courseId === params.id) setEnrollment(changed)
+    } catch (error) {
+      if (!paymentRequired(error)) throw error
+      refreshBilling(true) // the page turns locked, which takes the feedback with it
+    }
     setFeedbackOpen(false)
   }
 
@@ -246,42 +277,44 @@ export default function CoursePage() {
         </div>
       </Show>
 
-      <div class={styles.panel}>
-        <div class={`${styles.panelHead} ${styles.tight}`}>
-          <h2 class={styles.sectionTitle}>{enrolled()?.feedback ? 'Your feedback' : 'Leave a feedback'}</h2>
-          <Show when={enrolled()?.feedback}>
-            <button type="button" class={styles.edit} onClick={() => setFeedbackOpen(true)}>
-              Edit
-            </button>
+      <Show when={!locked() || enrolled()?.feedback}>
+        <div class={styles.panel}>
+          <div class={`${styles.panelHead} ${styles.tight}`}>
+            <h2 class={styles.sectionTitle}>{enrolled()?.feedback ? 'Your feedback' : 'Leave a feedback'}</h2>
+            <Show when={enrolled()?.feedback && !locked()}>
+              <button type="button" class={styles.edit} onClick={() => setFeedbackOpen(true)}>
+                Edit
+              </button>
+            </Show>
+          </div>
+          <Show
+            when={enrolled()?.feedback}
+            fallback={
+              <>
+                <p class={styles.feedbackBlurb}>Tell the course author what is working and what is not. It takes a minute.</p>
+                <Button variant="outline" size="md" class={styles.feedbackButton} onClick={() => setFeedbackOpen(true)}>
+                  Leave a feedback
+                </Button>
+              </>
+            }
+          >
+            {/* The design dates the feedback beside its rating, which waits for the API to send when it was left. */}
+            {(f) => (
+              <div class={styles.sent}>
+                <div class={styles.sentRating}>
+                  <span class={styles.sentStars} role="img" aria-label={`${f().rating} of 5 stars`}>
+                    <For each={RATINGS}>{(_, i) => <span classList={{ [styles.lit]: i() < f().rating }}>★</span>}</For>
+                  </span>
+                  <span class={styles.sentLabel}>{RATINGS[f().rating - 1]}</span>
+                </div>
+                <Show when={f().message.trim()} fallback={<span class={styles.noMessage}>No message added.</span>}>
+                  <p class={styles.sentMessage}>{f().message}</p>
+                </Show>
+              </div>
+            )}
           </Show>
         </div>
-        <Show
-          when={enrolled()?.feedback}
-          fallback={
-            <>
-              <p class={styles.feedbackBlurb}>Tell the course author what is working and what is not. It takes a minute.</p>
-              <Button variant="outline" size="md" class={styles.feedbackButton} onClick={() => setFeedbackOpen(true)}>
-                Leave a feedback
-              </Button>
-            </>
-          }
-        >
-          {/* The design dates the feedback beside its rating, which waits for the API to send when it was left. */}
-          {(f) => (
-            <div class={styles.sent}>
-              <div class={styles.sentRating}>
-                <span class={styles.sentStars} role="img" aria-label={`${f().rating} of 5 stars`}>
-                  <For each={RATINGS}>{(_, i) => <span classList={{ [styles.lit]: i() < f().rating }}>★</span>}</For>
-                </span>
-                <span class={styles.sentLabel}>{RATINGS[f().rating - 1]}</span>
-              </div>
-              <Show when={f().message.trim()} fallback={<span class={styles.noMessage}>No message added.</span>}>
-                <p class={styles.sentMessage}>{f().message}</p>
-              </Show>
-            </div>
-          )}
-        </Show>
-      </div>
+      </Show>
     </>
   )
 
@@ -327,14 +360,24 @@ export default function CoursePage() {
               </div>
               <div class={styles.cta}>
                 <Show when={!enrolled()}>
-                  <Button variant="primary" size="md" disabled={enrolling()} onClick={() => void startCourse()}>
-                    {enrolling() ? 'Enrolling…' : 'Enroll →'}
-                  </Button>
-                  <Show when={enrollFailed()}>
-                    <span class={styles.ctaNote} role="alert">
-                      That didn't go through. Try again.
-                    </span>
-                  </Show>
+                  <Switch>
+                    <Match when={access() === true}>
+                      <Button variant="primary" size="md" disabled={enrolling()} onClick={() => void startCourse()}>
+                        {enrolling() ? 'Enrolling…' : 'Enroll →'}
+                      </Button>
+                      <Show when={enrollFailed()}>
+                        <span class={styles.ctaNote} role="alert">
+                          That didn't go through. Try again.
+                        </span>
+                      </Show>
+                    </Match>
+                    <Match when={locked()}>
+                      <Button variant="primary" size="md" href={CHECKOUT_HREF}>
+                        Subscribe →
+                      </Button>
+                      <span class={styles.ctaNote}>Included with the subscription.</span>
+                    </Match>
+                  </Switch>
                 </Show>
               </div>
             </section>
@@ -359,8 +402,21 @@ export default function CoursePage() {
               </section>
             </Show>
 
+            <Show when={enrolled() && locked()}>
+              <section class={styles.upNextBand}>
+                <Critter kind="circle" hue={255} size={48} />
+                <div class={styles.upNextText}>
+                  <span class={styles.upNextMeta}>Included with the subscription</span>
+                  <span class={`${styles.upNextTitle} ${styles.lockedTitle}`}>Subscribe to pick up where you left off</span>
+                </div>
+                <Button variant="primary" size="md" class={styles.resume} href={CHECKOUT_HREF}>
+                  Subscribe →
+                </Button>
+              </section>
+            </Show>
+
             {/* Resume opens the lesson once there is a lesson player; until then it does nothing. */}
-            <Show when={enrolled() && nextLesson()}>
+            <Show when={enrolled() && !locked() && nextLesson()}>
               {(l) => (
                 <section class={styles.upNextBand}>
                   <Critter kind="circle" hue={255} size={48} />
@@ -383,7 +439,7 @@ export default function CoursePage() {
               <div class={styles.syllabus}>
                 <div class={styles.syllabusHead}>
                   <h2 class={styles.sectionTitle}>Syllabus</h2>
-                  <Show when={markFailed()}>
+                  <Show when={markFailed() && !locked()}>
                     <span class={styles.syllabusNote} role="alert">
                       That didn't save. Try again.
                     </span>
@@ -441,6 +497,7 @@ export default function CoursePage() {
                                         aria-label={`${done() ? 'Mark not done' : 'Mark done'}: ${l.title}`}
                                         class={styles.checkbox}
                                         classList={{ [styles.checked]: done(), [styles.upNext]: next() }}
+                                        disabled={locked()}
                                         onClick={() => markDone(l.code, !done())}
                                       >
                                         <Check size={12} />

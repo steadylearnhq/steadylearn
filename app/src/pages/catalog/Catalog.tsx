@@ -1,9 +1,10 @@
 import { useLocation } from '@solidjs/router'
-import { createMemo, createResource, For, Match, Show, Switch } from 'solid-js'
+import { createEffect, createMemo, createResource, For, Match, Show, Switch } from 'solid-js'
 import CourseDrawer from '../../components/course-drawer/CourseDrawer'
 import { useCourseDrawer } from '../../components/course-drawer/useCourseDrawer'
 import { LEVELS, domainDot, plural, type Course } from '../../data/catalog'
 import { user } from '../../lib/auth'
+import { billing, canTake, loadBilling, subscribed } from '../../lib/billing'
 import { fetchCatalog } from '../../lib/catalog'
 import { usePageTitle } from '../../lib/title'
 import CourseCard from './CourseCard'
@@ -27,6 +28,14 @@ export default function Catalog() {
   const enrolled = (c: Course) => progressOf(c.id) !== undefined
   const filters = useCatalogFilters(loaded, enrolled)
   const drawer = useCourseDrawer(filters.filtered, () => loaded()?.courses ?? [])
+
+  // A member without a subscription sees which course is free and which are
+  // locked, once their billing state has loaded.
+  createEffect(() => {
+    if (user()) void loadBilling().catch(() => {})
+  })
+  const free = (c: Course) => c.isFree && !!billing() && !subscribed()
+  const locked = (c: Course) => canTake(c) === false
 
   const domainName = (id: string) => loaded()?.domains.find((d) => d.id === id)?.name ?? ''
 
@@ -160,6 +169,8 @@ export default function Catalog() {
                 domainName={domainName(course.domain)}
                 href={`/courses/${course.id}`}
                 progress={progressOf(course.id)}
+                free={free(course)}
+                locked={locked(course)}
               />
             )}
           </For>

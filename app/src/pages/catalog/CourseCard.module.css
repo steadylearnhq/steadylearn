@@ -51,6 +51,20 @@
   font-size: 10px;
 }
 
+.tag {
+  padding: 1px 8px;
+  border: 1.5px solid var(--stroke);
+  border-radius: 9999px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.lock {
+  display: flex;
+  color: var(--muted);
+}
+
 .title {
   margin: 8px 0 4px;
   font-size: 20px;
