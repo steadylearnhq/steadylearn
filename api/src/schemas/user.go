@@ -22,4 +22,8 @@ type UserSchema struct {
 	// Profile is filled in by the /me endpoint, which caches the call to the user
 	// pool that fills it, and left out of the plain reads of the local record.
 	Profile *UserProfileSchema `json:"profile,omitempty"`
+	// Subscription is filled in by the /me endpoint too, but read fresh on
+	// every call rather than cached, so a checkout or cancel shows at once. It
+	// is left out for a user who has never subscribed.
+	Subscription *SubscriptionSchema `json:"subscription,omitempty"`
 }

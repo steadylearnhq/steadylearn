@@ -92,16 +92,17 @@ const currentUserCacheTTL = 5 * time.Minute
 // is bumped whenever UserSchema changes shape, so an entry written by an older
 // build is never decoded into the new one.
 func CurrentUserCacheKey(userId uuid.UUID) string {
-	return core.CacheKey("user", "v1", userId.String())
+	return core.CacheKey("user", "v2", userId.String())
 }
 
-// GetCurrentUser is the user together with their profile, as the /me endpoint
-// serves it. It reads through the cache: a hit answers without touching the
-// database or the user pool, and a miss asks both and stores the result. A
-// user who has not been set up yet, or a throttled user pool, is not cached,
-// so they are asked again on the next request.
+// GetCurrentUser is the user together with their profile and subscription, as
+// the /me endpoint serves it. The user and profile read through the cache: a
+// hit answers without touching the database or the user pool, and a miss asks
+// both and stores the result. A user who has not been set up yet, or a
+// throttled user pool, is not cached, so they are asked again on the next
+// request. The subscription is never cached; it is read after, on every call.
 func GetCurrentUser(ctx context.Context, userId uuid.UUID) (schemas.UserSchema, error) {
-	return cached(ctx, CurrentUserCacheKey(userId), currentUserCacheTTL, func() (schemas.UserSchema, error) {
+	user, err := cached(ctx, CurrentUserCacheKey(userId), currentUserCacheTTL, func() (schemas.UserSchema, error) {
 		user, err := GetUserById(ctx, userId)
 		if err != nil {
 			return schemas.UserSchema{}, err
@@ -115,4 +116,14 @@ func GetCurrentUser(ctx context.Context, userId uuid.UUID) (schemas.UserSchema, 
 
 		return user, nil
 	})
+	if err != nil {
+		return schemas.UserSchema{}, err
+	}
+
+	billing, err := GetBilling(ctx, userId)
+	if err != nil {
+		return schemas.UserSchema{}, err
+	}
+	user.Subscription = billing.Subscription
+	return user, nil
 }

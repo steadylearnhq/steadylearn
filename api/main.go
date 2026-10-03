@@ -76,6 +76,13 @@ func main() {
 		fatal(ctx, shutdown, "failed to initialize cache", err)
 	}
 
+	// Billing is optional, so missing Creem settings turn it off rather than
+	// failing boot.
+	core.InitCreem()
+	if !core.Config.BillingEnabled() {
+		slog.WarnContext(ctx, "billing is off: set CREEM_API_KEY, CREEM_WEBHOOK_SECRET, CREEM_PRODUCT_ID and APP_URL to turn it on")
+	}
+
 	srv := &http.Server{
 		Addr:    ":" + core.Config.Port,
 		Handler: newRouter(),

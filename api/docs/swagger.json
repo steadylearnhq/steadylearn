@@ -78,6 +78,440 @@
                 }
             }
         },
+        "/v1/billing/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cancel the caller's subscription at the end of the period they paid for, and return their billing state. They keep access until then, and can resume before it. A 409 means the subscription is not one that can be cancelled.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Cancel the subscription",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.BillingSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/billing/checkout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Start a Creem checkout for the monthly subscription, and return the hosted page to send the caller to. Creem sends them back to the app's /subscription?checkout=success. A 409 means the caller already has access.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Start a checkout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.CheckoutSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/billing/portal": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "A link to Creem's customer portal, where the caller changes their card and downloads invoices. A 404 means the caller has never subscribed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Open the billing portal",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.PortalSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/billing/resume": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Undo a cancellation that has not taken effect yet, or a pause, and return the caller's billing state. A 409 means the subscription is not cancelled or paused.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Resume the subscription",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.BillingSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/billing/subscription": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The caller's current subscription, or null when they have never subscribed. Read from the database, never cached, so it reflects a checkout, cancel or resume at once. Answers even while billing is off.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Get the caller's subscription",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.BillingSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/billing/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Read the subscription Creem returned the caller with after checkout, store it if it is theirs, and return their billing state. Lets the app confirm a payment without waiting for its webhook. A 404 means Creem has no such subscription for the caller.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Sync a subscription after checkout",
+                "parameters": [
+                    {
+                        "description": "The subscription_id Creem appended to the success URL",
+                        "name": "sync",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/schemas.SyncRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.BillingSchema"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/catalog": {
             "get": {
                 "security": [
@@ -597,7 +1031,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get the currently authenticated user with the identity provider's profile attached. Served from a cache for up to five minutes, so a change made in the user pool can take that long to show. A 404 means the user has not been set up yet.",
+                "description": "Get the currently authenticated user with the identity provider's profile and their subscription attached. The profile is served from a cache for up to five minutes, so a change made in the user pool can take that long to show; the subscription is read fresh on every call, and is left out for a user who has never subscribed. A 404 means the user has not been set up yet.",
                 "consumes": [
                     "application/json"
                 ],
@@ -644,9 +1078,102 @@
                     }
                 }
             }
+        },
+        "/v1/webhooks/creem": {
+            "post": {
+                "description": "Creem's webhook endpoint. It takes no token: the creem-signature header, an HMAC of the raw body, authenticates it. Answers 200 once the event is handled or was already; any other status makes Creem retry.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Receive a Creem webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hex HMAC-SHA256 of the body under the webhook secret",
+                        "name": "creem-signature",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "schemas.BillingSchema": {
+            "type": "object",
+            "properties": {
+                "subscription": {
+                    "description": "Subscription is the caller's current subscription, or null when they\nhave never subscribed.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.SubscriptionSchema"
+                        }
+                    ]
+                }
+            }
+        },
         "schemas.BreakItSchema": {
             "type": "object",
             "properties": {
@@ -687,6 +1214,15 @@
                     "items": {
                         "$ref": "#/definitions/schemas.EnrollmentSchema"
                     }
+                }
+            }
+        },
+        "schemas.CheckoutSchema": {
+            "type": "object",
+            "properties": {
+                "checkoutUrl": {
+                    "type": "string",
+                    "example": "https://checkout.creem.io/ch_1QyIQDw9cbFWdA1ry5Qc6I"
                 }
             }
         },
@@ -1062,6 +1598,15 @@
                 }
             }
         },
+        "schemas.PortalSchema": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "example": "https://creem.io/my-orders/login/xxxxxxxxxx"
+                }
+            }
+        },
         "schemas.PrerequisiteSchema": {
             "type": "object",
             "properties": {
@@ -1106,6 +1651,46 @@
                 }
             }
         },
+        "schemas.SubscriptionSchema": {
+            "type": "object",
+            "properties": {
+                "cancelAtPeriodEnd": {
+                    "description": "CancelAtPeriodEnd is a cancelled subscription that runs until\nCurrentPeriodEnd.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "canceledAt": {
+                    "type": "string"
+                },
+                "currentPeriodEnd": {
+                    "type": "string",
+                    "example": "2026-11-03T14:12:24Z"
+                },
+                "entitled": {
+                    "description": "Entitled is whether the subscription gives access now.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "status": {
+                    "description": "Status is Creem's: active, trialing, past_due, unpaid, scheduled_cancel,\npaused or canceled. Treat any other value as no access.",
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
+        "schemas.SyncRequest": {
+            "type": "object",
+            "required": [
+                "subscriptionId"
+            ],
+            "properties": {
+                "subscriptionId": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "sub_6pC2lNB6joCRQIZ1aMrTpi"
+                }
+            }
+        },
         "schemas.UserProfileSchema": {
             "type": "object",
             "properties": {
@@ -1140,6 +1725,14 @@
                     "allOf": [
                         {
                             "$ref": "#/definitions/schemas.UserProfileSchema"
+                        }
+                    ]
+                },
+                "subscription": {
+                    "description": "Subscription is filled in by the /me endpoint too, but read fresh on\nevery call rather than cached, so a checkout or cancel shows at once. It\nis left out for a user who has never subscribed.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.SubscriptionSchema"
                         }
                     ]
                 }
