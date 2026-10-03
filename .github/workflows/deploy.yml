@@ -35,6 +35,7 @@ jobs:
       api: ${{ steps.diff.outputs.api }}
       app: ${{ steps.diff.outputs.app }}
       migrations: ${{ steps.diff.outputs.migrations }}
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -67,6 +68,24 @@ jobs:
             echo "$dir: $changed"
             echo "${dir##*/}=$changed" >> "$GITHUB_OUTPUT"
           done
+
+      # Each image is also tagged with the environment, and each Render
+      # service's image setting points at that tag. The deploy hook deploys
+      # the commit's tag but leaves the setting as it is, so without it a
+      # deploy started on Render (by hand, or after an env var change) would
+      # go back to whatever image the setting named. Environment names may
+      # hold characters a tag can't.
+      - id: tag
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          tag=$(printf '%s' "$ENVIRONMENT" | sed -E 's/[^A-Za-z0-9_.-]+/-/g; s/^[.-]+//' | cut -c1-128)
+          if [ -z "$tag" ]; then
+            echo "::error::Environment name '$ENVIRONMENT' leaves no valid image tag"
+            exit 1
+          fi
+          echo "Environment image tag: $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
   # The jobs below read secrets, so each runs in the chosen environment: its
   # secrets are DATABASE_URL and the two deploy hooks, and its protection
@@ -104,6 +123,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/steadylearn-api:${{ github.sha }}
+      ENV_IMAGE: ghcr.io/${{ github.repository_owner }}/steadylearn-api:${{ needs.changes.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
 
@@ -112,6 +132,7 @@ jobs:
           context: api
           push: true
           image: ${{ env.IMAGE }}
+          extra-tags: ${{ env.ENV_IMAGE }}
           registry-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: ./.github/actions/deploy-to-render
@@ -135,6 +156,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/steadylearn-app:${{ github.sha }}
+      ENV_IMAGE: ghcr.io/${{ github.repository_owner }}/steadylearn-app:${{ needs.changes.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
 
@@ -143,6 +165,7 @@ jobs:
           context: app
           push: true
           image: ${{ env.IMAGE }}
+          extra-tags: ${{ env.ENV_IMAGE }}
           registry-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: ./.github/actions/deploy-to-render

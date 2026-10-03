@@ -48,12 +48,18 @@ from the Actions tab, for one GitHub environment picked at launch, and
 refuses any other branch. It diffs `main` against the last successful deploy
 to that environment and acts only on what changed: Atlas applies new
 `api/migrations` first, then each changed side's image is pushed to GHCR as
-`steadylearn-api` / `steadylearn-app` tagged with the commit, and its Render
-service is pointed at it through a deploy hook, the API before the app.
-`force` redeploys both. Each environment holds its own three secrets,
-`DATABASE_URL`, `RENDER_DEPLOY_HOOK_API` and `RENDER_DEPLOY_HOOK_APP`, so
-adding an environment in the repository settings is all a new target needs.
-Without a hook, the image is pushed but not deployed.
+`steadylearn-api` / `steadylearn-app` tagged with the commit and with the
+environment's name, and its Render service deploys the commit's tag through a
+deploy hook, the API before the app. `force` redeploys both.
+
+A deploy hook leaves the service's image setting as it is, so each Render
+service's image must name the environment's tag (e.g.
+`ghcr.io/<owner>/steadylearn-api:production`); a deploy started on Render, by
+hand or after an env var change, then runs the latest image rather than the
+one first set. Each environment holds its own three secrets, `DATABASE_URL`,
+`RENDER_DEPLOY_HOOK_API` and `RENDER_DEPLOY_HOOK_APP`, so a new target needs
+an environment in the repository settings and its services pointed at its
+tag. Without a hook, the image is pushed but not deployed.
 
 ## Sandboxes
 

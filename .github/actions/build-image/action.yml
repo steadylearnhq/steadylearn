@@ -16,6 +16,9 @@ inputs:
   image:
     description: The full image reference to tag and push, e.g. ghcr.io/owner/name:sha. Required when pushing.
     default: ""
+  extra-tags:
+    description: Further full image references for the same image, one per line, e.g. ghcr.io/owner/name:production
+    default: ""
   registry-token:
     description: A token that can write packages, usually secrets.GITHUB_TOKEN. Required when pushing.
     default: ""
@@ -41,7 +44,9 @@ runs:
         platforms: linux/amd64
         push: ${{ inputs.push == 'true' }}
         outputs: ${{ inputs.push != 'true' && 'type=cacheonly' || '' }}
-        tags: ${{ inputs.image }}
+        tags: |
+          ${{ inputs.image }}
+          ${{ inputs.extra-tags }}
         labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
         cache-from: type=gha,scope=${{ inputs.context }}
         cache-to: ${{ inputs.push == 'true' && format('type=gha,scope={0},mode=max', inputs.context) || '' }}
