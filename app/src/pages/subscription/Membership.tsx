@@ -179,15 +179,11 @@ export default function Membership(props: MembershipProps) {
           desc: 'Change your payment method and billing details on our payment provider’s secure page.',
         }
 
+  // A cancelled subscription has no row here: the heading already offers to resume it.
   const endRow = () => {
     switch (props.view) {
       case 'ending':
-        return {
-          title: 'Resume subscription',
-          desc: end()
-            ? `Keep every course open. You’ll be charged ${PRICE} on ${formatDayLong(end()!)}, then monthly.`
-            : 'Keep every course open.',
-        }
+        return undefined
       case 'paused':
         return { title: 'Resume subscription', desc: `Open every course again, for ${PRICE} a month.` }
       case 'pastDue':
@@ -271,7 +267,8 @@ export default function Membership(props: MembershipProps) {
         )}
       </Show>
 
-      <div class={styles.columns}>
+      {/* With nothing below them, the columns close the page: their divider runs down to the footer. */}
+      <div class={styles.columns} classList={{ [styles.columnsLast]: !endRow() }}>
         <section class={styles.column}>
           <h2 class={styles.heading}>Manage subscription</h2>
           <span class={styles.headingNote}>
@@ -295,6 +292,11 @@ export default function Membership(props: MembershipProps) {
               {props.busy === 'portal' ? 'Opening…' : 'Open ↗'}
             </Button>
           </div>
+          <Show when={!endRow() && props.failure}>
+            <p class={styles.columnFailure} role="alert">
+              {props.failure}
+            </p>
+          </Show>
         </section>
 
         <section class={styles.column}>
@@ -329,50 +331,54 @@ export default function Membership(props: MembershipProps) {
         </section>
       </div>
 
-      <section class={styles.end}>
-        <div class={styles.endRow}>
-          <div class={styles.portalText}>
-            <span class={styles.portalTitle}>{endRow().title}</span>
-            <span class={styles.endDesc}>{endRow().desc}</span>
-          </div>
-          <Switch>
-            <Match when={props.view === 'ending' || props.view === 'paused'}>
-              <Button variant="primary" size="xs" class={styles.rowButton} disabled={busy()} onClick={() => props.act('resume')}>
-                {props.busy === 'resume' ? 'Resuming…' : 'Resume subscription'}
-              </Button>
-            </Match>
-            <Match when={true}>
-              <Button
-                variant="dangerOutline"
-                size="xs"
-                class={styles.rowButton}
-                disabled={busy()}
-                onClick={() => props.setAskCancel(true)}
-              >
-                Cancel subscription
-              </Button>
-            </Match>
-          </Switch>
-        </div>
-        <Show when={props.askCancel && (props.view === 'active' || props.view === 'pastDue')}>
-          <div class={styles.cancelPanel}>
-            <p class={styles.cancelWarning}>{cancelWarning()}</p>
-            <div class={styles.cancelActions}>
-              <Button variant="outline" size="xs" disabled={busy()} onClick={() => props.setAskCancel(false)}>
-                Keep subscription
-              </Button>
-              <Button variant="danger" size="xs" disabled={busy()} onClick={() => props.act('cancel')}>
-                {props.busy === 'cancel' ? 'Cancelling…' : 'Cancel subscription'}
-              </Button>
+      <Show when={endRow()}>
+        {(row) => (
+          <section class={styles.end}>
+            <div class={styles.endRow}>
+              <div class={styles.portalText}>
+                <span class={styles.portalTitle}>{row().title}</span>
+                <span class={styles.endDesc}>{row().desc}</span>
+              </div>
+              <Switch>
+                <Match when={props.view === 'paused'}>
+                  <Button variant="primary" size="xs" class={styles.rowButton} disabled={busy()} onClick={() => props.act('resume')}>
+                    {props.busy === 'resume' ? 'Resuming…' : 'Resume subscription'}
+                  </Button>
+                </Match>
+                <Match when={true}>
+                  <Button
+                    variant="dangerOutline"
+                    size="xs"
+                    class={styles.rowButton}
+                    disabled={busy()}
+                    onClick={() => props.setAskCancel(true)}
+                  >
+                    Cancel subscription
+                  </Button>
+                </Match>
+              </Switch>
             </div>
-          </div>
-        </Show>
-        <Show when={props.failure}>
-          <p class={styles.failure} role="alert">
-            {props.failure}
-          </p>
-        </Show>
-      </section>
+            <Show when={props.askCancel && (props.view === 'active' || props.view === 'pastDue')}>
+              <div class={styles.cancelPanel}>
+                <p class={styles.cancelWarning}>{cancelWarning()}</p>
+                <div class={styles.cancelActions}>
+                  <Button variant="outline" size="xs" disabled={busy()} onClick={() => props.setAskCancel(false)}>
+                    Keep subscription
+                  </Button>
+                  <Button variant="danger" size="xs" disabled={busy()} onClick={() => props.act('cancel')}>
+                    {props.busy === 'cancel' ? 'Cancelling…' : 'Cancel subscription'}
+                  </Button>
+                </div>
+              </div>
+            </Show>
+            <Show when={props.failure}>
+              <p class={styles.failure} role="alert">
+                {props.failure}
+              </p>
+            </Show>
+          </section>
+        )}
+      </Show>
 
       <Show when={drawer() && props.payments}>
         {(all) => <PaymentsDrawer payments={all()} disabled={busy()} onPortal={portal} onClose={() => setDrawer(false)} />}

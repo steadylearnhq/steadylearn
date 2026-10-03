@@ -16,6 +16,7 @@ import {
   loadPayments,
   openPortal,
   payments,
+  preloadPortal,
   resumeSubscription,
   syncSubscription,
   type Billing,
@@ -178,14 +179,47 @@ export default function Subscription() {
   )
   const memberPayments = () => (paymentsFailed() ? null : payments())
 
+  // Anyone who has subscribed has the portal a click away, so its link is asked
+  // for ahead and the click redirects at once.
+  createEffect(
+    on(
+      () => billing() && confirming() === 'no' && view() !== 'free',
+      (subscriber) => subscriber && preloadPortal(),
+    ),
+  )
+
+  // The portal opens in another tab, where the member may change their card or
+  // cancel; coming back to this one shows what they did.
+  let leftForPortal = false
+  const onReturn = () => {
+    if (document.visibilityState !== 'visible' || !leftForPortal) return
+    leftForPortal = false
+    loadBilling(true).catch(() => {})
+    fetchPayments(true)
+  }
+  document.addEventListener('visibilitychange', onReturn)
+  onCleanup(() => document.removeEventListener('visibilitychange', onReturn))
+
+  const openBillingPortal = async () => {
+    setFailure('')
+    leftForPortal = true
+    const opening = openPortal()
+    if (!opening) return
+    setBusy('portal')
+    try {
+      await opening
+    } catch {
+      leftForPortal = false
+      setFailure(FAILURE)
+    }
+    setBusy(null)
+  }
+
   const act = async (action: BillingAction) => {
+    if (action === 'portal') return openBillingPortal()
     setFailure('')
     setBusy(action)
     try {
-      if (action === 'portal') {
-        await openPortal()
-        return // leaving for Creem
-      }
       await (action === 'cancel' ? cancelSubscription() : resumeSubscription())
       setAskCancel(false)
       flash(action === 'cancel' ? 'Subscription canceled' : 'Subscription resumed')

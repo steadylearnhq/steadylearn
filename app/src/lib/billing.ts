@@ -129,10 +129,68 @@ export async function startCheckout() {
   window.location.assign(url.toString())
 }
 
-/** Leaves for Creem's customer portal, where the member changes their card and downloads invoices. */
-export async function openPortal() {
-  const { url } = await apiPost<{ url: string }>('/v1/billing/portal', (await session())?.token)
-  window.location.assign(url)
+// A portal link signs the member in to Creem's portal. It is asked for when the
+// Subscription page opens, so the portal opens in a new tab the moment it's
+// clicked. Creem doesn't say how long a link lasts, so one older than
+// PORTAL_LINK_MAX_AGE is asked for again, and each is used for one trip.
+const PORTAL_LINK_MAX_AGE = 5 * 60_000
+
+let portalLink: { userId: string; at: number; request: Promise<string>; url?: string } | undefined
+
+const freshLink = (userId: string | undefined) =>
+  portalLink && portalLink.userId === userId && Date.now() - portalLink.at <= PORTAL_LINK_MAX_AGE ? portalLink : undefined
+
+/** The member's portal link: the one asked for ahead if it's still fresh, otherwise a new one. */
+async function portalUrl(): Promise<string> {
+  const member = await session()
+  if (!member) throw new Error('Not signed in')
+  const fresh = freshLink(member.userId)
+  if (fresh) return fresh.request
+  const link: NonNullable<typeof portalLink> = {
+    userId: member.userId,
+    at: Date.now(),
+    request: apiPost<{ url: string }>('/v1/billing/portal', member.token).then((r) => (link.url = r.url)),
+  }
+  portalLink = link
+  link.request.catch(() => {
+    if (portalLink === link) portalLink = undefined
+  })
+  return link.request
+}
+
+/** Asks for the member's portal link ahead of a click. A failure is quiet: the click asks again. */
+export const preloadPortal = () => void portalUrl().catch(() => {})
+
+/**
+ * Opens Creem's customer portal, where the member changes their card and
+ * downloads invoices, in a new tab. The tab has to open within the click or the
+ * browser blocks it, so with a link at hand it opens at once and this returns
+ * undefined. Otherwise a blank tab opens now and follows the link once it
+ * arrives; the promise settles then, and rejects if the link couldn't be had.
+ * Either way the next link is asked for, ready for the next click.
+ */
+export function openPortal(): Promise<void> | undefined {
+  const ready = freshLink(user()?.id)?.url
+  if (ready) {
+    portalLink = undefined
+    window.open(ready, '_blank', 'noopener')
+    preloadPortal()
+    return undefined
+  }
+  const tab = window.open('', '_blank')
+  if (tab) tab.opener = null
+  return portalUrl().then(
+    (url) => {
+      portalLink = undefined
+      if (tab) tab.location.href = url
+      else window.location.assign(url) // the browser blocked the tab
+      preloadPortal()
+    },
+    (error: unknown) => {
+      tab?.close()
+      throw error
+    },
+  )
 }
 
 /** A subscription date as the design writes dates: 3 November 2026. */
