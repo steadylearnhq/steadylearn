@@ -63,6 +63,7 @@ func TestGetCatalogServesAMemberTheirEnrollments(t *testing.T) {
 	testutil.UseDB(t)
 	testutil.UseCache(t)
 	userId := uuid.New()
+	testutil.Subscribe(t, userId)
 	_, _, err := services.Enroll(context.Background(), userId, "storage-engines")
 	require.NoError(t, err)
 
@@ -105,6 +106,7 @@ func TestGetCourseServesAMemberTheirEnrollment(t *testing.T) {
 	testutil.UseCache(t)
 	const slug = "storage-engines"
 	userId := uuid.New()
+	testutil.Subscribe(t, userId)
 	_, _, err := services.Enroll(context.Background(), userId, slug)
 	require.NoError(t, err)
 	_, err = services.CompleteLesson(context.Background(), userId, slug, "1.1")

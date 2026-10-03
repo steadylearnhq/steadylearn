@@ -16,13 +16,26 @@ import (
 	"steadylearn-api/tests/testutil"
 )
 
-// addSyllabusCourse adds a published course of three lessons: 1.1, 1.2 and
-// 2.1. Module one also holds a deleted lesson between its two, which the codes
-// skip and progress does not count.
+// addSyllabusCourse adds a published free course of three lessons: 1.1, 1.2
+// and 2.1. Module one also holds a deleted lesson between its two, which the
+// codes skip and progress does not count. Being free, it needs no
+// subscription; addPaidCourse adds one that does.
 func addSyllabusCourse(t *testing.T, domain models.Domain, slug string) models.Course {
+	t.Helper()
+	return addLessonsCourse(t, domain, slug, true)
+}
+
+// addPaidCourse adds a course like addSyllabusCourse's that is not free.
+func addPaidCourse(t *testing.T, domain models.Domain, slug string) models.Course {
+	t.Helper()
+	return addLessonsCourse(t, domain, slug, false)
+}
+
+func addLessonsCourse(t *testing.T, domain models.Domain, slug string, free bool) models.Course {
 	t.Helper()
 	course := addCourse(t, domain, models.Course{
 		Slug:        slug,
+		IsFree:      free,
 		PublishedAt: ago(time.Hour),
 		Modules: []models.CourseModule{
 			{Position: 1, Title: "One", Lessons: []models.Lesson{
@@ -306,7 +319,7 @@ func TestGetEnrollments(t *testing.T) {
 	addSyllabusCourse(t, dist, "older")
 	addSyllabusCourse(t, dist, "newer")
 	withdrawn := addSyllabusCourse(t, dist, "withdrawn")
-	empty := addCourse(t, dist, models.Course{Slug: "empty", PublishedAt: ago(time.Hour)})
+	empty := addCourse(t, dist, models.Course{Slug: "empty", IsFree: true, PublishedAt: ago(time.Hour)})
 
 	userId := uuid.New()
 	for _, slug := range []string{"older", "newer", "withdrawn", "empty"} {
@@ -475,4 +488,85 @@ func TestSetFeedback(t *testing.T) {
 
 	_, err = services.SetFeedback(ctx, userId, "missing", 4, "")
 	assert.ErrorIs(t, err, services.ErrCourseNotFound)
+}
+
+func TestEnrollNeedsASubscription(t *testing.T) {
+	cases := []struct {
+		name         string
+		subscription *models.Subscription
+		allowed      bool
+	}{
+		{"never subscribed", nil, false},
+		{"active", &models.Subscription{Status: "active"}, true},
+		{"failed payment", &models.Subscription{Status: "past_due"}, true},
+		{"cancelled, period not over", &models.Subscription{Status: "scheduled_cancel", CurrentPeriodEnd: at(time.Hour)}, true},
+		{"cancelled, period over", &models.Subscription{Status: "scheduled_cancel", CurrentPeriodEnd: at(-time.Hour)}, false},
+		{"canceled", &models.Subscription{Status: "canceled"}, false},
+		{"expired", &models.Subscription{Status: "expired"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			useEmptyCatalog(t)
+			ctx := context.Background()
+			dist := addDomain(t, "dist", 1)
+			addSyllabusCourse(t, dist, "free")
+			addPaidCourse(t, dist, "paid")
+			userId := uuid.New()
+			if tc.subscription != nil {
+				tc.subscription.CreemSubscriptionId = "sub_1"
+				addSubscription(t, userId, *tc.subscription)
+			}
+
+			_, created, err := services.Enroll(ctx, userId, "free")
+			require.NoError(t, err, "a free course needs no subscription")
+			assert.True(t, created)
+
+			_, created, err = services.Enroll(ctx, userId, "paid")
+			if tc.allowed {
+				require.NoError(t, err)
+				assert.True(t, created)
+				return
+			}
+			assert.ErrorIs(t, err, services.ErrSubscriptionRequired)
+			assert.False(t, created)
+			enrollments, err := services.GetEnrollments(ctx, userId)
+			require.NoError(t, err)
+			assert.Len(t, enrollments, 1, "only the free course")
+		})
+	}
+}
+
+func TestLapsedSubscriptionKeepsProgressReadOnly(t *testing.T) {
+	useEmptyCatalog(t)
+	testutil.UseCache(t)
+	ctx := context.Background()
+	addPaidCourse(t, addDomain(t, "dist", 1), "paid")
+	userId := uuid.New()
+	addSubscription(t, userId, models.Subscription{CreemSubscriptionId: "sub_1", Status: "active"})
+
+	_, _, err := services.Enroll(ctx, userId, "paid")
+	require.NoError(t, err)
+	_, err = services.CompleteLesson(ctx, userId, "paid", "1.1")
+	require.NoError(t, err)
+	require.NoError(t, core.DB.Exec(`UPDATE subscriptions SET status = 'canceled' WHERE user_id = ?`, userId).Error)
+
+	course, err := services.GetMemberCourse(ctx, "paid", userId)
+	require.NoError(t, err)
+	require.NotNil(t, course.Enrollment, "the enrollment stays")
+	assert.Equal(t, []string{"1.1"}, course.Enrollment.CompletedLessons, "and so does the progress")
+
+	_, err = services.CompleteLesson(ctx, userId, "paid", "1.2")
+	assert.ErrorIs(t, err, services.ErrSubscriptionRequired, "complete")
+	_, err = services.UncompleteLesson(ctx, userId, "paid", "1.1")
+	assert.ErrorIs(t, err, services.ErrSubscriptionRequired, "uncomplete")
+	_, err = services.SetFeedback(ctx, userId, "paid", 4, "")
+	assert.ErrorIs(t, err, services.ErrSubscriptionRequired, "feedback")
+	_, _, err = services.Enroll(ctx, userId, "paid")
+	assert.ErrorIs(t, err, services.ErrSubscriptionRequired, "enroll again")
+	assert.Equal(t, []string{"First"}, completedTitles(t, userId, "paid"), "nothing changed")
+
+	_, err = services.CompleteLesson(ctx, uuid.New(), "paid", "1.1")
+	assert.ErrorIs(t, err, services.ErrNotEnrolled, "not enrolled comes first")
+
+	require.NoError(t, services.Unenroll(ctx, userId, "paid"), "leaving still works")
 }
