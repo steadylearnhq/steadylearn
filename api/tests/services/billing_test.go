@@ -138,6 +138,8 @@ func TestBillingOff(t *testing.T) {
 	assert.ErrorIs(t, err, services.ErrBillingDisabled)
 	_, err = services.BillingPortalLink(ctx, userId)
 	assert.ErrorIs(t, err, services.ErrBillingDisabled)
+	_, err = services.ListPayments(ctx, userId)
+	assert.ErrorIs(t, err, services.ErrBillingDisabled)
 	assert.ErrorIs(t, services.HandleCreemWebhook(ctx, []byte(`{}`), "sig"), services.ErrBillingDisabled)
 
 	_, err = services.GetBilling(ctx, userId)
@@ -225,6 +227,165 @@ func TestSyncSubscription(t *testing.T) {
 	require.NotNil(t, stored)
 	assert.Equal(t, userId, stored.UserId)
 	assert.Equal(t, "cust_sub_1", stored.CreemCustomerId)
+}
+
+func TestSubscriptionDates(t *testing.T) {
+	testutil.UseDB(t)
+	creem := testutil.UseCreem(t)
+	ctx := context.Background()
+	userId := uuid.New()
+	subscription := creemSubscription("sub_1", userId, "past_due", at(0))
+	subscription.CurrentPeriodStartDate = at(-2 * 24 * time.Hour)
+	subscription.NextTransactionDate = at(3 * 24 * time.Hour)
+	subscription.CreatedAt = at(-90 * 24 * time.Hour)
+	creem.On("GetSubscription", mock.Anything, "sub_1").Return(subscription, nil).Once()
+
+	billing, err := services.SyncSubscription(ctx, userId, "sub_1")
+	require.NoError(t, err)
+	got := billing.Subscription
+	require.NotNil(t, got)
+	assert.Equal(t, subscription.CurrentPeriodStartDate.Unix(), got.CurrentPeriodStart.Unix())
+	assert.Equal(t, subscription.NextTransactionDate.Unix(), got.NextChargeAt.Unix(), "the next retry")
+	assert.Equal(t, subscription.CreatedAt.Unix(), got.MemberSince.Unix())
+
+	t.Run("the renewal when Creem names no next charge", func(t *testing.T) {
+		userId := uuid.New()
+		addSubscription(t, userId, models.Subscription{CreemSubscriptionId: "sub_2", Status: "active", CurrentPeriodEnd: at(time.Hour)})
+
+		billing, err := services.GetBilling(ctx, userId)
+		require.NoError(t, err)
+		require.NotNil(t, billing.Subscription.NextChargeAt)
+		assert.Equal(t, at(time.Hour).Unix(), billing.Subscription.NextChargeAt.Unix())
+	})
+
+	t.Run("none for a subscription that won't renew", func(t *testing.T) {
+		userId := uuid.New()
+		addSubscription(t, userId, models.Subscription{
+			CreemSubscriptionId: "sub_3", Status: "scheduled_cancel", CurrentPeriodEnd: at(time.Hour), NextTransactionAt: at(time.Hour),
+		})
+
+		billing, err := services.GetBilling(ctx, userId)
+		require.NoError(t, err)
+		assert.Nil(t, billing.Subscription.NextChargeAt)
+	})
+}
+
+func TestMemberSinceSpansEverySubscription(t *testing.T) {
+	testutil.UseDB(t)
+	userId := uuid.New()
+	first := at(-200 * 24 * time.Hour)
+	addSubscription(t, userId, models.Subscription{CreemSubscriptionId: "sub_old", Status: "canceled", CreemCreatedAt: first, CreemUpdatedAt: *at(-100 * 24 * time.Hour)})
+	// Stored before Creem's date was kept: its row's date stands in.
+	addSubscription(t, userId, models.Subscription{CreemSubscriptionId: "sub_new", Status: "active", CurrentPeriodEnd: at(time.Hour)})
+
+	billing, err := services.GetBilling(context.Background(), userId)
+	require.NoError(t, err)
+	assert.Equal(t, "active", billing.Subscription.Status)
+	assert.Equal(t, first.Unix(), billing.Subscription.MemberSince.Unix(), "resubscribing keeps the first date")
+}
+
+// transaction is a Creem charge of a subscription, made daysAgo.
+func transaction(id, subscriptionId, status string, daysAgo int) core.CreemTransaction {
+	created := time.Now().Add(-time.Duration(daysAgo) * 24 * time.Hour).Truncate(time.Second).UTC()
+	end := created.AddDate(0, 1, 0)
+	return core.CreemTransaction{
+		Id:           id,
+		Amount:       2400,
+		Currency:     "USD",
+		Type:         "invoice",
+		Status:       status,
+		Subscription: core.CreemRef{Id: subscriptionId},
+		PeriodStart:  &core.CreemTime{Time: created},
+		PeriodEnd:    &core.CreemTime{Time: end},
+		CreatedAt:    core.CreemTime{Time: created},
+	}
+}
+
+func TestListPayments(t *testing.T) {
+	testutil.UseDB(t)
+	creem := testutil.UseCreem(t)
+	ctx := context.Background()
+	userId := uuid.New()
+	addSubscription(t, userId, models.Subscription{CreemSubscriptionId: "sub_1", CreemCustomerId: "cust_ada", Status: "past_due"})
+
+	// Once: the second read is answered from the cache.
+	creem.On("ListTransactions", mock.Anything, "cust_ada").Return([]core.CreemTransaction{
+		transaction("tran_old", "sub_1", "paid", 60),
+		transaction("tran_new", "sub_1", "declined", 1),
+		transaction("tran_mid", "sub_1", "chargedBack", 30),
+		transaction("tran_void", "sub_1", "void", 2),
+		transaction("tran_other", "sub_someone_elses", "paid", 3),
+	}, nil).Once()
+
+	payments, err := services.ListPayments(ctx, userId)
+	require.NoError(t, err)
+	ids, statuses := []string{}, []string{}
+	for _, payment := range payments.Payments {
+		ids = append(ids, payment.Id)
+		statuses = append(statuses, payment.Status)
+	}
+	assert.Equal(t, []string{"tran_new", "tran_mid", "tran_old"}, ids, "newest first, only this subscription's charges")
+	assert.Equal(t, []string{"failed", "refunded", "paid"}, statuses)
+	first := payments.Payments[0]
+	assert.Equal(t, int64(2400), first.Amount)
+	assert.Equal(t, "USD", first.Currency)
+	require.NotNil(t, first.PeriodEnd)
+	assert.True(t, first.PeriodEnd.After(*first.PeriodStart))
+
+	again, err := services.ListPayments(ctx, userId)
+	require.NoError(t, err)
+	assert.Equal(t, payments, again, "served from the cache")
+}
+
+func TestListPaymentsNeverSubscribed(t *testing.T) {
+	testutil.UseDB(t)
+	testutil.UseCreem(t) // no expectations: Creem is not asked
+
+	payments, err := services.ListPayments(context.Background(), uuid.New())
+	require.NoError(t, err)
+	assert.NotNil(t, payments.Payments)
+	assert.Empty(t, payments.Payments)
+}
+
+func TestListPaymentsRefreshesAfterAWebhook(t *testing.T) {
+	testutil.UseDB(t)
+	creem := testutil.UseCreem(t)
+	ctx := context.Background()
+	userId := uuid.New()
+	addSubscription(t, userId, models.Subscription{CreemSubscriptionId: "sub_1", CreemCustomerId: "cust_sub_1", Status: "active"})
+
+	creem.On("ListTransactions", mock.Anything, "cust_sub_1").
+		Return([]core.CreemTransaction{transaction("tran_1", "sub_1", "paid", 30)}, nil).Once()
+	payments, err := services.ListPayments(ctx, userId)
+	require.NoError(t, err)
+	assert.Len(t, payments.Payments, 1)
+
+	creem.On("GetSubscription", mock.Anything, "sub_1").Return(creemSubscription("sub_1", userId, "active", at(0)), nil).Once()
+	require.NoError(t, deliver(creemEvent(t, "evt_1", "subscription.paid", map[string]any{"id": "sub_1"})))
+
+	creem.On("ListTransactions", mock.Anything, "cust_sub_1").Return([]core.CreemTransaction{
+		transaction("tran_2", "sub_1", "paid", 0),
+		transaction("tran_1", "sub_1", "paid", 30),
+	}, nil).Once()
+	payments, err = services.ListPayments(ctx, userId)
+	require.NoError(t, err)
+	assert.Len(t, payments.Payments, 2, "the renewal shows at once")
+}
+
+func TestListPaymentsWhenCreemFails(t *testing.T) {
+	testutil.UseDB(t)
+	creem := testutil.UseCreem(t)
+	ctx := context.Background()
+	userId := uuid.New()
+	addSubscription(t, userId, models.Subscription{CreemSubscriptionId: "sub_1", Status: "active"})
+
+	creem.On("ListTransactions", mock.Anything, "cust_sub_1").Return(nil, errors.New("status 503")).Once()
+	_, err := services.ListPayments(ctx, userId)
+	assert.ErrorIs(t, err, services.ErrPaymentProvider)
+
+	creem.On("ListTransactions", mock.Anything, "cust_sub_1").Return([]core.CreemTransaction{}, nil).Once()
+	_, err = services.ListPayments(ctx, userId)
+	assert.NoError(t, err, "a failure is not cached")
 }
 
 func TestSyncSubscriptionRejects(t *testing.T) {

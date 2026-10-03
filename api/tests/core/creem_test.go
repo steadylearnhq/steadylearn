@@ -57,8 +57,11 @@ func TestCreemGetSubscription(t *testing.T) {
 		"id": "sub_1", "status": "scheduled_cancel",
 		"product": {"id": "prod_1", "name": "Monthly"},
 		"customer": "cust_1",
+		"current_period_start_date": "2026-10-03T14:12:24.000Z",
 		"current_period_end_date": "2026-11-03T14:12:24.000Z",
+		"next_transaction_date": "2026-11-03T14:12:24.000Z",
 		"canceled_at": null,
+		"created_at": "2026-03-14T09:30:00.000Z",
 		"updated_at": "2026-10-03T14:12:24.000Z",
 		"metadata": {"user_id": "u1"}
 	}`)
@@ -69,11 +72,57 @@ func TestCreemGetSubscription(t *testing.T) {
 	assert.Equal(t, "prod_1", subscription.Product.Id, "an object")
 	assert.Equal(t, "cust_1", subscription.Customer.Id, "a bare id")
 	assert.Equal(t, time.Date(2026, 11, 3, 14, 12, 24, 0, time.UTC), subscription.CurrentPeriodEndDate.UTC())
+	assert.Equal(t, time.Date(2026, 10, 3, 14, 12, 24, 0, time.UTC), subscription.CurrentPeriodStartDate.UTC())
+	assert.Equal(t, time.Date(2026, 11, 3, 14, 12, 24, 0, time.UTC), subscription.NextTransactionDate.UTC())
+	assert.Equal(t, time.Date(2026, 3, 14, 9, 30, 0, 0, time.UTC), subscription.CreatedAt.UTC())
 	assert.Nil(t, subscription.CanceledAt)
 	assert.Equal(t, "u1", subscription.Metadata["user_id"])
 
 	require.Len(t, *requests, 1)
 	assert.Equal(t, creemRequest{Method: "GET", Path: "/v1/subscriptions", Query: "subscription_id=sub_1", APIKey: "creem_test_key"}, (*requests)[0])
+}
+
+func TestCreemListTransactions(t *testing.T) {
+	testutil.UseCreem(t)
+	// Two pages: the second is asked for because the first names it.
+	var queries []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		queries = append(queries, r.URL.Path+"?"+r.URL.RawQuery)
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("page_number") == "1" {
+			_, _ = io.WriteString(w, `{"items":[{
+				"id":"tran_1","amount":2400,"currency":"USD","type":"invoice","status":"paid",
+				"subscription":"sub_1","customer":"cust_1",
+				"period_start":1759500744000,"period_end":1762179144000,"created_at":1759500744000
+			}],"pagination":{"total_records":2,"total_pages":2,"current_page":1,"next_page":2,"prev_page":null}}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"items":[{"id":"tran_2","amount":2400,"currency":"USD","status":"declined",
+			"subscription":{"id":"sub_1"},"created_at":1762179144000}],
+			"pagination":{"total_records":2,"total_pages":2,"current_page":2,"next_page":null,"prev_page":1}}`)
+	}))
+	t.Cleanup(server.Close)
+	previous := core.Config.CreemAPIURL
+	core.Config.CreemAPIURL = server.URL + "/v1"
+	t.Cleanup(func() { core.Config.CreemAPIURL = previous })
+	core.InitCreem()
+
+	transactions, err := core.Creem.ListTransactions(context.Background(), "cust_1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"/v1/transactions/search?customer_id=cust_1&page_number=1&page_size=50",
+		"/v1/transactions/search?customer_id=cust_1&page_number=2&page_size=50",
+	}, queries)
+	require.Len(t, transactions, 2)
+	first := transactions[0]
+	assert.Equal(t, "tran_1", first.Id)
+	assert.Equal(t, int64(2400), first.Amount)
+	assert.Equal(t, "sub_1", first.Subscription.Id, "a bare id")
+	assert.Equal(t, time.Date(2025, 10, 3, 14, 12, 24, 0, time.UTC), first.CreatedAt.Time, "epoch milliseconds")
+	require.NotNil(t, first.PeriodEnd)
+	assert.Equal(t, time.Date(2025, 11, 3, 14, 12, 24, 0, time.UTC), first.PeriodEnd.Time)
+	assert.Equal(t, "sub_1", transactions[1].Subscription.Id, "an object")
+	assert.Nil(t, transactions[1].PeriodStart)
 }
 
 func TestCreemRequests(t *testing.T) {

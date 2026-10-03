@@ -343,6 +343,41 @@ definitions:
         example: Size R and W for a given N and say what each choice costs
         type: string
     type: object
+  schemas.PaymentSchema:
+    properties:
+      amount:
+        description: Amount is in the currency's smallest unit, VAT included.
+        example: 2400
+        type: integer
+      currency:
+        example: USD
+        type: string
+      date:
+        example: "2026-10-03T14:12:24Z"
+        type: string
+      id:
+        example: tran_3e6Z6TzRHzUhLVaYzVQJn0
+        type: string
+      periodEnd:
+        example: "2026-11-03T14:12:24Z"
+        type: string
+      periodStart:
+        example: "2026-10-03T14:12:24Z"
+        type: string
+      status:
+        description: |-
+          Status is paid, failed, refunded or pending. Treat any other value as
+          pending.
+        example: paid
+        type: string
+    type: object
+  schemas.PaymentsSchema:
+    properties:
+      payments:
+        items:
+          $ref: '#/definitions/schemas.PaymentSchema'
+        type: array
+    type: object
   schemas.PortalSchema:
     properties:
       url:
@@ -393,10 +428,26 @@ definitions:
       currentPeriodEnd:
         example: "2026-11-03T14:12:24Z"
         type: string
+      currentPeriodStart:
+        example: "2026-10-03T14:12:24Z"
+        type: string
       entitled:
         description: Entitled is whether the subscription gives access now.
         example: true
         type: boolean
+      memberSince:
+        description: |-
+          MemberSince is when the member first subscribed, across every
+          subscription they have had.
+        example: "2026-03-14T09:30:00Z"
+        type: string
+      nextChargeAt:
+        description: |-
+          NextChargeAt is when the member is next charged: the renewal, or the
+          next retry of a failed payment. It is null for a subscription that
+          won't renew.
+        example: "2026-11-03T14:12:24Z"
+        type: string
       status:
         description: |-
           Status is Creem's: active, trialing, past_due, unpaid, scheduled_cancel,
@@ -600,6 +651,48 @@ paths:
       security:
       - BearerAuth: []
       summary: Start a checkout
+      tags:
+      - billing
+  /v1/billing/payments:
+    get:
+      description: Every charge of the caller's subscriptions, newest first, as Creem
+        reports them. Cached for up to 10 minutes; a webhook or sync for the caller
+        refreshes it. Amounts include VAT. Card details and invoice PDFs are in Creem's
+        portal (POST /v1/billing/portal).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.PaymentsSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List the caller's payments
       tags:
       - billing
   /v1/billing/portal:

@@ -33,6 +33,7 @@ func RegisterV1Routes(router *gin.Engine) {
 		billingRoutes := v1.Group("/billing")
 		{
 			billingRoutes.GET("/subscription", middleware.RequireAuth(), controllers.GetBilling)
+			billingRoutes.GET("/payments", middleware.RequireAuth(), controllers.ListPayments)
 			billingRoutes.POST("/checkout", middleware.RequireAuth(), controllers.StartCheckout)
 			billingRoutes.POST("/sync", middleware.RequireAuth(), controllers.SyncSubscription)
 			billingRoutes.POST("/cancel", middleware.RequireAuth(), controllers.CancelSubscription)

@@ -230,6 +230,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/billing/payments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Every charge of the caller's subscriptions, newest first, as Creem reports them. Cached for up to 10 minutes; a webhook or sync for the caller refreshes it. Amounts include VAT. Card details and invoice PDFs are in Creem's portal (POST /v1/billing/portal).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "List the caller's payments",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.PaymentsSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/billing/portal": {
             "post": {
                 "security": [
@@ -1601,6 +1662,52 @@ const docTemplate = `{
                 }
             }
         },
+        "schemas.PaymentSchema": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "description": "Amount is in the currency's smallest unit, VAT included.",
+                    "type": "integer",
+                    "example": 2400
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2026-10-03T14:12:24Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "tran_3e6Z6TzRHzUhLVaYzVQJn0"
+                },
+                "periodEnd": {
+                    "type": "string",
+                    "example": "2026-11-03T14:12:24Z"
+                },
+                "periodStart": {
+                    "type": "string",
+                    "example": "2026-10-03T14:12:24Z"
+                },
+                "status": {
+                    "description": "Status is paid, failed, refunded or pending. Treat any other value as\npending.",
+                    "type": "string",
+                    "example": "paid"
+                }
+            }
+        },
+        "schemas.PaymentsSchema": {
+            "type": "object",
+            "properties": {
+                "payments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.PaymentSchema"
+                    }
+                }
+            }
+        },
         "schemas.PortalSchema": {
             "type": "object",
             "properties": {
@@ -1669,10 +1776,24 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2026-11-03T14:12:24Z"
                 },
+                "currentPeriodStart": {
+                    "type": "string",
+                    "example": "2026-10-03T14:12:24Z"
+                },
                 "entitled": {
                     "description": "Entitled is whether the subscription gives access now.",
                     "type": "boolean",
                     "example": true
+                },
+                "memberSince": {
+                    "description": "MemberSince is when the member first subscribed, across every\nsubscription they have had.",
+                    "type": "string",
+                    "example": "2026-03-14T09:30:00Z"
+                },
+                "nextChargeAt": {
+                    "description": "NextChargeAt is when the member is next charged: the renewal, or the\nnext retry of a failed payment. It is null for a subscription that\nwon't renew.",
+                    "type": "string",
+                    "example": "2026-11-03T14:12:24Z"
                 },
                 "status": {
                     "description": "Status is Creem's: active, trialing, past_due, unpaid, scheduled_cancel,\npaused or canceled. Treat any other value as no access.",

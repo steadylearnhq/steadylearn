@@ -71,6 +71,12 @@ func (m *MockCreem) CreateBillingPortalLink(ctx context.Context, customerId stri
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockCreem) ListTransactions(ctx context.Context, customerId string) ([]core.CreemTransaction, error) {
+	args := m.Called(ctx, customerId)
+	out, _ := args.Get(0).([]core.CreemTransaction)
+	return out, args.Error(1)
+}
+
 // The billing settings UseCreem configures.
 const (
 	CreemProductId     = "prod_test"
@@ -79,9 +85,12 @@ const (
 )
 
 // UseCreem turns billing on for the length of the test, with core.Creem
-// pointed at a mock.
+// pointed at a mock. Billing caches the member's payments, so it also points
+// core.Cache at an in-memory Redis; a test that inspects it calls UseCache
+// after.
 func UseCreem(t *testing.T) *MockCreem {
 	t.Helper()
+	UseCache(t)
 	swap(t, &core.Config.CreemAPIKey, "creem_test_key")
 	swap(t, &core.Config.CreemWebhookSecret, CreemWebhookSecret)
 	swap(t, &core.Config.CreemProductId, CreemProductId)
