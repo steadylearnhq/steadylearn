@@ -1,8 +1,11 @@
 name: Deploy to Render
 description: Point a Render service at an image through its deploy hook.
 
-# Without the hook the image is still pushed, just not deployed: the first run
-# creates the package before Render can be pointed at it.
+# The hook deploys the given image once and leaves the service's image setting
+# as it is; that setting should name the environment's tag, which deploy.yml
+# moves to every image it deploys. Without the hook the image is still pushed,
+# just not deployed: the first run creates the package before Render can be
+# pointed at it.
 
 inputs:
   hook:
