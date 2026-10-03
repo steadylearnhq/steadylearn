@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -24,6 +25,7 @@ type CreemAPI interface {
 	CancelSubscription(ctx context.Context, subscriptionId string) (CreemSubscription, error)
 	ResumeSubscription(ctx context.Context, subscriptionId string) (CreemSubscription, error)
 	CreateBillingPortalLink(ctx context.Context, customerId string) (string, error)
+	ListTransactions(ctx context.Context, customerId string) ([]CreemTransaction, error)
 }
 
 // Creem takes payments. InitCreem sets it when billing is configured, and it
@@ -63,15 +65,63 @@ type CreemCheckout struct {
 
 // CreemSubscription is Creem's view of a subscription.
 type CreemSubscription struct {
-	Id                   string         `json:"id"`
-	Status               string         `json:"status"`
-	Product              CreemRef       `json:"product"`
-	Customer             CreemRef       `json:"customer"`
-	CurrentPeriodEndDate *time.Time     `json:"current_period_end_date"`
-	CanceledAt           *time.Time     `json:"canceled_at"`
-	UpdatedAt            *time.Time     `json:"updated_at"`
-	Metadata             map[string]any `json:"metadata"`
+	Id                     string     `json:"id"`
+	Status                 string     `json:"status"`
+	Product                CreemRef   `json:"product"`
+	Customer               CreemRef   `json:"customer"`
+	CurrentPeriodStartDate *time.Time `json:"current_period_start_date"`
+	CurrentPeriodEndDate   *time.Time `json:"current_period_end_date"`
+	// NextTransactionDate is when Creem next charges: the renewal, or the
+	// next retry of a failed payment.
+	NextTransactionDate *time.Time     `json:"next_transaction_date"`
+	CanceledAt          *time.Time     `json:"canceled_at"`
+	CreatedAt           *time.Time     `json:"created_at"`
+	UpdatedAt           *time.Time     `json:"updated_at"`
+	Metadata            map[string]any `json:"metadata"`
 }
+
+// CreemTransaction is one charge Creem made, or tried to make. Amount is in
+// cents.
+type CreemTransaction struct {
+	Id           string     `json:"id"`
+	Amount       int64      `json:"amount"`
+	Currency     string     `json:"currency"`
+	Type         string     `json:"type"`
+	Status       string     `json:"status"`
+	Subscription CreemRef   `json:"subscription"`
+	PeriodStart  *CreemTime `json:"period_start"`
+	PeriodEnd    *CreemTime `json:"period_end"`
+	CreatedAt    CreemTime  `json:"created_at"`
+}
+
+// CreemTime is a moment Creem sends as epoch milliseconds, as transactions
+// carry their dates. An RFC 3339 string is read too.
+type CreemTime struct {
+	time.Time
+}
+
+func (t *CreemTime) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		return nil
+	}
+	if len(data) > 0 && data[0] == '"' {
+		return json.Unmarshal(data, &t.Time)
+	}
+	var millis int64
+	if err := json.Unmarshal(data, &millis); err != nil {
+		return err
+	}
+	t.Time = time.UnixMilli(millis).UTC()
+	return nil
+}
+
+// creemTransactionPageSize is how many transactions each search asks for, and
+// creemTransactionMaxPages how many pages are read at most: years of monthly
+// charges fit in the first.
+const (
+	creemTransactionPageSize = 50
+	creemTransactionMaxPages = 20
+)
 
 // CreemRef is a Creem object Creem sends either whole or as its bare id,
 // depending on the payload. Only the id is kept.
@@ -148,6 +198,33 @@ func (c *creemClient) CreateBillingPortalLink(ctx context.Context, customerId st
 	}
 	err := c.do(ctx, http.MethodPost, "/customers/billing", nil, map[string]string{"customer_id": customerId}, &link)
 	return link.CustomerPortalLink, err
+}
+
+// ListTransactions is every transaction of a Creem customer, read page by
+// page.
+func (c *creemClient) ListTransactions(ctx context.Context, customerId string) ([]CreemTransaction, error) {
+	var transactions []CreemTransaction
+	for page := 1; page <= creemTransactionMaxPages; page++ {
+		var result struct {
+			Items      []CreemTransaction `json:"items"`
+			Pagination struct {
+				NextPage *int `json:"next_page"`
+			} `json:"pagination"`
+		}
+		query := url.Values{
+			"customer_id": {customerId},
+			"page_number": {strconv.Itoa(page)},
+			"page_size":   {strconv.Itoa(creemTransactionPageSize)},
+		}
+		if err := c.do(ctx, http.MethodGet, "/transactions/search", query, nil, &result); err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, result.Items...)
+		if result.Pagination.NextPage == nil || len(result.Items) == 0 {
+			break
+		}
+	}
+	return transactions, nil
 }
 
 // do sends one request and decodes the response into out. A response other

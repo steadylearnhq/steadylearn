@@ -19,9 +19,16 @@ type Subscription struct {
 	CreemProductId      string    `gorm:"not null"`
 	// Status is Creem's, stored as it comes. It has no CHECK constraint: a
 	// status Creem adds later must not make storing it fail.
-	Status           string `gorm:"not null"`
-	CurrentPeriodEnd *time.Time
-	CanceledAt       *time.Time
+	Status             string `gorm:"not null"`
+	CurrentPeriodStart *time.Time
+	CurrentPeriodEnd   *time.Time
+	// NextTransactionAt is when Creem next charges: the renewal, or the next
+	// retry of a failed payment.
+	NextTransactionAt *time.Time
+	CanceledAt        *time.Time
+	// CreemCreatedAt is when the member subscribed, which can be earlier than
+	// the row when the subscription was stored late.
+	CreemCreatedAt *time.Time
 	// CreemUpdatedAt is when Creem last changed the subscription, so an older
 	// snapshot that arrives late never overwrites a newer one.
 	CreemUpdatedAt time.Time `gorm:"not null"`

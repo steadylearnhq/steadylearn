@@ -66,3 +66,12 @@ func writeCached(ctx context.Context, key string, value any, ttl time.Duration) 
 		slog.WarnContext(ctx, "cache write failed", "key", key, "error", err)
 	}
 }
+
+// dropCached deletes the entry at key, so the next read loads it afresh. A
+// cache that cannot be reached is logged and otherwise ignored: the entry
+// expires on its own.
+func dropCached(ctx context.Context, key string) {
+	if err := core.Cache.Del(ctx, key).Err(); err != nil {
+		slog.WarnContext(ctx, "cache delete failed", "key", key, "error", err)
+	}
+}

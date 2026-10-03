@@ -221,6 +221,9 @@ Billing goes through Creem, the Merchant of Record. `/v1/billing/*` is
 the caller's own subscription; `POST /v1/webhooks/creem` takes no token, since
 Creem's HMAC signature (`creem-signature`) authenticates it. A webhook only says
 which subscription changed: its state is always read back from Creem.
+`GET /v1/billing/payments` reads the billing history from Creem's transactions,
+cached per member and dropped when a webhook or sync stores their subscription.
+Creem exposes no card details or invoice PDFs; those stay in its portal.
 
 ### Key Patterns
 

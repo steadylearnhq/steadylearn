@@ -1,4 +1,4 @@
-h1:XUg0Jl1+Kn6DlMCu0KV9//82WFikp2SbyNGiX6D1Ryk=
+h1:rs54R+/MO7AIWVxwmlkDtL0hhAur4WrTapAYAd9sooI=
 20260929184017_init.sql h1:fxViAI7xCaka5wPZiYlrYBfvKYDbK5E7oxHFH+lgv0I=
 20260929191556_catalog.sql h1:+3JjzeAlbVEv03me3NWkqYqjsYmY5ebwWgFK+NASssI=
 20260929191613_seed_catalog.sql h1:/9tZr5xpjFzn/sg2pWUB71mQRKjzqxuR5t+lkFbaPfk=
@@ -9,3 +9,4 @@ h1:XUg0Jl1+Kn6DlMCu0KV9//82WFikp2SbyNGiX6D1Ryk=
 20261002160234_enrolled_course_page.sql h1:BJ7CH9v+Je4THe2TfOJ76sVcfhWeYaiixi6Dq85GcKI=
 20261002160243_seed_enrolled_course_page.sql h1:UFkFR46oODQVUDD6QWlifnslhziZcUL8JsphP/fzaNA=
 20261003090136_billing.sql h1:lQRy0Pn/gpDYm3ywmkbVDrbqKnHFCB5Zv8a+YAAtHkU=
+20261003120941_subscription_billing_dates.sql h1:lBJGqNuhe0W90BYdmPq3r2naqDboECpIIBma0WzmBV8=

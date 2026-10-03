@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -51,6 +52,18 @@ const (
 
 // Subscriptions are read straight from the database, never cached: the
 // subscription page reads one right after checkout, cancel and resume.
+// Payments come from Creem, so they are cached per member, and dropped when a
+// webhook or sync stores one of the member's subscriptions.
+
+// paymentsCacheTTL is the longest a charge made without a webhook, such as a
+// refund, takes to show in the billing history.
+const paymentsCacheTTL = 10 * time.Minute
+
+// PaymentsCacheKey is where the member's payments are cached. The version
+// segment is bumped whenever PaymentsSchema changes shape.
+func PaymentsCacheKey(userId uuid.UUID) string {
+	return core.CacheKey("payments", "v1", userId.String())
+}
 
 // billingEnabled reports whether billing is configured and Creem reachable.
 func billingEnabled() bool {
@@ -71,47 +84,192 @@ func isEntitled(status string, periodEnd *time.Time, now time.Time) bool {
 	}
 }
 
-func toSubscriptionSchema(subscription models.Subscription, now time.Time) schemas.SubscriptionSchema {
-	return schemas.SubscriptionSchema{
-		Status:            subscription.Status,
-		Entitled:          isEntitled(subscription.Status, subscription.CurrentPeriodEnd, now),
-		CancelAtPeriodEnd: subscription.Status == statusScheduledCancel,
-		CurrentPeriodEnd:  subscription.CurrentPeriodEnd,
-		CanceledAt:        subscription.CanceledAt,
+// renews reports whether a subscription in the given status is charged
+// again: one that is cancelled or paused is not.
+func renews(status string) bool {
+	switch status {
+	case statusActive, statusTrialing, statusPastDue, statusUnpaid:
+		return true
+	default:
+		return false
 	}
 }
 
-// currentSubscription is the member's subscription that matters now: one that
-// gives access if any does, otherwise the one Creem changed last. found is
-// false for a member who never subscribed.
-func currentSubscription(db *gorm.DB, userId uuid.UUID, now time.Time) (subscription models.Subscription, found bool, err error) {
-	var rows []models.Subscription
-	err = db.Where("user_id = ? AND deleted_at IS NULL", userId).
-		Order("creem_updated_at DESC, created_at DESC").Find(&rows).Error
-	if err != nil {
-		return models.Subscription{}, false, fmt.Errorf("failed to load subscriptions: %w", err)
+// subscribedAt is when the member took out a subscription: Creem's date, or
+// the row's for one stored before Creem's was kept.
+func subscribedAt(subscription models.Subscription) time.Time {
+	if subscription.CreemCreatedAt != nil {
+		return *subscription.CreemCreatedAt
 	}
-	if len(rows) == 0 {
-		return models.Subscription{}, false, nil
-	}
-	for _, row := range rows {
-		if isEntitled(row.Status, row.CurrentPeriodEnd, now) {
-			return row, true, nil
+	return subscription.CreatedAt
+}
+
+// toSubscriptionSchema converts the subscription, given all of the member's
+// subscriptions for when they first subscribed.
+func toSubscriptionSchema(subscription models.Subscription, all []models.Subscription, now time.Time) schemas.SubscriptionSchema {
+	var nextCharge *time.Time
+	if renews(subscription.Status) {
+		nextCharge = subscription.NextTransactionAt
+		if nextCharge == nil {
+			nextCharge = subscription.CurrentPeriodEnd
 		}
 	}
-	return rows[0], true, nil
+
+	memberSince := subscribedAt(subscription)
+	for _, row := range all {
+		if at := subscribedAt(row); at.Before(memberSince) {
+			memberSince = at
+		}
+	}
+
+	return schemas.SubscriptionSchema{
+		Status:             subscription.Status,
+		Entitled:           isEntitled(subscription.Status, subscription.CurrentPeriodEnd, now),
+		CancelAtPeriodEnd:  subscription.Status == statusScheduledCancel,
+		CurrentPeriodStart: subscription.CurrentPeriodStart,
+		CurrentPeriodEnd:   subscription.CurrentPeriodEnd,
+		NextChargeAt:       nextCharge,
+		CanceledAt:         subscription.CanceledAt,
+		MemberSince:        memberSince,
+	}
+}
+
+// memberSubscriptions is every subscription the member has had, the one Creem
+// changed last first.
+func memberSubscriptions(db *gorm.DB, userId uuid.UUID) ([]models.Subscription, error) {
+	var rows []models.Subscription
+	err := db.Where("user_id = ? AND deleted_at IS NULL", userId).
+		Order("creem_updated_at DESC, created_at DESC").Find(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to load subscriptions: %w", err)
+	}
+	return rows, nil
+}
+
+// pickCurrent is the subscription that matters now: one that gives access if
+// any does, otherwise the one Creem changed last. rows must not be empty.
+func pickCurrent(rows []models.Subscription, now time.Time) models.Subscription {
+	for _, row := range rows {
+		if isEntitled(row.Status, row.CurrentPeriodEnd, now) {
+			return row
+		}
+	}
+	return rows[0]
+}
+
+// currentSubscription is the member's subscription that matters now (see
+// pickCurrent). found is false for a member who never subscribed.
+func currentSubscription(db *gorm.DB, userId uuid.UUID, now time.Time) (subscription models.Subscription, found bool, err error) {
+	rows, err := memberSubscriptions(db, userId)
+	if err != nil || len(rows) == 0 {
+		return models.Subscription{}, false, err
+	}
+	return pickCurrent(rows, now), true, nil
 }
 
 // GetBilling is the member's billing state. It reads only the database, so it
 // answers even while billing is off.
 func GetBilling(ctx context.Context, userId uuid.UUID) (schemas.BillingSchema, error) {
 	now := time.Now()
-	subscription, found, err := currentSubscription(core.DB.WithContext(ctx), userId, now)
-	if err != nil || !found {
+	rows, err := memberSubscriptions(core.DB.WithContext(ctx), userId)
+	if err != nil || len(rows) == 0 {
 		return schemas.BillingSchema{}, err
 	}
-	schema := toSubscriptionSchema(subscription, now)
+	schema := toSubscriptionSchema(pickCurrent(rows, now), rows, now)
 	return schemas.BillingSchema{Subscription: &schema}, nil
+}
+
+// Creem's transaction statuses, as the billing history groups them. A
+// cancelled or void transaction was never a charge, so it is left out.
+var paymentStatuses = map[string]string{
+	"paid":          "paid",
+	"partialRefund": "paid",
+	"refunded":      "refunded",
+	"chargedBack":   "refunded",
+	"declined":      "failed",
+	"uncollectible": "failed",
+	"pending":       "pending",
+	"canceled":      "",
+	"void":          "",
+}
+
+// ListPayments is the member's billing history: every charge of their
+// subscriptions, newest first, read from Creem through the cache. A member
+// who never subscribed has none, and Creem is not asked.
+func ListPayments(ctx context.Context, userId uuid.UUID) (schemas.PaymentsSchema, error) {
+	if !billingEnabled() {
+		return schemas.PaymentsSchema{}, ErrBillingDisabled
+	}
+
+	rows, err := memberSubscriptions(core.DB.WithContext(ctx), userId)
+	if err != nil {
+		return schemas.PaymentsSchema{}, err
+	}
+	if len(rows) == 0 {
+		return schemas.PaymentsSchema{Payments: []schemas.PaymentSchema{}}, nil
+	}
+
+	return cached(ctx, PaymentsCacheKey(userId), paymentsCacheTTL, func() (schemas.PaymentsSchema, error) {
+		// Only charges of this product's subscriptions are the member's
+		// history; a customer is shared across their subscriptions.
+		subscriptionIds := map[string]bool{}
+		customerIds := []string{}
+		for _, row := range rows {
+			if row.CreemProductId != core.Config.CreemProductId {
+				continue
+			}
+			subscriptionIds[row.CreemSubscriptionId] = true
+			if row.CreemCustomerId != "" && !slices.Contains(customerIds, row.CreemCustomerId) {
+				customerIds = append(customerIds, row.CreemCustomerId)
+			}
+		}
+
+		payments := []schemas.PaymentSchema{}
+		for _, customerId := range customerIds {
+			transactions, err := core.Creem.ListTransactions(ctx, customerId)
+			if err != nil {
+				return schemas.PaymentsSchema{}, fmt.Errorf("%w: %w", ErrPaymentProvider, err)
+			}
+			for _, transaction := range transactions {
+				if !subscriptionIds[transaction.Subscription.Id] {
+					continue
+				}
+				status, known := paymentStatuses[transaction.Status]
+				if !known {
+					status = transaction.Status
+				}
+				if status == "" {
+					continue
+				}
+				payments = append(payments, toPaymentSchema(transaction, status))
+			}
+		}
+		slices.SortStableFunc(payments, func(a, b schemas.PaymentSchema) int { return b.Date.Compare(a.Date) })
+		return schemas.PaymentsSchema{Payments: payments}, nil
+	})
+}
+
+func toPaymentSchema(transaction core.CreemTransaction, status string) schemas.PaymentSchema {
+	payment := schemas.PaymentSchema{
+		Id:       transaction.Id,
+		Date:     transaction.CreatedAt.Time,
+		Amount:   transaction.Amount,
+		Currency: transaction.Currency,
+		Status:   status,
+	}
+	if transaction.PeriodStart != nil {
+		payment.PeriodStart = &transaction.PeriodStart.Time
+	}
+	if transaction.PeriodEnd != nil {
+		payment.PeriodEnd = &transaction.PeriodEnd.Time
+	}
+	return payment
+}
+
+// dropPayments forgets the member's cached payments, so the next read asks
+// Creem.
+func dropPayments(ctx context.Context, userId uuid.UUID) {
+	dropCached(ctx, PaymentsCacheKey(userId))
 }
 
 // StartCheckout starts a Creem checkout for the monthly subscription, tagged
@@ -187,6 +345,7 @@ func SyncSubscription(ctx context.Context, userId uuid.UUID, subscriptionId stri
 	if err != nil {
 		return schemas.BillingSchema{}, err
 	}
+	dropPayments(ctx, userId)
 	return GetBilling(ctx, userId)
 }
 
@@ -350,7 +509,11 @@ func HandleCreemWebhook(ctx context.Context, body []byte, signature string) erro
 		occurredAt = time.UnixMilli(event.CreatedAt)
 	}
 
-	return db.Transaction(func(tx *gorm.DB) error {
+	// The member whose subscription the event stored, if any: their cached
+	// payments are dropped once it is committed, since a charge usually comes
+	// with it.
+	var stored uuid.UUID
+	err = db.Transaction(func(tx *gorm.DB) error {
 		record := models.CreemWebhookEvent{Id: event.Id, EventType: event.EventType, OccurredAt: occurredAt, Payload: string(body)}
 		result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&record)
 		if result.Error != nil {
@@ -379,8 +542,13 @@ func HandleCreemWebhook(ctx context.Context, body []byte, signature string) erro
 				"event", event.Id, "subscription", subscription.Id, "customer", subscription.Customer.Id)
 			return nil
 		}
+		stored = userId
 		return storeSubscription(tx, userId, *subscription)
 	})
+	if err == nil && stored != uuid.Nil {
+		dropPayments(ctx, stored)
+	}
+	return err
 }
 
 // metadataUserId is the member a subscription was checked out for, which
@@ -436,20 +604,26 @@ func storeSubscription(tx *gorm.DB, userId uuid.UUID, subscription core.CreemSub
 		CreemCustomerId:     subscription.Customer.Id,
 		CreemProductId:      subscription.Product.Id,
 		Status:              subscription.Status,
+		CurrentPeriodStart:  subscription.CurrentPeriodStartDate,
 		CurrentPeriodEnd:    subscription.CurrentPeriodEndDate,
+		NextTransactionAt:   subscription.NextTransactionDate,
 		CanceledAt:          subscription.CanceledAt,
+		CreemCreatedAt:      subscription.CreatedAt,
 		CreemUpdatedAt:      updatedAt,
 	}
 	err := tx.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "creem_subscription_id"}},
 		DoUpdates: clause.Assignments(map[string]any{
-			"creem_customer_id":  row.CreemCustomerId,
-			"creem_product_id":   row.CreemProductId,
-			"status":             row.Status,
-			"current_period_end": row.CurrentPeriodEnd,
-			"canceled_at":        row.CanceledAt,
-			"creem_updated_at":   row.CreemUpdatedAt,
-			"updated_at":         gorm.Expr("now()"),
+			"creem_customer_id":    row.CreemCustomerId,
+			"creem_product_id":     row.CreemProductId,
+			"status":               row.Status,
+			"current_period_start": row.CurrentPeriodStart,
+			"current_period_end":   row.CurrentPeriodEnd,
+			"next_transaction_at":  row.NextTransactionAt,
+			"canceled_at":          row.CanceledAt,
+			"creem_created_at":     row.CreemCreatedAt,
+			"creem_updated_at":     row.CreemUpdatedAt,
+			"updated_at":           gorm.Expr("now()"),
 		}),
 		Where: clause.Where{Exprs: []clause.Expression{
 			clause.Expr{SQL: "subscriptions.creem_updated_at <= excluded.creem_updated_at"},

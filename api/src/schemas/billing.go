@@ -18,9 +18,37 @@ type SubscriptionSchema struct {
 	Entitled bool `json:"entitled" example:"true"`
 	// CancelAtPeriodEnd is a cancelled subscription that runs until
 	// CurrentPeriodEnd.
-	CancelAtPeriodEnd bool       `json:"cancelAtPeriodEnd" example:"false"`
-	CurrentPeriodEnd  *time.Time `json:"currentPeriodEnd" example:"2026-11-03T14:12:24Z"`
-	CanceledAt        *time.Time `json:"canceledAt"`
+	CancelAtPeriodEnd  bool       `json:"cancelAtPeriodEnd" example:"false"`
+	CurrentPeriodStart *time.Time `json:"currentPeriodStart" example:"2026-10-03T14:12:24Z"`
+	CurrentPeriodEnd   *time.Time `json:"currentPeriodEnd" example:"2026-11-03T14:12:24Z"`
+	// NextChargeAt is when the member is next charged: the renewal, or the
+	// next retry of a failed payment. It is null for a subscription that
+	// won't renew.
+	NextChargeAt *time.Time `json:"nextChargeAt" example:"2026-11-03T14:12:24Z"`
+	CanceledAt   *time.Time `json:"canceledAt"`
+	// MemberSince is when the member first subscribed, across every
+	// subscription they have had.
+	MemberSince time.Time `json:"memberSince" example:"2026-03-14T09:30:00Z"`
+}
+
+// PaymentsSchema is the member's billing history, newest first.
+type PaymentsSchema struct {
+	Payments []PaymentSchema `json:"payments"`
+}
+
+// PaymentSchema is one charge of the member's subscription, or one Creem
+// tried to make.
+type PaymentSchema struct {
+	Id   string    `json:"id" example:"tran_3e6Z6TzRHzUhLVaYzVQJn0"`
+	Date time.Time `json:"date" example:"2026-10-03T14:12:24Z"`
+	// Amount is in the currency's smallest unit, VAT included.
+	Amount   int64  `json:"amount" example:"2400"`
+	Currency string `json:"currency" example:"USD"`
+	// Status is paid, failed, refunded or pending. Treat any other value as
+	// pending.
+	Status      string     `json:"status" example:"paid"`
+	PeriodStart *time.Time `json:"periodStart" example:"2026-10-03T14:12:24Z"`
+	PeriodEnd   *time.Time `json:"periodEnd" example:"2026-11-03T14:12:24Z"`
 }
 
 // CheckoutSchema is a started checkout: the Creem page to send the member to.
