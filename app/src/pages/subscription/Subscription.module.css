@@ -163,8 +163,34 @@
   color: var(--muted);
 }
 
-.subscribe {
-  align-self: flex-start;
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Asking before a cancel: what the member keeps, then the two ways out. */
+.confirmCancel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.confirmText {
+  max-width: 440px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.failure {
+  margin: -12px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--err);
 }
 
 .features {

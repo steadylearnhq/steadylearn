@@ -33,11 +33,11 @@ const TERMS: LegalDoc = {
     },
     {
       title: 'Billing and renewal',
-      body: 'Subscriptions cost $24 per month, VAT included, and renew automatically each month on the day you subscribed. We charge the payment method on your account. If a payment fails, we will try again and may pause access until it succeeds.',
+      body: 'Subscriptions cost $24 per month, VAT included, and renew automatically each month on the day you subscribed. Payments are processed by Creem, which acts as our Merchant of Record: it charges the payment method on your account and issues your invoices. If a payment fails, we will try again and may pause access until it succeeds.',
     },
     {
       title: 'Cancellation and refunds',
-      body: 'You can cancel at any time from your profile. Access continues until the end of the period you have paid for. If you cancel within 14 days of your first payment, you can ask for a full refund.',
+      body: 'You can cancel at any time from the Subscription page. Access continues until the end of the period you have paid for. If you cancel within 14 days of your first payment, you can ask for a full refund.',
     },
     {
       title: 'Acceptable use',
@@ -79,7 +79,7 @@ const PRIVACY: LegalDoc = {
     },
     {
       title: 'Data we collect',
-      body: 'Account details such as your name and email address. Learning activity: lessons started and completed, answers, bets and calibration results. Billing details, which are handled by our payment provider; we only see the last four digits of your card. Technical data such as device type, browser and approximate location.',
+      body: 'Account details such as your name and email address. Learning activity: lessons started and completed, answers, bets and calibration results. Billing details, which are handled by our payment provider, Creem; we only see the last four digits of your card. Technical data such as device type, browser and approximate location.',
     },
     {
       title: 'How we use it',
@@ -91,7 +91,7 @@ const PRIVACY: LegalDoc = {
     },
     {
       title: 'Sharing',
-      body: 'We do not sell personal data. We share it only with providers who help us run Steadylearn, such as hosting, payments and email delivery, under contracts that limit how they can use it.',
+      body: 'We do not sell personal data. We share it only with providers who help us run Steadylearn, such as hosting, payments (Creem) and email delivery, under contracts that limit how they can use it.',
     },
     {
       title: 'Retention',

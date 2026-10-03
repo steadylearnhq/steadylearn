@@ -97,6 +97,30 @@ export async function session(): Promise<{ userId: string; token: string } | und
 /** The session's access token for the API; undefined when signed out. */
 export const accessToken = async () => (await session())?.token
 
+// Cognito's hosted UI round trip drops ?redirect=, so "Continue with Google"
+// keeps it here and /external-auth reads it back once.
+const REDIRECT_KEY = 'sl-redirect'
+
+/** Keeps where to go after the hosted-UI sign-in, for /external-auth. */
+export function rememberRedirect(path: string) {
+  try {
+    sessionStorage.setItem(REDIRECT_KEY, path)
+  } catch {
+    // Storage can be unavailable; the member then lands on the dashboard.
+  }
+}
+
+/** Where to go after the hosted-UI sign-in, if a page asked; it is forgotten once read. */
+export function takeRememberedRedirect(): string | undefined {
+  try {
+    const path = sessionStorage.getItem(REDIRECT_KEY)
+    sessionStorage.removeItem(REDIRECT_KEY)
+    return path ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
 // Amplify throws plain Errors whose `name` is the Cognito exception. The
 // message is AWS prose, so it is matched on the name and reworded here.
 const MESSAGES: Record<string, string> = {

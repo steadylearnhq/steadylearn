@@ -1,6 +1,7 @@
 import { A, useLocation } from '@solidjs/router'
-import { createEffect, createSignal, on, onCleanup, Show } from 'solid-js'
+import { createEffect, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import type { User } from '../lib/auth'
+import { loadBilling, subscribed } from '../lib/billing'
 import styles from './AccountMenu.module.css'
 
 /** Up to two initials from the member's name, as the design's avatar shows them. */
@@ -15,14 +16,16 @@ const initials = (name: string) =>
 
 /**
  * The signed-in member's avatar, opening a menu with who they are, their
- * subscription and Log out. Billing doesn't exist yet, so every member's plan
- * is free.
+ * subscription tagged with their plan, and Log out.
  */
 export default function AccountMenu(props: { user: User; onSignOut: () => void }) {
   const location = useLocation()
   const [open, setOpen] = createSignal(false)
   let root!: HTMLDivElement
   let avatar!: HTMLButtonElement
+
+  // The plan tag reads "free" until the member's billing state says otherwise.
+  onMount(() => void loadBilling().catch(() => {}))
 
   // Closes when the page changes, on Escape, and on a click or focus anywhere else.
   createEffect(on(() => location.pathname, () => setOpen(false), { defer: true }))
@@ -73,7 +76,7 @@ export default function AccountMenu(props: { user: User; onSignOut: () => void }
           </div>
           <A href="/subscription" class={styles.item}>
             <span>Subscription</span>
-            <span class={styles.tag}>free</span>
+            <span class={styles.tag}>{subscribed() ? 'member' : 'free'}</span>
           </A>
           <span class={styles.rule} />
           <button type="button" class={`${styles.item} ${styles.logOut}`} onClick={() => props.onSignOut()}>
