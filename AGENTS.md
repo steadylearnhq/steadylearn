@@ -217,7 +217,7 @@ both take an optional token (`OptionalAuth`). A signed-in caller also gets
 their enrollments with the catalog, and every lesson of a course's syllabus
 with, when enrolled, their enrollment in it.
 
-Billing goes through Creem (see `creem-subscriptions.md`). `/v1/billing/*` is
+Billing goes through Creem, the Merchant of Record. `/v1/billing/*` is
 the caller's own subscription; `POST /v1/webhooks/creem` takes no token, since
 Creem's HMAC signature (`creem-signature`) authenticates it. A webhook only says
 which subscription changed: its state is always read back from Creem.
