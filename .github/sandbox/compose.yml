@@ -1,0 +1,115 @@
+# One PR's sandbox: the API and app built from the PR, a fresh Postgres with
+# its migrations applied, and an empty Redis. sandbox.yml runs it on a
+# Namespace instance through a remote Docker context, so everything here is
+# built and stored on that instance: no bind mounts, no published ports.
+#
+# Only the proxy is exposed, so the API and app share one origin: the app
+# calls /v1 relatively and the API needs no CORS. The values below come from
+# the runner's environment, which sandbox.yml fills from the sandbox
+# environment's secrets.
+name: sandbox
+
+services:
+  proxy:
+    image: caddy:2-alpine
+    # sandbox.yml exposes this container by name.
+    container_name: sandbox-proxy
+    # nsc expose only takes a port published on the instance.
+    ports:
+      - "8080:8080"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=sandbox
+      - POSTGRES_DB=steadylearn
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d steadylearn"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # The catalog ships as migrations, so an empty database plus the PR's
+  # migrations is a complete one. Applied the way deploy.yml applies them.
+  migrate:
+    build:
+      context: ../../api/migrations
+      dockerfile_inline: |
+        FROM arigaio/atlas:latest
+        COPY . /migrations
+    command:
+      - migrate
+      - apply
+      - --dir
+      - file:///migrations
+      - --url
+      - postgres://postgres:sandbox@db:5432/steadylearn?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: ../../api
+    environment:
+      - DATABASE_URL=postgres://postgres:sandbox@db:5432/steadylearn?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - COGNITO_REGION=${COGNITO_REGION:?}
+      - COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID:?}
+      # For the user details lookup (ListUsers) against the pool.
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      # Creem test mode. Without all three billing is off and answers 503.
+      - CREEM_API_KEY=${CREEM_API_KEY:-}
+      - CREEM_WEBHOOK_SECRET=${CREEM_WEBHOOK_SECRET:-}
+      - CREEM_PRODUCT_ID=${CREEM_PRODUCT_ID:-}
+      - CREEM_API_URL=https://test-api.creem.io/v1
+      # The sandbox's own URL, which Creem sends a member back to. Known only
+      # once the proxy is exposed, so sandbox.yml starts the proxy first.
+      - APP_URL=${SANDBOX_URL:-}
+      - OTEL_SDK_DISABLED=true
+      - DEPLOYMENT_ENVIRONMENT=${DEPLOYMENT_ENVIRONMENT:-sandbox}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  app:
+    build: ../../app
+    environment:
+      # Empty, so the app calls /v1 on its own origin, which the proxy routes.
+      - VITE_API_URL=
+      - VITE_USER_POOL_ID=${COGNITO_USER_POOL_ID:?}
+      - VITE_USER_POOL_CLIENT_ID=${VITE_USER_POOL_CLIENT_ID:?}
+      # Email sign-in only: the hosted UI's callback URLs can't list every
+      # sandbox, so "Continue with Google" is left unconfigured.
+      - VITE_USER_POOL_DOMAIN=
+      - VITE_COGNITO_OAUTH_REDIRECT_SIGN_IN=
+      - VITE_COGNITO_OAUTH_REDIRECT_SIGN_OUT=
+
+configs:
+  caddyfile:
+    content: |
+      # A plain port, so Caddy serves HTTP; Namespace's ingress terminates TLS.
+      :8080 {
+        @api path /v1/* /health /health/* /api/docs /api/docs/*
+        handle @api {
+          reverse_proxy api:8080
+        }
+        handle {
+          reverse_proxy app:8080
+        }
+      }

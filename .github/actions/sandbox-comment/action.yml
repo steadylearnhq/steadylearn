@@ -1,0 +1,69 @@
+name: Sandbox comment
+description: Write the PR's one sandbox comment, creating it the first time, and read back the instance it named before.
+
+# The comment is the sandbox's only record: it carries the instance id in a
+# hidden marker, so the next run can destroy the instance this one leaves.
+# Only comments this workflow wrote are read, so nobody can plant an id.
+
+inputs:
+  pr:
+    description: The pull request number
+    required: true
+  body:
+    description: The comment's visible Markdown
+    required: true
+  instance:
+    description: The Namespace instance id to record, if one is running
+    default: ""
+  repost:
+    description: Post the comment anew, deleting the old one, so the PR is notified; GitHub sends nothing for an edit
+    default: "false"
+  token:
+    description: A token that can write PR comments
+    required: true
+
+outputs:
+  previous-instance:
+    description: The instance id the comment recorded before this write, if any
+    value: ${{ steps.write.outputs.previous-instance }}
+
+runs:
+  using: composite
+  steps:
+    - id: write
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+        PR: ${{ inputs.pr }}
+        BODY: ${{ inputs.body }}
+        INSTANCE: ${{ inputs.instance }}
+        REPOST: ${{ inputs.repost }}
+      run: |
+        marker='<!-- sandbox -->'
+        id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+          --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" \
+          | head -n1)
+
+        previous=""
+        if [ -n "$id" ]; then
+          previous=$(gh api "repos/$REPO/issues/comments/$id" --jq .body \
+            | sed -n 's/^<!-- sandbox-instance: \([^ ]*\) -->$/\1/p')
+        fi
+        echo "previous-instance=$previous" >> "$GITHUB_OUTPUT"
+
+        body="$marker"
+        if [ -n "$INSTANCE" ]; then
+          body="$body"$'\n'"<!-- sandbox-instance: $INSTANCE -->"
+        fi
+        body="$body"$'\n'"$BODY"
+
+        if [ -n "$id" ] && [ "$REPOST" = true ]; then
+          gh api -X DELETE "repos/$REPO/issues/comments/$id"
+          id=""
+        fi
+        if [ -n "$id" ]; then
+          gh api -X PATCH "repos/$REPO/issues/comments/$id" -f body="$body" > /dev/null
+        else
+          gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$body" > /dev/null
+        fi

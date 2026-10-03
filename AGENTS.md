@@ -55,6 +55,38 @@ service is pointed at it through a deploy hook, the API before the app.
 adding an environment in the repository settings is all a new target needs.
 Without a hook, the image is pushed but not deployed.
 
+## Sandboxes
+
+Commenting `/sandbox` on a PR starts a disposable copy of it on a Namespace
+instance (`.github/workflows/sandbox.yml`): the PR's API and app, a fresh
+Postgres with its migrations applied (the catalog ships as migrations) and an
+empty Redis, built on the instance from `.github/sandbox/compose.yml`. One
+Caddy proxy is exposed as a public URL, routing `/v1`, `/health` and
+`/api/docs` to the API and everything else to the app, so the app calls the API
+on its own origin and needs no CORS. The workflow answers in one PR comment,
+which also records the instance's id for the next run.
+
+- Only people with write access can start or stop one, and only for branches
+  of this repository: the sandbox gets secrets and runs the PR's code.
+- `/sandbox` again replaces it with one built from the PR's latest commit, at a
+  new URL. Pushes don't redeploy it.
+- It ends on `/sandbox down`, when the PR closes, or after `SANDBOX_TTL` (a
+  variable on the `sandbox` environment, `3h` by default), which must fit the
+  Namespace plan's maximum instance duration.
+- Sign-in is by email only: Cognito's hosted UI can't list every sandbox URL
+  as a callback, so Google sign-in is not configured.
+- Billing is Creem test mode. Creem's webhooks go to one fixed URL, so a
+  sandbox only learns of a checkout through the sync the app makes on return.
+- The `sandbox` environment holds `COGNITO_REGION`, `COGNITO_USER_POOL_ID`,
+  `VITE_USER_POOL_CLIENT_ID` (a non-production pool), `AWS_ACCESS_KEY_ID` and
+  `AWS_SECRET_ACCESS_KEY` (allowed only `cognito-idp:ListUsers` on that pool),
+  and the test-mode `CREEM_API_KEY`, `CREEM_WEBHOOK_SECRET` and
+  `CREEM_PRODUCT_ID`. Namespace is reached through GitHub OIDC federation, so
+  it needs no secret.
+- `issue_comment` workflows run as they are on `main`, so a change to the
+  workflow takes effect only once merged. A change to the compose file applies
+  to the PR that makes it.
+
 ---
 
 # App (`app/`)
