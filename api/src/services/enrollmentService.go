@@ -21,6 +21,9 @@ var (
 	// ErrNotEnrolled is a lesson completed in a course the learner is not
 	// enrolled in.
 	ErrNotEnrolled = errors.New("not enrolled in the course")
+	// ErrSubscriptionRequired is a learner without a subscription taking a
+	// course that is not free.
+	ErrSubscriptionRequired = errors.New("subscription required")
 )
 
 // Enrollments are read straight from the database, never cached: they are a
@@ -160,34 +163,61 @@ func SetFeedback(ctx context.Context, userId uuid.UUID, slug string, rating int,
 	return getEnrollment(ctx, userId, slug)
 }
 
-// catalogCourseId is the id of the course in the catalog with the given slug.
-func catalogCourseId(db *gorm.DB, slug string) (uuid.UUID, error) {
-	var rows []struct{ Id uuid.UUID }
+// catalogCourse is a course in the catalog, as enrolling and taking it need it.
+type catalogCourse struct {
+	Id     uuid.UUID
+	IsFree bool
+}
+
+// findCatalogCourse is the course in the catalog with the given slug.
+func findCatalogCourse(db *gorm.DB, slug string) (catalogCourse, error) {
+	var rows []catalogCourse
 	err := db.Raw(`
-SELECT c.id
+SELECT c.id, c.is_free
 FROM courses c
 JOIN domains d ON d.id = c.domain_id AND d.deleted_at IS NULL
 WHERE c.slug = @slug AND c.deleted_at IS NULL AND c.published_at <= @now`,
 		map[string]any{"slug": slug, "now": time.Now()}).Scan(&rows).Error
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to find course: %w", err)
+		return catalogCourse{}, fmt.Errorf("failed to find course: %w", err)
 	}
 	if len(rows) == 0 {
-		return uuid.Nil, ErrCourseNotFound
+		return catalogCourse{}, ErrCourseNotFound
 	}
-	return rows[0].Id, nil
+	return rows[0], nil
+}
+
+// requireAccess is nil when the learner may take the course: it is free, or
+// they have a subscription that gives access. Otherwise it is
+// ErrSubscriptionRequired.
+func requireAccess(db *gorm.DB, userId uuid.UUID, course catalogCourse) error {
+	if course.IsFree {
+		return nil
+	}
+	ok, err := hasAccess(db, userId, time.Now())
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrSubscriptionRequired
+	}
+	return nil
 }
 
 // Enroll enrolls the learner in a course in the catalog, and reports whether
-// they were not enrolled before. Enrolling again is a no-op.
+// they were not enrolled before. Enrolling again is a no-op. A course that is
+// not free needs a subscription that gives access.
 //
 // The learner's local row is created if it is missing: a valid token is all
 // it takes to be a learner, and the row exists to hold what hangs off them.
 func Enroll(ctx context.Context, userId uuid.UUID, slug string) (schemas.CourseEnrollmentSchema, bool, error) {
 	created := false
 	err := core.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		courseId, err := catalogCourseId(tx, slug)
+		course, err := findCatalogCourse(tx, slug)
 		if err != nil {
+			return err
+		}
+		if err := requireAccess(tx, userId, course); err != nil {
 			return err
 		}
 
@@ -196,7 +226,7 @@ func Enroll(ctx context.Context, userId uuid.UUID, slug string) (schemas.CourseE
 			return fmt.Errorf("failed to set up user: %w", err)
 		}
 
-		enrollment := models.Enrollment{BaseModel: models.BaseModel{Id: uuid.New()}, UserId: userId, CourseId: courseId}
+		enrollment := models.Enrollment{BaseModel: models.BaseModel{Id: uuid.New()}, UserId: userId, CourseId: course.Id}
 		result := tx.Clauses(clause.OnConflict{DoNothing: true}).Omit(clause.Associations).Create(&enrollment)
 		if result.Error != nil {
 			return fmt.Errorf("failed to enroll: %w", result.Error)
@@ -218,13 +248,13 @@ func Enroll(ctx context.Context, userId uuid.UUID, slug string) (schemas.CourseE
 func Unenroll(ctx context.Context, userId uuid.UUID, slug string) error {
 	db := core.DB.WithContext(ctx)
 
-	courseId, err := catalogCourseId(db, slug)
+	course, err := findCatalogCourse(db, slug)
 	if err != nil {
 		return err
 	}
 
 	err = db.Exec(`UPDATE enrollments SET deleted_at = now() WHERE user_id = ? AND course_id = ? AND deleted_at IS NULL`,
-		userId, courseId).Error
+		userId, course.Id).Error
 	if err != nil {
 		return fmt.Errorf("failed to unenroll: %w", err)
 	}
@@ -277,30 +307,46 @@ func UncompleteLesson(ctx context.Context, userId uuid.UUID, slug string, code s
 }
 
 // enrolledLesson finds the learner's enrollment in a course in the catalog and
-// the lesson of it that a syllabus code names.
+// the lesson of it that a syllabus code names, for a change to their progress:
+// see enrollmentIn.
 func enrolledLesson(db *gorm.DB, userId uuid.UUID, slug string, code string) (enrollmentId, lessonId uuid.UUID, err error) {
-	courseId, err := catalogCourseId(db, slug)
+	course, err := findCatalogCourse(db, slug)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
 	}
 
-	lessonId, err = lessonByCode(db, courseId, code)
+	lessonId, err = lessonByCode(db, course.Id, code)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
 	}
 
-	enrollmentId, err = liveEnrollment(db, userId, courseId)
+	enrollmentId, err = takenEnrollment(db, userId, course)
 	return enrollmentId, lessonId, err
 }
 
 // enrollmentIn is the id of the learner's enrollment in a course in the
-// catalog.
+// catalog, for a change to it. A learner whose subscription ended keeps their
+// enrollments in courses that are not free, but cannot change them until they
+// subscribe again.
 func enrollmentIn(db *gorm.DB, userId uuid.UUID, slug string) (uuid.UUID, error) {
-	courseId, err := catalogCourseId(db, slug)
+	course, err := findCatalogCourse(db, slug)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	return liveEnrollment(db, userId, courseId)
+	return takenEnrollment(db, userId, course)
+}
+
+// takenEnrollment is the id of the learner's enrollment in the course, or
+// ErrNotEnrolled, or ErrSubscriptionRequired when they may no longer take it.
+func takenEnrollment(db *gorm.DB, userId uuid.UUID, course catalogCourse) (uuid.UUID, error) {
+	enrollmentId, err := liveEnrollment(db, userId, course.Id)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if err := requireAccess(db, userId, course); err != nil {
+		return uuid.Nil, err
+	}
+	return enrollmentId, nil
 }
 
 // liveEnrollment is the id of the learner's enrollment in the course, or

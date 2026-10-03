@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"steadylearn-api/src/api/v1/controllers"
+	"steadylearn-api/src/core"
 	"steadylearn-api/src/schemas"
 	"steadylearn-api/tests/testutil"
 )
@@ -34,7 +35,9 @@ func enrollmentRouter(userId uuid.UUID) *gin.Engine {
 
 func TestEnrollmentRoutes(t *testing.T) {
 	testutil.UseDB(t)
-	router := enrollmentRouter(uuid.New())
+	userId := uuid.New()
+	testutil.Subscribe(t, userId)
+	router := enrollmentRouter(userId)
 	// storage-engines is seeded with a syllabus.
 	const course = "/courses/storage-engines"
 
@@ -70,9 +73,40 @@ func TestEnrollmentRoutes(t *testing.T) {
 	}
 }
 
+func TestEnrollmentRoutesNeedASubscription(t *testing.T) {
+	testutil.UseDB(t)
+	userId := uuid.New()
+	router := enrollmentRouter(userId)
+	serve := func(method, path, body string) int {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(context.Background(), method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	// estimation is the seeded free course; storage-engines is not free.
+	assert.Equal(t, http.StatusCreated, serve(http.MethodPut, "/courses/estimation/enrollment", ""), "a free course")
+	assert.Equal(t, http.StatusPaymentRequired, serve(http.MethodPut, "/courses/storage-engines/enrollment", ""),
+		"a course that is not free")
+
+	// A member whose subscription ended keeps the enrollment but cannot change it.
+	testutil.Subscribe(t, userId)
+	require.Equal(t, http.StatusCreated, serve(http.MethodPut, "/courses/storage-engines/enrollment", ""))
+	require.NoError(t, core.DB.Exec(`UPDATE subscriptions SET status = 'canceled' WHERE user_id = ?`, userId).Error)
+
+	const course = "/courses/storage-engines"
+	assert.Equal(t, http.StatusPaymentRequired, serve(http.MethodPut, course+"/lessons/1.1/completion", ""), "complete")
+	assert.Equal(t, http.StatusPaymentRequired, serve(http.MethodDelete, course+"/lessons/1.1/completion", ""), "uncomplete")
+	assert.Equal(t, http.StatusPaymentRequired, serve(http.MethodPut, course+"/feedback", `{"rating":4}`), "feedback")
+	assert.Equal(t, http.StatusNoContent, serve(http.MethodDelete, course+"/enrollment", ""), "unenrolling still works")
+}
+
 func TestSetFeedbackRoute(t *testing.T) {
 	testutil.UseDB(t)
-	router := enrollmentRouter(uuid.New())
+	userId := uuid.New()
+	testutil.Subscribe(t, userId)
+	router := enrollmentRouter(userId)
 	const course = "/courses/storage-engines"
 	put := func(path, body string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()

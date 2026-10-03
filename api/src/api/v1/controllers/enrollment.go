@@ -15,7 +15,7 @@ import (
 
 // Enroll handles enrolling the caller in a course
 // @Summary Enroll in a course
-// @Description Enroll the caller in a course in the catalog, and return the enrollment with the lessons they have completed. Idempotent: 201 when the caller was not enrolled, 200 when they already were.
+// @Description Enroll the caller in a course in the catalog, and return the enrollment with the lessons they have completed. Idempotent: 201 when the caller was not enrolled, 200 when they already were. A course that is not free needs a subscription that gives access; a 402 means the caller has none.
 // @Tags enrollments
 // @Produce json
 // @Security BearerAuth
@@ -23,6 +23,7 @@ import (
 // @Success 200 {object} schemas.CourseEnrollmentSchema
 // @Success 201 {object} schemas.CourseEnrollmentSchema
 // @Failure 401 {object} map[string]string
+// @Failure 402 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /v1/courses/{id}/enrollment [put]
@@ -33,6 +34,10 @@ func Enroll(c *gin.Context) {
 	enrollment, created, err := services.Enroll(c.Request.Context(), userId, slug)
 	if errors.Is(err, services.ErrCourseNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
+		return
+	}
+	if errors.Is(err, services.ErrSubscriptionRequired) {
+		c.JSON(http.StatusPaymentRequired, gin.H{"error": "Subscription required"})
 		return
 	}
 	if err != nil {
@@ -77,7 +82,7 @@ func Unenroll(c *gin.Context) {
 
 // CompleteLesson handles marking a lesson done
 // @Summary Complete a lesson
-// @Description Mark a lesson of a course the caller is enrolled in as done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course.
+// @Description Mark a lesson of a course the caller is enrolled in as done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course, a 402 that it is not free and the caller has no subscription that gives access.
 // @Tags enrollments
 // @Produce json
 // @Security BearerAuth
@@ -85,6 +90,7 @@ func Unenroll(c *gin.Context) {
 // @Param code path string true "Lesson code, as the syllabus numbers it" example(2.4)
 // @Success 200 {object} schemas.CourseEnrollmentSchema
 // @Failure 401 {object} map[string]string
+// @Failure 402 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 409 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -100,7 +106,7 @@ func CompleteLesson(c *gin.Context) {
 
 // UncompleteLesson handles marking a lesson not done
 // @Summary Uncomplete a lesson
-// @Description Mark a lesson of a course the caller is enrolled in as not done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course.
+// @Description Mark a lesson of a course the caller is enrolled in as not done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course, a 402 that it is not free and the caller has no subscription that gives access.
 // @Tags enrollments
 // @Produce json
 // @Security BearerAuth
@@ -108,6 +114,7 @@ func CompleteLesson(c *gin.Context) {
 // @Param code path string true "Lesson code, as the syllabus numbers it" example(2.4)
 // @Success 200 {object} schemas.CourseEnrollmentSchema
 // @Failure 401 {object} map[string]string
+// @Failure 402 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 409 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -123,7 +130,7 @@ func UncompleteLesson(c *gin.Context) {
 
 // SetFeedback handles the caller's feedback on a course
 // @Summary Leave feedback on a course
-// @Description Set the caller's feedback on a course they are enrolled in, a rating from 1 to 5 and an optional message of up to 2,000 characters, replacing any they left before. Returns the enrollment with it. A 409 means the caller is not enrolled in the course.
+// @Description Set the caller's feedback on a course they are enrolled in, a rating from 1 to 5 and an optional message of up to 2,000 characters, replacing any they left before. Returns the enrollment with it. A 409 means the caller is not enrolled in the course, a 402 that it is not free and the caller has no subscription that gives access.
 // @Tags enrollments
 // @Accept json
 // @Produce json
@@ -133,6 +140,7 @@ func UncompleteLesson(c *gin.Context) {
 // @Success 200 {object} schemas.CourseEnrollmentSchema
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
+// @Failure 402 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 409 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -153,6 +161,8 @@ func SetFeedback(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Course not found"})
 	case errors.Is(err, services.ErrNotEnrolled):
 		c.JSON(http.StatusConflict, gin.H{"error": "Not enrolled in the course"})
+	case errors.Is(err, services.ErrSubscriptionRequired):
+		c.JSON(http.StatusPaymentRequired, gin.H{"error": "Subscription required"})
 	case err != nil:
 		slog.ErrorContext(c.Request.Context(), "SetFeedback failed", "user_id", userId, "course", slug, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save the feedback"})
@@ -170,6 +180,8 @@ func respondLessonChange(c *gin.Context, op string, enrollment schemas.CourseEnr
 		c.JSON(http.StatusNotFound, gin.H{"error": "Lesson not found"})
 	case errors.Is(err, services.ErrNotEnrolled):
 		c.JSON(http.StatusConflict, gin.H{"error": "Not enrolled in the course"})
+	case errors.Is(err, services.ErrSubscriptionRequired):
+		c.JSON(http.StatusPaymentRequired, gin.H{"error": "Subscription required"})
 	case err != nil:
 		slog.ErrorContext(c.Request.Context(), op+" failed", "user_id", c.MustGet("user_id"),
 			"course", c.Param("id"), "lesson", c.Param("code"), "error", err)

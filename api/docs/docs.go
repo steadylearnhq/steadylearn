@@ -688,7 +688,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Enroll the caller in a course in the catalog, and return the enrollment with the lessons they have completed. Idempotent: 201 when the caller was not enrolled, 200 when they already were.",
+                "description": "Enroll the caller in a course in the catalog, and return the enrollment with the lessons they have completed. Idempotent: 201 when the caller was not enrolled, 200 when they already were. A course that is not free needs a subscription that gives access; a 402 means the caller has none.",
                 "produces": [
                     "application/json"
                 ],
@@ -721,6 +721,15 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -810,7 +819,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Set the caller's feedback on a course they are enrolled in, a rating from 1 to 5 and an optional message of up to 2,000 characters, replacing any they left before. Returns the enrollment with it. A 409 means the caller is not enrolled in the course.",
+                "description": "Set the caller's feedback on a course they are enrolled in, a rating from 1 to 5 and an optional message of up to 2,000 characters, replacing any they left before. Returns the enrollment with it. A 409 means the caller is not enrolled in the course, a 402 that it is not free and the caller has no subscription that gives access.",
                 "consumes": [
                     "application/json"
                 ],
@@ -865,6 +874,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -902,7 +920,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Mark a lesson of a course the caller is enrolled in as done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course.",
+                "description": "Mark a lesson of a course the caller is enrolled in as done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course, a 402 that it is not free and the caller has no subscription that gives access.",
                 "produces": [
                     "application/json"
                 ],
@@ -937,6 +955,15 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -979,7 +1006,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Mark a lesson of a course the caller is enrolled in as not done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course.",
+                "description": "Mark a lesson of a course the caller is enrolled in as not done, and return the enrollment with its progress. Idempotent. A 409 means the caller is not enrolled in the course, a 402 that it is not free and the caller has no subscription that gives access.",
                 "produces": [
                     "application/json"
                 ],
@@ -1014,6 +1041,15 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {

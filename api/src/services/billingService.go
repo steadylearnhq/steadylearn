@@ -167,6 +167,16 @@ func currentSubscription(db *gorm.DB, userId uuid.UUID, now time.Time) (subscrip
 	return pickCurrent(rows, now), true, nil
 }
 
+// hasAccess reports whether the member has a subscription that gives access
+// at now. It reads only the database, so it holds with billing off.
+func hasAccess(db *gorm.DB, userId uuid.UUID, now time.Time) (bool, error) {
+	current, found, err := currentSubscription(db, userId, now)
+	if err != nil || !found {
+		return false, err
+	}
+	return isEntitled(current.Status, current.CurrentPeriodEnd, now), nil
+}
+
 // GetBilling is the member's billing state. It reads only the database, so it
 // answers even while billing is off.
 func GetBilling(ctx context.Context, userId uuid.UUID) (schemas.BillingSchema, error) {
