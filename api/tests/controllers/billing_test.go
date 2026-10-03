@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -30,6 +31,7 @@ func billingRouter(userId uuid.UUID) *gin.Engine {
 
 	member := router.Group("/billing", func(c *gin.Context) { c.Set("user_id", userId) })
 	member.GET("/subscription", controllers.GetBilling)
+	member.GET("/payments", controllers.ListPayments)
 	member.POST("/checkout", controllers.StartCheckout)
 	member.POST("/sync", controllers.SyncSubscription)
 	member.POST("/cancel", controllers.CancelSubscription)
@@ -62,6 +64,7 @@ func TestBillingRoutesWhileBillingIsOff(t *testing.T) {
 	}
 	assert.Equal(t, http.StatusServiceUnavailable,
 		serve(router, http.MethodPost, "/billing/sync", `{"subscriptionId":"sub_1"}`, nil).Code)
+	assert.Equal(t, http.StatusServiceUnavailable, serve(router, http.MethodGet, "/billing/payments", "", nil).Code)
 }
 
 func TestBillingRoutes(t *testing.T) {
@@ -99,6 +102,19 @@ func TestBillingRoutes(t *testing.T) {
 	rec = serve(router, http.MethodPost, "/billing/portal", "", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"url":"https://creem.io/portal/1"}`, rec.Body.String())
+
+	creem.On("ListTransactions", mock.Anything, "cust_1").Return(nil, errors.New("status 500")).Once()
+	assert.Equal(t, http.StatusBadGateway, serve(router, http.MethodGet, "/billing/payments", "", nil).Code)
+
+	paidAt := time.Date(2026, 10, 3, 14, 12, 24, 0, time.UTC)
+	creem.On("ListTransactions", mock.Anything, "cust_1").Return([]core.CreemTransaction{{
+		Id: "tran_1", Amount: 2400, Currency: "USD", Status: "paid",
+		Subscription: core.CreemRef{Id: "sub_1"}, CreatedAt: core.CreemTime{Time: paidAt},
+	}}, nil).Once()
+	rec = serve(router, http.MethodGet, "/billing/payments", "", nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"payments":[{"id":"tran_1","date":"2026-10-03T14:12:24Z","amount":2400,"currency":"USD","status":"paid","periodStart":null,"periodEnd":null}]}`,
+		rec.Body.String())
 }
 
 func TestCreemWebhookRoute(t *testing.T) {

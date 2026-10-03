@@ -144,6 +144,25 @@ func OpenBillingPortal(c *gin.Context) {
 	respondBilling(c, "OpenBillingPortal", portal, err)
 }
 
+// ListPayments handles reading the caller's billing history
+// @Summary List the caller's payments
+// @Description Every charge of the caller's subscriptions, newest first, as Creem reports them. Cached for up to 10 minutes; a webhook or sync for the caller refreshes it. Amounts include VAT. Card details and invoice PDFs are in Creem's portal (POST /v1/billing/portal).
+// @Tags billing
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} schemas.PaymentsSchema
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Failure 502 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /v1/billing/payments [get]
+func ListPayments(c *gin.Context) {
+	userId := c.MustGet("user_id").(uuid.UUID)
+
+	payments, err := services.ListPayments(c.Request.Context(), userId)
+	respondBilling(c, "ListPayments", payments, err)
+}
+
 // respondBilling writes the response to a billing call.
 func respondBilling(c *gin.Context, op string, body any, err error) {
 	switch {
