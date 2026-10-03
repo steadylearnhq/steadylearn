@@ -8,7 +8,7 @@ export default function Hero() {
     <section class={styles.hero}>
       <div class={styles.copy}>
         <span class={shared.eyebrow}>for working software engineers</span>
-        <h1 class={styles.title}>The parts of the stack you were never taught.</h1>
+        <h1 class={styles.title}>Hello from a sandbox 👋</h1>
         <p class={styles.lede}>
           Steadylearn teaches distributed systems, databases and the rest of the stack in short, hands-on lessons:
           watch, read, build, trace and estimate, then bet on what you actually remember.
