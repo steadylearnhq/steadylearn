@@ -1,0 +1,290 @@
+name: sandbox
+
+# A disposable copy of the product per PR, on a Namespace instance: "/sandbox"
+# in a PR comment builds the PR's API and app next to a fresh Postgres (with
+# its migrations, so the catalog) and an empty Redis, and answers with a
+# public URL. "/sandbox" again rebuilds it on the PR's latest commit;
+# "/sandbox down", closing the PR or the TTL ends it. The stack itself is
+# .github/sandbox/compose.yml.
+#
+# issue_comment runs this file as it is on main, so the steps here and the
+# actions they use are main's; only the code being built is the PR's.
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  id-token: write # Namespace federation
+  issues: write
+  pull-requests: write
+
+jobs:
+  up:
+    name: Start sandbox
+    if: >-
+      github.event_name == 'issue_comment'
+      && github.event.issue.pull_request
+      && github.event.issue.state == 'open'
+      && startsWith(github.event.comment.body, '/sandbox')
+      && !startsWith(github.event.comment.body, '/sandbox down')
+    runs-on: ubuntu-latest
+    environment: sandbox
+    # Job-level, so ordinary comments, which skip both jobs, cancel nothing.
+    concurrency:
+      group: sandbox-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.issue.number }}
+      TTL: ${{ vars.SANDBOX_TTL || '3h' }}
+      COMPOSE: docker --context sandbox compose -f pr/.github/sandbox/compose.yml
+      # For compose.yml. Job-level, because compose resolves every variable in
+      # the file on each call, even one that starts only the proxy.
+      DEPLOYMENT_ENVIRONMENT: sandbox-pr-${{ github.event.issue.number }}
+      COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
+      COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+      VITE_USER_POOL_CLIENT_ID: ${{ secrets.VITE_USER_POOL_CLIENT_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      CREEM_API_KEY: ${{ secrets.CREEM_API_KEY }}
+      CREEM_WEBHOOK_SECRET: ${{ secrets.CREEM_WEBHOOK_SECRET }}
+      CREEM_PRODUCT_ID: ${{ secrets.CREEM_PRODUCT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # The sandbox gets the environment's secrets and runs the PR's code, so
+      # only people who can push here may start one, and only for branches of
+      # this repository: a fork's code would walk off with the secrets.
+      - name: Check who asked
+        id: pr
+        env:
+          COMMENT_ID: ${{ github.event.comment.id }}
+          ACTOR: ${{ github.event.comment.user.login }}
+        run: |
+          permission=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq .permission)
+          pr=$(gh api "repos/$REPO/pulls/$PR")
+          head_repo=$(jq -r '.head.repo.full_name // empty' <<<"$pr")
+          if [ "$permission" != admin ] && [ "$permission" != write ]; then
+            gh api -X POST "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=-1 > /dev/null
+            echo "::error::$ACTOR has $permission access; a sandbox needs write"
+            exit 1
+          fi
+          if [ "$head_repo" != "$REPO" ]; then
+            gh api -X POST "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=-1 > /dev/null
+            echo "::error::PR #$PR comes from ${head_repo:-a deleted fork}; sandboxes run only branches of $REPO"
+            exit 1
+          fi
+          gh api -X POST "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=eyes > /dev/null
+          sha=$(jq -r .head.sha <<<"$pr")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=${sha:0:7}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.pr.outputs.sha }}
+          path: pr
+          persist-credentials: false
+
+      - id: starting
+        uses: ./.github/actions/sandbox-comment
+        with:
+          pr: ${{ env.PR }}
+          token: ${{ github.token }}
+          body: |
+            ### ⏳ Sandbox starting
+            Building ${{ steps.pr.outputs.short }} ([run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})).
+
+      - uses: namespacelabs/nscloud-setup@v0
+
+      # One sandbox per PR: a new one replaces the last.
+      - name: Destroy the previous sandbox
+        if: steps.starting.outputs.previous-instance != ''
+        env:
+          INSTANCE: ${{ steps.starting.outputs.previous-instance }}
+        run: nsc destroy "$INSTANCE" --force || echo "$INSTANCE is already gone"
+
+      - name: Create the instance
+        id: instance
+        env:
+          SHA: ${{ steps.pr.outputs.sha }}
+        run: |
+          nsc create --bare --duration "$TTL" --machine_type 4x8 \
+            --label "sandbox-pr=$PR" --label "sha=$SHA" --cidfile instance-id
+          echo "id=$(cat instance-id)" >> "$GITHUB_OUTPUT"
+          # GNU date reads "3 hours", not "3h".
+          ttl=$(sed 's/h$/ hours/; s/m$/ minutes/' <<<"$TTL")
+          echo "expires=$(date -u -d "+$ttl" '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
+
+      # Recorded straight away, so a run cancelled from here on still leaves
+      # the next one the id to destroy.
+      - uses: ./.github/actions/sandbox-comment
+        with:
+          pr: ${{ env.PR }}
+          token: ${{ github.token }}
+          instance: ${{ steps.instance.outputs.id }}
+          body: |
+            ### ⏳ Sandbox starting
+            Building ${{ steps.pr.outputs.short }} ([run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})).
+
+      # attach-context proxies the instance's Docker socket for as long as it
+      # runs, and its --background mode timed out in testing, so it runs in
+      # the foreground behind & and lives until the job ends.
+      - name: Attach to its Docker
+        env:
+          INSTANCE: ${{ steps.instance.outputs.id }}
+        run: |
+          nohup nsc docker attach-context --to "$INSTANCE" --name sandbox > attach.log 2>&1 &
+          for _ in $(seq 60); do
+            if docker --context sandbox version > /dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat attach.log
+          echo "::error::Docker on $INSTANCE did not answer within 2 minutes"
+          exit 1
+
+      # The proxy goes first: its public URL is the API's APP_URL.
+      - name: Expose the proxy
+        id: url
+        run: |
+          $COMPOSE up -d proxy
+          nsc expose container "${{ steps.instance.outputs.id }}" \
+            --container sandbox-proxy --container_port 8080 --ingress 8080=noauth \
+            | tee expose.txt
+          url=$(grep -oE 'https://[^ "]+' expose.txt | head -n1)
+          if [ -z "$url" ]; then
+            echo "::error::nsc expose printed no URL"
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Build and start the stack
+        env:
+          SANDBOX_URL: ${{ steps.url.outputs.url }}
+        run: $COMPOSE up -d --build
+
+      - name: Wait until it answers
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          for _ in $(seq 60); do
+            if curl -fsS -o /dev/null "$URL/health/ready" && curl -fsS -o /dev/null "$URL/"; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::$URL did not answer within 5 minutes"
+          exit 1
+
+      - uses: ./.github/actions/sandbox-comment
+        with:
+          pr: ${{ env.PR }}
+          token: ${{ github.token }}
+          instance: ${{ steps.instance.outputs.id }}
+          repost: true
+          body: |
+            ### 🟢 Sandbox ready
+            @${{ github.event.comment.user.login }} **${{ steps.url.outputs.url }}** · [API docs](${{ steps.url.outputs.url }}/api/docs/index.html)
+
+            Runs ${{ steps.pr.outputs.sha }} with a fresh database. Sign in by email; billing is Creem test mode.
+            Expires ${{ steps.instance.outputs.expires }}. Comment `/sandbox` to rebuild it on the latest commit, `/sandbox down` to stop it.
+
+      # A failed sandbox is no use to anyone: keep its logs, drop the instance.
+      - name: Collect logs
+        if: failure() && steps.instance.outputs.id != ''
+        run: |
+          {
+            echo 'logs<<SANDBOX_LOGS_EOF'
+            $COMPOSE ps -a 2>&1 || true
+            $COMPOSE logs --no-color --tail 40 2>&1 | tail -n 200 || true
+            echo 'SANDBOX_LOGS_EOF'
+          } >> "$GITHUB_OUTPUT"
+        id: logs
+
+      - name: Destroy the failed instance
+        if: failure() && steps.instance.outputs.id != ''
+        run: nsc destroy "${{ steps.instance.outputs.id }}" --force || true
+
+      # Not for a refused request: that one never started anything.
+      - if: failure() && steps.pr.outputs.sha != ''
+        uses: ./.github/actions/sandbox-comment
+        with:
+          pr: ${{ env.PR }}
+          token: ${{ github.token }}
+          repost: true
+          body: |
+            ### 🔴 Sandbox failed
+            @${{ github.event.comment.user.login }} building ${{ steps.pr.outputs.short }} failed; see the [run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}). Comment `/sandbox` to try again.
+
+            <details><summary>Container logs</summary>
+
+            ```
+            ${{ steps.logs.outputs.logs }}
+            ```
+            </details>
+
+  down:
+    name: Stop sandbox
+    if: >-
+      github.event_name == 'pull_request'
+      || (github.event.issue.pull_request
+        && startsWith(github.event.comment.body, '/sandbox down'))
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sandbox-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: true
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PR: ${{ github.event.issue.number || github.event.pull_request.number }}
+    steps:
+      # The comment marker is how this finds the instance: a PR that never had
+      # a sandbox has nothing to stop, and stops here.
+      - name: Look for a sandbox
+        id: has
+        run: |
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- sandbox -->"))) | .id' \
+            | head -n1)
+          echo "found=$([ -n "$id" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Check who asked
+        if: steps.has.outputs.found == 'true' && github.event_name == 'issue_comment'
+        env:
+          ACTOR: ${{ github.event.comment.user.login }}
+        run: |
+          permission=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq .permission)
+          if [ "$permission" != admin ] && [ "$permission" != write ]; then
+            echo "::error::$ACTOR has $permission access; stopping a sandbox needs write"
+            exit 1
+          fi
+
+      # Main's copy, for the comment action: never the PR's.
+      - if: steps.has.outputs.found == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - id: stopped
+        if: steps.has.outputs.found == 'true'
+        uses: ./.github/actions/sandbox-comment
+        with:
+          pr: ${{ env.PR }}
+          token: ${{ github.token }}
+          body: |
+            ### ⚪ Sandbox stopped
+            Comment `/sandbox` to start a new one.
+
+      - if: steps.stopped.outputs.previous-instance != ''
+        uses: namespacelabs/nscloud-setup@v0
+
+      - if: steps.stopped.outputs.previous-instance != ''
+        env:
+          INSTANCE: ${{ steps.stopped.outputs.previous-instance }}
+        run: nsc destroy "$INSTANCE" --force || echo "$INSTANCE is already gone"
