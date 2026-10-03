@@ -1,8 +1,14 @@
 import { A, useLocation } from '@solidjs/router'
 import { createEffect, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import type { User } from '../lib/auth'
-import { loadBilling, subscribed } from '../lib/billing'
+import { billing, loadBilling, subscribed } from '../lib/billing'
 import styles from './AccountMenu.module.css'
+
+/** The plan tag: a cancelled subscription still running to the end of its period is ending. */
+const planTag = () => {
+  if (!subscribed()) return 'free'
+  return billing()?.subscription?.cancelAtPeriodEnd ? 'ending' : 'member'
+}
 
 /** Up to two initials from the member's name, as the design's avatar shows them. */
 const initials = (name: string) =>
@@ -76,7 +82,7 @@ export default function AccountMenu(props: { user: User; onSignOut: () => void }
           </div>
           <A href="/subscription" class={styles.item}>
             <span>Subscription</span>
-            <span class={styles.tag}>{subscribed() ? 'member' : 'free'}</span>
+            <span class={styles.tag}>{planTag()}</span>
           </A>
           <span class={styles.rule} />
           <button type="button" class={`${styles.item} ${styles.logOut}`} onClick={() => props.onSignOut()}>

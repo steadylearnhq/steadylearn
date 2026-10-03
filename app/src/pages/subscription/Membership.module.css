@@ -157,6 +157,16 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* The last band fills the window without a rule under it; the page's bottom padding is taken back so the divider meets the footer. */
+.columnsLast {
+  flex: 1;
+  margin-bottom: -20px;
+}
+
+.columnsLast::after {
+  content: none;
+}
+
 .column {
   min-width: 0;
   display: flex;
@@ -302,6 +312,14 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.columnFailure {
+  margin: 16px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--err);
 }
 
 .failure {
