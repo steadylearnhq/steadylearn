@@ -1,4 +1,4 @@
-import { A, useLocation, useSearchParams } from '@solidjs/router'
+import { A, useLocation, useNavigate, useSearchParams } from '@solidjs/router'
 import {
   autoSignIn,
   confirmResetPassword,
@@ -29,6 +29,7 @@ const motionOk = () => !window.matchMedia('(prefers-reduced-motion: reduce)').ma
 
 export default function Auth() {
   const location = useLocation()
+  const navigate = useNavigate()
   const mode = (): Mode => (location.pathname.startsWith('/signup') ? 'signup' : 'login')
   const isLogin = () => mode() === 'login'
   // Set by RequireAuth when a signed-out visitor hits a members-only page.
@@ -57,7 +58,9 @@ export default function Auth() {
   const [pwFocus, setPwFocus] = createSignal(false)
   const [tried, setTried] = createSignal(false)
   const [loading, setLoading] = createSignal(false)
-  const [done, setDone] = createSignal<Mode | null>(null)
+  // Signing up ends on a welcome screen; logging in goes straight on.
+  const [signedUp, setSignedUp] = createSignal(false)
+  const [loggedIn, setLoggedIn] = createSignal(false)
   const [notice, setNotice] = createSignal('')
   const [failure, setFailure] = createSignal('')
   const [blink, setBlink] = createSignal(false)
@@ -172,7 +175,7 @@ export default function Auth() {
       await task()
     } catch (error) {
       // Signed in in another tab while this one sat open: nothing is wrong.
-      if (errorName(error) === 'UserAlreadyAuthenticatedException') setDone('login')
+      if (errorName(error) === 'UserAlreadyAuthenticatedException') setLoggedIn(true)
       else {
         setFailure(authMessage(error))
         shake()
@@ -206,7 +209,7 @@ export default function Auth() {
 
   const logIn = async () => {
     const { isSignedIn, nextStep } = await signIn({ username: username(), password: password() })
-    if (isSignedIn) return setDone('login')
+    if (isSignedIn) return setLoggedIn(true)
     if (nextStep.signInStep === 'CONFIRM_SIGN_UP') return toConfirm()
     if (nextStep.signInStep === 'RESET_PASSWORD') return toReset()
     // MFA or a forced password change: the pool isn't set up for either, so there is no screen for them.
@@ -222,7 +225,7 @@ export default function Auth() {
     if (nextStep.signUpStep === 'CONFIRM_SIGN_UP') return goTo('confirm', '')
     if (nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') await autoSignIn()
     else await signIn({ username: username(), password: password() })
-    setDone('signup')
+    setSignedUp(true)
   }
 
   const confirm = async () => {
@@ -230,7 +233,7 @@ export default function Auth() {
     // Sign-up arms auto sign-in; an unconfirmed login attempt doesn't, but its password is still here.
     if (nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') await autoSignIn()
     else await signIn({ username: username(), password: password() })
-    setDone('signup')
+    setSignedUp(true)
   }
 
   const saveNewPassword = async () => {
@@ -289,21 +292,15 @@ export default function Auth() {
   }
 
   const reset = () => {
-    setDone(null)
+    setSignedUp(false)
     back()
   }
 
-  const firstName = () => user()?.name.split(' ')[0]
-
-  const doneCopy = () =>
-    ({
-      login: [
-        firstName() ? `Welcome back, ${firstName()}.` : 'Welcome back.',
-        'Picking up where you left off: 2.3 Sizing replicated storage.',
-        'Resume lesson →',
-      ],
-      signup: ['You’re in.', 'Your email is confirmed. You can start your first lesson now.', 'Start first lesson →'],
-    })[done() ?? 'login']
+  // A member who logs in goes on to the dashboard, or the page that sent them,
+  // once the session signal has caught up, so RequireAuth there lets them in.
+  createEffect(() => {
+    if (loggedIn() && user()) navigate(next(), { replace: true })
+  })
 
   const fieldClass = (err: string) => (err ? `${styles.input} ${styles.invalid}` : styles.input)
 
@@ -318,7 +315,7 @@ export default function Auth() {
       <main class={styles.main}>
         <div class={styles.card}>
           <Show
-            when={done()}
+            when={signedUp()}
             fallback={
               <>
                 <div ref={mascotRef} class={styles.mascot}>
@@ -570,11 +567,11 @@ export default function Auth() {
             <span class={styles.wordmark}>
               steadylearn<span class={styles.dot}>.</span>
             </span>
-            <h1 class={`${styles.title} ${styles.doneTitle}`}>{doneCopy()[0]}</h1>
-            <p class={styles.subtitle}>{doneCopy()[1]}</p>
+            <h1 class={`${styles.title} ${styles.doneTitle}`}>You’re in.</h1>
+            <p class={styles.subtitle}>Your email is confirmed. You can start your first lesson now.</p>
             <div class={styles.doneActions}>
               <Button variant="primary" size="lg" href={next()}>
-                {next().startsWith('/subscription') ? 'Continue to checkout →' : doneCopy()[2]}
+                {next().startsWith('/subscription') ? 'Continue to checkout →' : 'Start first lesson →'}
               </Button>
               <Button variant="outline" size="lg" onClick={reset}>
                 Back

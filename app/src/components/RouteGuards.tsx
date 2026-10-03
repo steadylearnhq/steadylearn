@@ -35,7 +35,7 @@ export function GuestOnly(props: RouteSectionProps) {
 
 /**
  * Wraps the log in and sign up pages, which signed-in visitors skip for their
- * dashboard (or the page that sent them). Decided once on arrival: logging in
+ * dashboard (or the page that sent them). Decided once on arrival: signing up
  * on the page itself keeps the visitor there for its welcome screen.
  */
 export function GuestOnArrival(props: RouteSectionProps) {
