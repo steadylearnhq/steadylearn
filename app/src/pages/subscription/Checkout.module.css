@@ -130,6 +130,15 @@
   height: 52px;
 }
 
+.failure {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--err);
+  text-align: center;
+}
+
 .note {
   margin: 0;
   font-size: 13px;

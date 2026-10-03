@@ -17,7 +17,7 @@ export class ApiError extends Error {
  * answer, sending `token` as a bearer token when one is given. Failures carry
  * the API's own `{ error }` message when it sent one.
  */
-async function request<T>(method: 'GET' | 'PUT' | 'DELETE', path: string, token?: string, body?: unknown): Promise<T> {
+async function request<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, token?: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -39,6 +39,9 @@ async function request<T>(method: 'GET' | 'PUT' | 'DELETE', path: string, token?
 
 /** GETs a JSON resource. */
 export const apiGet = <T>(path: string, token?: string) => request<T>('GET', path, token)
+
+/** POSTs an action, with `body` when it takes one, and reads back what the API answered. */
+export const apiPost = <T>(path: string, token?: string, body?: unknown) => request<T>('POST', path, token, body)
 
 /** PUTs a resource, with `body` when the path doesn't say it all, and reads back what the API made of it. */
 export const apiPut = <T>(path: string, token?: string, body?: unknown) => request<T>('PUT', path, token, body)

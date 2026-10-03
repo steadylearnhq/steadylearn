@@ -2,6 +2,7 @@ import { For, type JSX } from 'solid-js'
 import Button from '../../components/Button'
 import Critter from '../../components/Critter'
 import { COURSES, DOMAINS, TOTAL_LESSONS, formatLength, plural } from '../../data/catalog'
+import { SUBSCRIBE_HREF } from '../../lib/billing'
 import { usePageTitle } from '../../lib/title'
 import styles from './Pricing.module.css'
 
@@ -48,7 +49,7 @@ const PLANS: Plan[] = [
     period: 'per month, VAT included',
     description: 'Every course in the catalog, including the ones we release next.',
     cta: () => (
-      <Button variant="primary" size="lg">
+      <Button variant="primary" size="lg" href={SUBSCRIBE_HREF}>
         Subscribe →
       </Button>
     ),

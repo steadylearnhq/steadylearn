@@ -13,7 +13,7 @@ import { createEffect, createSignal, on, onCleanup, onMount, Show } from 'solid-
 import Button from '../../components/Button'
 import Critter from '../../components/Critter'
 import { HOME, safeRedirect } from '../../components/RouteGuards'
-import { authMessage, errorName, user } from '../../lib/auth'
+import { authMessage, errorName, rememberRedirect, user } from '../../lib/auth'
 import { theme, toggleTheme } from '../../lib/theme'
 import { usePageTitle } from '../../lib/title'
 import styles from './Auth.module.css'
@@ -34,6 +34,11 @@ export default function Auth() {
   // Set by RequireAuth when a signed-out visitor hits a members-only page.
   const [params] = useSearchParams<{ redirect?: string }>()
   const next = () => safeRedirect(params.redirect, HOME)
+  // Switching between log in and sign up keeps where to go after.
+  const otherMode = () => {
+    const path = isLogin() ? '/signup' : '/login'
+    return params.redirect ? `${path}?redirect=${encodeURIComponent(params.redirect)}` : path
+  }
 
   const [step, setStep] = createSignal<Step>('form')
   // Whether the password field is choosing a new password rather than checking one.
@@ -253,7 +258,12 @@ export default function Auth() {
   }
 
   // The browser leaves for Cognito's hosted UI and comes back to /external-auth.
-  const google = () => !loading() && run(() => signInWithRedirect({ provider: 'Google' }))
+  const google = () =>
+    !loading() &&
+    run(() => {
+      if (params.redirect) rememberRedirect(next())
+      return signInWithRedirect({ provider: 'Google' })
+    })
 
   const forgot = () => {
     if (!emailOk()) {
@@ -542,7 +552,7 @@ export default function Auth() {
                 >
                   <p class={styles.switch}>
                     {isLogin() ? 'New to steadylearn?' : 'Already have an account?'}
-                    <A href={isLogin() ? '/signup' : '/login'}>{isLogin() ? 'Create an account' : 'Log in'}</A>
+                    <A href={otherMode()}>{isLogin() ? 'Create an account' : 'Log in'}</A>
                   </p>
                 </Show>
 
@@ -564,7 +574,7 @@ export default function Auth() {
             <p class={styles.subtitle}>{doneCopy()[1]}</p>
             <div class={styles.doneActions}>
               <Button variant="primary" size="lg" href={next()}>
-                {doneCopy()[2]}
+                {next().startsWith('/subscription') ? 'Continue to checkout →' : doneCopy()[2]}
               </Button>
               <Button variant="outline" size="lg" onClick={reset}>
                 Back
