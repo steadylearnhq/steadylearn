@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -15,6 +16,16 @@ type config struct {
 	CognitoRegion      string
 	CognitoUserPoolID  string
 
+	// Billing runs through Creem. It is optional: without these the API boots
+	// with billing off, see BillingEnabled.
+	CreemAPIKey        string
+	CreemWebhookSecret string
+	CreemProductId     string
+	CreemAPIURL        string
+	// AppURL is the web app's origin, where Creem sends a member back to after
+	// checkout.
+	AppURL string
+
 	OtelSDKDisabled          bool
 	OtelServiceName          string
 	OtelExporterOTLPEndpoint string
@@ -24,6 +35,10 @@ type config struct {
 // defaultPort is used when PORT is unset. Container platforms inject their own
 // value and expect the process to honour it.
 const defaultPort = "8080"
+
+// defaultCreemAPIURL is Creem's test mode. Live is https://api.creem.io/v1,
+// and each mode has its own API key.
+const defaultCreemAPIURL = "https://test-api.creem.io/v1"
 
 const (
 	defaultOtelServiceName          = "steadylearn-api"
@@ -47,6 +62,15 @@ func LoadConfig() error {
 	Config.CORSAllowedOrigins = os.Getenv("CORS_ALLOWED_ORIGINS")
 	Config.CognitoRegion = os.Getenv("COGNITO_REGION")
 	Config.CognitoUserPoolID = os.Getenv("COGNITO_USER_POOL_ID")
+
+	Config.CreemAPIKey = os.Getenv("CREEM_API_KEY")
+	Config.CreemWebhookSecret = os.Getenv("CREEM_WEBHOOK_SECRET")
+	Config.CreemProductId = os.Getenv("CREEM_PRODUCT_ID")
+	Config.CreemAPIURL = os.Getenv("CREEM_API_URL")
+	if Config.CreemAPIURL == "" {
+		Config.CreemAPIURL = defaultCreemAPIURL
+	}
+	Config.AppURL = strings.TrimRight(os.Getenv("APP_URL"), "/")
 
 	// OTEL_SDK_DISABLED is the OpenTelemetry spec's own name for the
 	// kill-switch; reused here rather than inventing a project-specific var.
@@ -84,4 +108,11 @@ func LoadConfig() error {
 	}
 
 	return nil
+}
+
+// BillingEnabled reports whether everything billing needs is set. Unlike the
+// variables LoadConfig requires, these may be missing: billing is then off,
+// its endpoints answer 503, and the rest of the API is unaffected.
+func (c *config) BillingEnabled() bool {
+	return c.CreemAPIKey != "" && c.CreemWebhookSecret != "" && c.CreemProductId != "" && c.AppURL != ""
 }

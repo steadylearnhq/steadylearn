@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"steadylearn-api/src/models"
 	"steadylearn-api/src/schemas"
 	"steadylearn-api/src/services"
 	"steadylearn-api/tests/testutil"
@@ -186,4 +187,26 @@ func TestGetCurrentUserDoesNotCacheFailures(t *testing.T) {
 	_, err = services.GetCurrentUser(ctx, throttled)
 	assert.ErrorIs(t, err, services.ErrIdentityProvider)
 	assert.False(t, cache.Exists(services.CurrentUserCacheKey(throttled)))
+}
+
+func TestGetCurrentUserCarriesAFreshSubscription(t *testing.T) {
+	testutil.UseDB(t)
+	cognito := testutil.UseCognito(t)
+	testutil.UseCache(t)
+	ctx := context.Background()
+	userID := setUpUser(t, cognito)
+
+	user, err := services.GetCurrentUser(ctx, userID)
+	require.NoError(t, err)
+	assert.Nil(t, user.Subscription, "never subscribed")
+
+	addSubscription(t, userID, models.Subscription{CreemSubscriptionId: "sub_1", Status: "active", CurrentPeriodEnd: at(time.Hour)})
+
+	// The user pool answers once, so this comes from the cache, and the
+	// subscription still shows: it is not part of what is cached.
+	user, err = services.GetCurrentUser(ctx, userID)
+	require.NoError(t, err)
+	require.NotNil(t, user.Subscription)
+	assert.Equal(t, "active", user.Subscription.Status)
+	assert.True(t, user.Subscription.Entitled)
 }

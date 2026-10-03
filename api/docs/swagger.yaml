@@ -1,5 +1,14 @@
 basePath: /
 definitions:
+  schemas.BillingSchema:
+    properties:
+      subscription:
+        allOf:
+        - $ref: '#/definitions/schemas.SubscriptionSchema'
+        description: |-
+          Subscription is the caller's current subscription, or null when they
+          have never subscribed.
+    type: object
   schemas.BreakItSchema:
     properties:
       description:
@@ -34,6 +43,12 @@ definitions:
         items:
           $ref: '#/definitions/schemas.EnrollmentSchema'
         type: array
+    type: object
+  schemas.CheckoutSchema:
+    properties:
+      checkoutUrl:
+        example: https://checkout.creem.io/ch_1QyIQDw9cbFWdA1ry5Qc6I
+        type: string
     type: object
   schemas.CourseEnrollmentSchema:
     properties:
@@ -328,6 +343,12 @@ definitions:
         example: Size R and W for a given N and say what each choice costs
         type: string
     type: object
+  schemas.PortalSchema:
+    properties:
+      url:
+        example: https://creem.io/my-orders/login/xxxxxxxxxx
+        type: string
+    type: object
   schemas.PrerequisiteSchema:
     properties:
       id:
@@ -359,6 +380,39 @@ definitions:
         example: Networks drop and reorder messages
         type: string
     type: object
+  schemas.SubscriptionSchema:
+    properties:
+      cancelAtPeriodEnd:
+        description: |-
+          CancelAtPeriodEnd is a cancelled subscription that runs until
+          CurrentPeriodEnd.
+        example: false
+        type: boolean
+      canceledAt:
+        type: string
+      currentPeriodEnd:
+        example: "2026-11-03T14:12:24Z"
+        type: string
+      entitled:
+        description: Entitled is whether the subscription gives access now.
+        example: true
+        type: boolean
+      status:
+        description: |-
+          Status is Creem's: active, trialing, past_due, unpaid, scheduled_cancel,
+          paused or canceled. Treat any other value as no access.
+        example: active
+        type: string
+    type: object
+  schemas.SyncRequest:
+    properties:
+      subscriptionId:
+        example: sub_6pC2lNB6joCRQIZ1aMrTpi
+        maxLength: 100
+        type: string
+    required:
+    - subscriptionId
+    type: object
   schemas.UserProfileSchema:
     properties:
       email:
@@ -388,6 +442,13 @@ definitions:
         description: |-
           Profile is filled in by the /me endpoint, which caches the call to the user
           pool that fills it, and left out of the plain reads of the local record.
+      subscription:
+        allOf:
+        - $ref: '#/definitions/schemas.SubscriptionSchema'
+        description: |-
+          Subscription is filled in by the /me endpoint too, but read fresh on
+          every call rather than cached, so a checkout or cancel shows at once. It
+          is left out for a user who has never subscribed.
     type: object
 info:
   contact: {}
@@ -440,6 +501,298 @@ paths:
       summary: Readiness probe
       tags:
       - health
+  /v1/billing/cancel:
+    post:
+      description: Cancel the caller's subscription at the end of the period they
+        paid for, and return their billing state. They keep access until then, and
+        can resume before it. A 409 means the subscription is not one that can be
+        cancelled.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.BillingSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel the subscription
+      tags:
+      - billing
+  /v1/billing/checkout:
+    post:
+      description: Start a Creem checkout for the monthly subscription, and return
+        the hosted page to send the caller to. Creem sends them back to the app's
+        /subscription?checkout=success. A 409 means the caller already has access.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.CheckoutSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Start a checkout
+      tags:
+      - billing
+  /v1/billing/portal:
+    post:
+      description: A link to Creem's customer portal, where the caller changes their
+        card and downloads invoices. A 404 means the caller has never subscribed.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.PortalSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Open the billing portal
+      tags:
+      - billing
+  /v1/billing/resume:
+    post:
+      description: Undo a cancellation that has not taken effect yet, or a pause,
+        and return the caller's billing state. A 409 means the subscription is not
+        cancelled or paused.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.BillingSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Resume the subscription
+      tags:
+      - billing
+  /v1/billing/subscription:
+    get:
+      description: The caller's current subscription, or null when they have never
+        subscribed. Read from the database, never cached, so it reflects a checkout,
+        cancel or resume at once. Answers even while billing is off.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.BillingSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get the caller's subscription
+      tags:
+      - billing
+  /v1/billing/sync:
+    post:
+      consumes:
+      - application/json
+      description: Read the subscription Creem returned the caller with after checkout,
+        store it if it is theirs, and return their billing state. Lets the app confirm
+        a payment without waiting for its webhook. A 404 means Creem has no such subscription
+        for the caller.
+      parameters:
+      - description: The subscription_id Creem appended to the success URL
+        in: body
+        name: sync
+        required: true
+        schema:
+          $ref: '#/definitions/schemas.SyncRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.BillingSchema'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sync a subscription after checkout
+      tags:
+      - billing
   /v1/catalog:
     get:
       description: 'Every published course with the domains they belong to, in display
@@ -795,9 +1148,11 @@ paths:
       consumes:
       - application/json
       description: Get the currently authenticated user with the identity provider's
-        profile attached. Served from a cache for up to five minutes, so a change
-        made in the user pool can take that long to show. A 404 means the user has
-        not been set up yet.
+        profile and their subscription attached. The profile is served from a cache
+        for up to five minutes, so a change made in the user pool can take that long
+        to show; the subscription is read fresh on every call, and is left out for
+        a user who has never subscribed. A 404 means the user has not been set up
+        yet.
       produces:
       - application/json
       responses:
@@ -828,6 +1183,61 @@ paths:
       summary: Get current user
       tags:
       - users
+  /v1/webhooks/creem:
+    post:
+      consumes:
+      - application/json
+      description: 'Creem''s webhook endpoint. It takes no token: the creem-signature
+        header, an HMAC of the raw body, authenticates it. Answers 200 once the event
+        is handled or was already; any other status makes Creem retry.'
+      parameters:
+      - description: Hex HMAC-SHA256 of the body under the webhook secret
+        in: header
+        name: creem-signature
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Receive a Creem webhook
+      tags:
+      - billing
 schemes:
 - http
 - https

@@ -2,6 +2,9 @@ package testutil
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -34,6 +37,66 @@ func UseCognito(t *testing.T) *MockCognito {
 	swap(t, &core.Cognito, core.CognitoUsers(m))
 	t.Cleanup(func() { m.AssertExpectations(t) })
 	return m
+}
+
+// MockCreem stands in for Creem.
+type MockCreem struct{ mock.Mock }
+
+func (m *MockCreem) CreateCheckout(ctx context.Context, request core.CreemCheckoutRequest) (core.CreemCheckout, error) {
+	args := m.Called(ctx, request)
+	out, _ := args.Get(0).(core.CreemCheckout)
+	return out, args.Error(1)
+}
+
+func (m *MockCreem) GetSubscription(ctx context.Context, subscriptionId string) (core.CreemSubscription, error) {
+	args := m.Called(ctx, subscriptionId)
+	out, _ := args.Get(0).(core.CreemSubscription)
+	return out, args.Error(1)
+}
+
+func (m *MockCreem) CancelSubscription(ctx context.Context, subscriptionId string) (core.CreemSubscription, error) {
+	args := m.Called(ctx, subscriptionId)
+	out, _ := args.Get(0).(core.CreemSubscription)
+	return out, args.Error(1)
+}
+
+func (m *MockCreem) ResumeSubscription(ctx context.Context, subscriptionId string) (core.CreemSubscription, error) {
+	args := m.Called(ctx, subscriptionId)
+	out, _ := args.Get(0).(core.CreemSubscription)
+	return out, args.Error(1)
+}
+
+func (m *MockCreem) CreateBillingPortalLink(ctx context.Context, customerId string) (string, error) {
+	args := m.Called(ctx, customerId)
+	return args.String(0), args.Error(1)
+}
+
+// The billing settings UseCreem configures.
+const (
+	CreemProductId     = "prod_test"
+	CreemWebhookSecret = "whsec_test"
+	AppURL             = "https://app.test"
+)
+
+// UseCreem turns billing on for the length of the test, with core.Creem
+// pointed at a mock.
+func UseCreem(t *testing.T) *MockCreem {
+	t.Helper()
+	swap(t, &core.Config.CreemAPIKey, "creem_test_key")
+	swap(t, &core.Config.CreemWebhookSecret, CreemWebhookSecret)
+	swap(t, &core.Config.CreemProductId, CreemProductId)
+	swap(t, &core.Config.AppURL, AppURL)
+	m := &MockCreem{}
+	swap(t, &core.Creem, core.CreemAPI(m))
+	t.Cleanup(func() { m.AssertExpectations(t) })
+	return m
+}
+
+// SignCreem is the creem-signature header Creem would send with body.
+func SignCreem(body []byte) string {
+	mac := hmac.New(sha256.New, []byte(CreemWebhookSecret))
+	mac.Write(body)
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // UseCache points core.Cache at an in-memory Redis for the length of the test.

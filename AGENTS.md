@@ -168,8 +168,10 @@ that touches the database.
   test package that uses the database needs a `TestMain` that calls
   `testutil.Run(m)` to stop its container (see `tests/services/main_test.go`).
 - **Third-party services are faked.** `testutil.UseCognito(t)` swaps
-  `core.Cognito` for a testify mock, and `testutil.UseCache(t)` points
-  `core.Cache` at an in-memory miniredis.
+  `core.Cognito` for a testify mock, `testutil.UseCreem(t)` turns billing on
+  with `core.Creem` mocked (`testutil.SignCreem` signs a webhook body), and
+  `testutil.UseCache(t)` points `core.Cache` at an in-memory miniredis.
+  `tests/core/` checks the hand-written Creem client against a fake server.
 
 ## Database Migrations (Atlas)
 
@@ -215,17 +217,25 @@ both take an optional token (`OptionalAuth`). A signed-in caller also gets
 their enrollments with the catalog, and every lesson of a course's syllabus
 with, when enrolled, their enrollment in it.
 
+Billing goes through Creem, the Merchant of Record. `/v1/billing/*` is
+the caller's own subscription; `POST /v1/webhooks/creem` takes no token, since
+Creem's HMAC signature (`creem-signature`) authenticates it. A webhook only says
+which subscription changed: its state is always read back from Creem.
+
 ### Key Patterns
 
 - Controllers never touch `core.DB`; services never write HTTP responses
 - Model to DTO conversion goes through a `toXSchema` helper in the service
 - Third-party services are reached only through interface-typed globals in `core`
-  (`Cognito`), which `Init*` sets at boot and tests replace with mocks
+  (`Cognito`, `Creem`), which `Init*` sets at boot and tests replace with mocks
 - Soft deletes via `deleted_at`; queries must filter `deleted_at IS NULL`
 - Redis is a read-through cache, never a system of record: go through `cached` in
   `src/services/cache.go`. Every key is namespaced and expires, and an unreachable
   cache falls back to the database rather than failing the request
-- Config is validated at boot: a missing required env var is a fatal error
+- Config is validated at boot: a missing required env var is a fatal error. Billing
+  is the exception: without `CREEM_API_KEY`, `CREEM_WEBHOOK_SECRET`,
+  `CREEM_PRODUCT_ID` and `APP_URL` it is off, `core.Creem` stays nil, and the
+  billing endpoints answer 503 (reading a subscription still works)
 - OpenTelemetry (traces, metrics, logs) is wired in `src/core/telemetry.go` and exported
   via OTLP/HTTP. It is opt-out (`OTEL_SDK_DISABLED=true`), and any exporter failure
   degrades to a no-op rather than failing boot. Log with `slog.InfoContext` /

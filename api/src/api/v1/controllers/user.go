@@ -13,7 +13,7 @@ import (
 
 // GetCurrentUser handles retrieving the current user
 // @Summary Get current user
-// @Description Get the currently authenticated user with the identity provider's profile attached. Served from a cache for up to five minutes, so a change made in the user pool can take that long to show. A 404 means the user has not been set up yet.
+// @Description Get the currently authenticated user with the identity provider's profile and their subscription attached. The profile is served from a cache for up to five minutes, so a change made in the user pool can take that long to show; the subscription is read fresh on every call, and is left out for a user who has never subscribed. A 404 means the user has not been set up yet.
 // @Tags users
 // @Accept json
 // @Produce json
