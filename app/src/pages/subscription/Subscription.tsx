@@ -1,22 +1,28 @@
 import { A, useNavigate, useSearchParams } from '@solidjs/router'
-import { createSignal, For, Match, onCleanup, onMount, Show, Switch, type JSX } from 'solid-js'
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show, type JSX } from 'solid-js'
 import Button from '../../components/Button'
-import Critter from '../../components/Critter'
+import Critter, { type CritterMood } from '../../components/Critter'
 import { HOME } from '../../components/RouteGuards'
+import Toast from '../../components/Toast'
 import { COURSES, DOMAINS } from '../../data/catalog'
 import { ApiError } from '../../lib/api'
 import {
   billing,
   cancelSubscription,
+  daysUntil,
   formatBillingDate,
+  formatDayLong,
   loadBilling,
+  loadPayments,
   openPortal,
+  payments,
   resumeSubscription,
   syncSubscription,
   type Billing,
   type Subscription as Sub,
 } from '../../lib/billing'
 import { usePageTitle } from '../../lib/title'
+import Membership, { declinedPayments, type BillingAction, type MemberView } from './Membership'
 import { FREE_COURSE, FREE_DESCRIPTION, FREE_FEATURES, PERIOD, PRICE, SUBSCRIPTION_FEATURES, type Feature } from './plans'
 import styles from './Subscription.module.css'
 
@@ -68,10 +74,31 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 /** What a failed billing call tells the member. */
 const FAILURE = 'Billing is unavailable right now. Try again in a minute.'
 
+/** How long a confirmation stays up. */
+const TOAST_MS = 2600
+
+const isMember = (view: View): view is MemberView => view !== 'free' && view !== 'ended'
+
+/** How the critters by the heading feel about the member's plan. */
+const critterMood = (view: View, kind: string, i: number): CritterMood => {
+  switch (view) {
+    case 'active':
+      return i % 2 ? 'awake' : 'happy'
+    case 'ending':
+      return i % 2 ? 'asleep' : 'awake'
+    case 'pastDue':
+    case 'paused':
+      return 'awake'
+    default:
+      return kind === 'die' ? 'happy' : 'asleep'
+  }
+}
+
 /**
- * The member's plan: the free and subscription plans side by side, with the
- * one they're on marked, and what they can do about it. Coming back from
- * Creem's checkout (?checkout=success), it confirms the payment first.
+ * The member's plan. On the free plan, the free and subscription plans side by
+ * side; with a subscription, where it stands, the current period, the billing
+ * portal, their payments, and cancelling or resuming. Coming back from Creem's
+ * checkout (?checkout=success), it confirms the payment first.
  */
 export default function Subscription() {
   usePageTitle('Subscription')
@@ -80,12 +107,24 @@ export default function Subscription() {
 
   const [failed, setFailed] = createSignal(false)
   const [confirming, setConfirming] = createSignal<'no' | 'waiting' | 'slow'>(params.checkout === 'success' ? 'waiting' : 'no')
-  const [busy, setBusy] = createSignal<'cancel' | 'resume' | 'portal' | null>(null)
+  const [busy, setBusy] = createSignal<BillingAction | null>(null)
   const [askCancel, setAskCancel] = createSignal(false)
   const [failure, setFailure] = createSignal('')
+  const [paymentsFailed, setPaymentsFailed] = createSignal(false)
+  const [toast, setToast] = createSignal<string>()
 
   let gone = false
-  onCleanup(() => (gone = true))
+  let toastTimer: ReturnType<typeof setTimeout> | undefined
+  onCleanup(() => {
+    gone = true
+    clearTimeout(toastTimer)
+  })
+
+  const flash = (message: string) => {
+    clearTimeout(toastTimer)
+    setToast(message)
+    toastTimer = setTimeout(() => setToast(undefined), TOAST_MS)
+  }
 
   const load = () => {
     setFailed(false)
@@ -106,6 +145,7 @@ export default function Subscription() {
         if (state.subscription?.entitled) {
           setConfirming('no')
           navigate('/subscription', { replace: true })
+          flash('Subscription started · every course is open')
           return
         }
       } catch (error) {
@@ -122,10 +162,23 @@ export default function Subscription() {
 
   const subscription = () => billing()?.subscription ?? null
   const view = () => viewOf(subscription())
-  const onFreePlan = () => view() === 'free' || view() === 'ended'
   const periodEnd = () => formatBillingDate(subscription()?.currentPeriodEnd ?? null)
 
-  const act = async (action: 'cancel' | 'resume' | 'portal') => {
+  // A subscriber's payments come from the payment provider, so they load after
+  // the plan, and only for a member who has one.
+  const fetchPayments = (fresh = false) => {
+    setPaymentsFailed(false)
+    loadPayments(fresh).catch(() => setPaymentsFailed(true))
+  }
+  createEffect(
+    on(
+      () => billing() && confirming() === 'no' && isMember(view()),
+      (member) => member && fetchPayments(),
+    ),
+  )
+  const memberPayments = () => (paymentsFailed() ? null : payments())
+
+  const act = async (action: BillingAction) => {
     setFailure('')
     setBusy(action)
     try {
@@ -135,6 +188,7 @@ export default function Subscription() {
       }
       await (action === 'cancel' ? cancelSubscription() : resumeSubscription())
       setAskCancel(false)
+      flash(action === 'cancel' ? 'Subscription canceled' : 'Subscription resumed')
     } catch (error) {
       // The subscription changed elsewhere, in the portal or another tab: show it as it is now.
       if (error instanceof ApiError && error.status === 409) {
@@ -147,7 +201,7 @@ export default function Subscription() {
     setBusy(null)
   }
 
-  const heading = (): { title: string; lede: JSX.Element } => {
+  const heading = (): { title: string; lede: JSX.Element; cta?: { label: string; action: BillingAction } } => {
     if (confirming() === 'waiting') return { title: 'Confirming your payment…', lede: 'This takes a few seconds.' }
     if (confirming() === 'slow')
       return {
@@ -161,23 +215,49 @@ export default function Subscription() {
       case 'free':
       case 'ended':
         return { title: 'You’re on the free plan.', lede: free }
-      case 'active':
+      case 'active': {
+        const next = subscription()?.nextChargeAt ?? null
         return {
-          title: 'You’re subscribed.',
-          lede: periodEnd() ? `Every course is open. Your subscription renews on ${periodEnd()}.` : 'Every course is open.',
+          title: 'Your subscription is active.',
+          lede: next ? `Every course is open. It renews on ${formatBillingDate(next)} for ${PRICE}.` : 'Every course is open.',
         }
-      case 'ending':
+      }
+      case 'ending': {
+        const end = subscription()?.currentPeriodEnd ?? null
+        const days = end ? daysUntil(end) : undefined
         return {
-          title: periodEnd() ? `Your subscription ends on ${periodEnd()}.` : 'Your subscription is cancelled.',
-          lede: 'You keep every course until then. Resume it to keep going after that.',
+          title:
+            days === undefined
+              ? 'Your subscription is cancelled.'
+              : days === 0
+                ? 'Your subscription ends today.'
+                : days === 1
+                  ? 'Your subscription ends tomorrow.'
+                  : `Your subscription ends in ${days} days.`,
+          lede: end
+            ? `You have full access until ${periodEnd()}. After that the paid courses lock again; your progress and bets are kept.`
+            : 'After the current period the paid courses lock again; your progress and bets are kept.',
+          cta: { label: busy() === 'resume' ? 'Resuming…' : 'Resume subscription', action: 'resume' },
         }
-      case 'pastDue':
+      }
+      case 'pastDue': {
+        const failed = declinedPayments(payments())[0]
+        const next = subscription()?.nextChargeAt ?? null
+        const declined = failed ? `The ${PRICE} payment due ${formatDayLong(failed.date)} was declined.` : `Your last ${PRICE} payment was declined.`
         return {
-          title: 'Your last payment didn’t go through.',
-          lede: 'You still have every course while we retry it. Update your card to keep your subscription.',
+          title: 'We couldn’t charge your card.',
+          lede: next
+            ? `${declined} We’ll try again on ${formatDayLong(next)}. Update your card before then to keep every course open.`
+            : `${declined} Update your card to keep every course open.`,
+          cta: { label: busy() === 'portal' ? 'Opening…' : 'Update card', action: 'portal' },
         }
+      }
       case 'paused':
-        return { title: 'Your subscription is paused.', lede: 'Resume it to open every course again.' }
+        return {
+          title: 'Your subscription is paused.',
+          lede: 'Resume it to open every course again.',
+          cta: { label: busy() === 'resume' ? 'Resuming…' : 'Resume subscription', action: 'resume' },
+        }
     }
   }
 
@@ -198,6 +278,13 @@ export default function Subscription() {
             {heading().title}
           </h1>
           <p class={styles.lede}>{heading().lede}</p>
+          <Show when={confirming() === 'no' && heading().cta}>
+            {(cta) => (
+              <Button variant="primary" size="lg" class={styles.cta} disabled={!!busy()} onClick={() => void act(cta().action)}>
+                {cta().label}
+              </Button>
+            )}
+          </Show>
           <Show when={confirming() === 'slow'}>
             <Button variant="outline" size="md" onClick={() => void confirm()}>
               Check again
@@ -211,14 +298,8 @@ export default function Subscription() {
         </div>
         <div class={styles.critters} aria-hidden="true">
           <For each={DOMAINS}>
-            {(d) => (
-              <Critter
-                kind={d.kind}
-                hue={d.hue}
-                size={44}
-                mood={d.kind === 'die' || (billing() && !onFreePlan()) ? 'happy' : 'asleep'}
-                track={false}
-              />
+            {(d, i) => (
+              <Critter kind={d.kind} hue={d.hue} size={44} mood={critterMood(billing() ? view() : 'free', d.kind, i())} track={false} />
             )}
           </For>
         </div>
@@ -226,39 +307,37 @@ export default function Subscription() {
 
       {/* Hidden while a payment is being confirmed, so nobody pays twice. */}
       <Show when={billing() && confirming() === 'no'}>
-        <section class={styles.plans}>
-          <div class={styles.plan}>
-            <div class={styles.planHead}>
-              <h2 class={styles.planName}>Base</h2>
-              <Critter kind="die" hue={290} size={44} mood="happy" />
-            </div>
-            <div class={styles.priceBlock}>
-              <div class={styles.priceLine}>
-                <span class={styles.price}>Free</span>
-                <span class={styles.period}>forever</span>
+        <Show
+          when={isMember(view()) && subscription()}
+          fallback={
+            <section class={styles.plans}>
+              <div class={styles.plan}>
+                <div class={styles.planHead}>
+                  <h2 class={styles.planName}>Base</h2>
+                  <Critter kind="die" hue={290} size={44} mood="happy" />
+                </div>
+                <div class={styles.priceBlock}>
+                  <div class={styles.priceLine}>
+                    <span class={styles.price}>Free</span>
+                    <span class={styles.period}>forever</span>
+                  </div>
+                  <span class={styles.planDescription}>{FREE_DESCRIPTION}</span>
+                </div>
+                <span class={styles.current}>Current plan</span>
+                <Features items={FREE_FEATURES} />
               </div>
-              <span class={styles.planDescription}>{FREE_DESCRIPTION}</span>
-            </div>
-            <Show when={onFreePlan()}>
-              <span class={styles.current}>Current plan</span>
-            </Show>
-            <Features items={FREE_FEATURES} />
-          </div>
 
-          <div class={styles.plan}>
-            <div class={styles.planHead}>
-              <h2 class={styles.planName}>Subscription</h2>
-            </div>
-            <div class={styles.priceBlock}>
-              <div class={styles.priceLine}>
-                <span class={styles.price}>{PRICE}</span>
-                <span class={styles.period}>{PERIOD}</span>
-              </div>
-              <span class={styles.planDescription}>Every course in the catalog, including the ones we release next.</span>
-            </div>
-
-            <Switch>
-              <Match when={onFreePlan()}>
+              <div class={styles.plan}>
+                <div class={styles.planHead}>
+                  <h2 class={styles.planName}>Subscription</h2>
+                </div>
+                <div class={styles.priceBlock}>
+                  <div class={styles.priceLine}>
+                    <span class={styles.price}>{PRICE}</span>
+                    <span class={styles.period}>{PERIOD}</span>
+                  </div>
+                  <span class={styles.planDescription}>Every course in the catalog, including the ones we release next.</span>
+                </div>
                 <div class={styles.actions}>
                   <Button variant="primary" size="lg" href="/subscription/checkout">
                     {view() === 'ended' ? 'Subscribe again →' : 'Subscribe →'}
@@ -270,58 +349,32 @@ export default function Subscription() {
                     </Button>
                   </Show>
                 </div>
-              </Match>
-              <Match when={askCancel()}>
-                <div class={styles.confirmCancel}>
-                  <p class={styles.confirmText}>
-                    {periodEnd()
-                      ? `Cancel your subscription? You keep every course until ${periodEnd()}, and you won’t be charged again.`
-                      : 'Cancel your subscription? You keep every course until the end of the period, and you won’t be charged again.'}
+                <Show when={failure()}>
+                  <p class={styles.failure} role="alert">
+                    {failure()}
                   </p>
-                  <div class={styles.actions}>
-                    <Button variant="outline" size="lg" disabled={!!busy()} onClick={() => void act('cancel')}>
-                      {busy() === 'cancel' ? 'Cancelling…' : 'Yes, cancel'}
-                    </Button>
-                    <Button variant="ghost" size="lg" disabled={!!busy()} onClick={() => setAskCancel(false)}>
-                      Keep it
-                    </Button>
-                  </div>
-                </div>
-              </Match>
-              <Match when={true}>
-                <span class={styles.current}>Current plan</span>
-                <div class={styles.actions}>
-                  <Show when={view() === 'ending' || view() === 'paused'}>
-                    <Button variant="primary" size="lg" disabled={!!busy()} onClick={() => void act('resume')}>
-                      {busy() === 'resume' ? 'Resuming…' : 'Resume subscription'}
-                    </Button>
-                  </Show>
-                  <Button
-                    variant={view() === 'pastDue' ? 'primary' : 'outline'}
-                    size="lg"
-                    disabled={!!busy()}
-                    onClick={() => void act('portal')}
-                  >
-                    {view() === 'pastDue' ? 'Update your card' : 'Manage billing'}
-                  </Button>
-                  <Show when={view() === 'active' || view() === 'pastDue'}>
-                    <Button variant="ghost" size="lg" disabled={!!busy()} onClick={() => setAskCancel(true)}>
-                      Cancel subscription
-                    </Button>
-                  </Show>
-                </div>
-              </Match>
-            </Switch>
-            <Show when={failure()}>
-              <p class={styles.failure} role="alert">
-                {failure()}
-              </p>
-            </Show>
-
-            <Features items={SUBSCRIPTION_FEATURES} />
-          </div>
-        </section>
+                </Show>
+                <Features items={SUBSCRIPTION_FEATURES} />
+              </div>
+            </section>
+          }
+        >
+          {(sub) => (
+            <Membership
+              view={view() as MemberView}
+              subscription={sub()}
+              payments={memberPayments()}
+              onRetryPayments={() => fetchPayments(true)}
+              busy={busy()}
+              askCancel={askCancel()}
+              setAskCancel={setAskCancel}
+              failure={failure()}
+              act={(action) => void act(action)}
+            />
+          )}
+        </Show>
       </Show>
+      <Toast message={toast()} />
     </main>
   )
 }
