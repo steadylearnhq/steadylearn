@@ -22,6 +22,12 @@
   outline-offset: 2px;
 }
 
+.xs {
+  height: 36px;
+  padding: 0 18px;
+  font-size: 13px;
+}
+
 .sm {
   height: 36px;
   padding: 0 18px;
@@ -77,4 +83,31 @@
 
 .ghost.sm {
   padding: 0 16px;
+}
+
+.outline.xs,
+.dangerOutline.xs {
+  padding: 0 16px;
+  border-width: 1.5px;
+}
+
+.danger {
+  background: var(--err);
+  color: #fff;
+}
+
+.danger:hover {
+  background: color-mix(in oklch, var(--err), black 10%);
+  color: #fff;
+}
+
+.dangerOutline {
+  border: 2px solid var(--err);
+  background: transparent;
+  color: var(--err);
+}
+
+.dangerOutline:hover {
+  background: var(--hover);
+  color: var(--err);
 }

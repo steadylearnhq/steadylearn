@@ -1,0 +1,379 @@
+/* Each band below runs a full-width rule along its bottom edge. */
+.facts,
+.period,
+.columns {
+  position: relative;
+}
+
+.facts::after,
+.period::after,
+.columns::after {
+  content: '';
+  position: absolute;
+  left: -100vw;
+  right: -100vw;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fact {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 28px 24px 30px;
+}
+
+.fact:first-child {
+  padding-left: 0;
+}
+
+.fact + .fact {
+  border-left: 1px solid var(--line);
+}
+
+.factKey {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.factValueLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.factDot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+
+.factValue {
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  white-space: nowrap;
+}
+
+.factSub {
+  min-height: 1.3em;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.danger {
+  color: var(--err);
+}
+
+/* The current period: its ends, a track filled up to today, and today under the marker. */
+.period {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 0 26px;
+}
+
+.periodEnds {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.endsSoon {
+  color: var(--accentText);
+}
+
+.track {
+  --track-fill: var(--tomato);
+  position: relative;
+  height: 8px;
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.trackDanger {
+  --track-fill: var(--err);
+}
+
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 8px;
+  background: var(--track-fill);
+}
+
+.marker {
+  position: absolute;
+  top: -6px;
+  width: 4px;
+  height: 20px;
+  border-radius: 4px;
+  background: var(--track-fill);
+  transform: translateX(-2px);
+}
+
+.todayLine {
+  position: relative;
+  height: 16px;
+}
+
+.today {
+  position: absolute;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* Near either end the label stays inside the track rather than centring on the marker. */
+.todayStart {
+  transform: none;
+}
+
+.todayEnd {
+  transform: translateX(-100%);
+}
+
+/* Manage subscription beside Billing history. */
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 48px 44px 0;
+}
+
+.column + .column {
+  padding: 40px 0 44px 48px;
+  border-left: 1px solid var(--line);
+}
+
+.heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.headingNote {
+  margin: 6px 0 16px;
+  font-size: 14px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.portalRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+.portalRowDanger {
+  border-color: var(--err);
+}
+
+.portalText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.portalTitle {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.portalDesc,
+.endDesc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.portalDesc.danger {
+  color: var(--err);
+}
+
+.rowButton {
+  justify-self: end;
+}
+
+.historyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.allPayments {
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.allPayments:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.allPayments:focus-visible {
+  outline: 2px solid var(--accentText);
+  outline-offset: 2px;
+}
+
+.historyNote {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Cancelling or resuming, and the warning before a cancel. */
+.end {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0 20px;
+}
+
+.endRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 40px;
+  align-items: center;
+  padding: 20px 0;
+}
+
+.cancelPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px 24px;
+  border: 1.5px solid var(--err);
+  border-radius: 20px;
+}
+
+.cancelWarning {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.cancelActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.failure {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--err);
+}
+
+@media (max-width: 1100px) {
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fact:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .fact:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 900px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .column,
+  .column + .column {
+    padding: 36px 0 40px;
+  }
+
+  .column + .column {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .endRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 720px) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fact,
+  .fact + .fact {
+    padding: 20px 0;
+    border-left: 0;
+  }
+
+  .fact + .fact {
+    border-top: 1px solid var(--line);
+  }
+
+  .factValue {
+    font-size: 24px;
+  }
+
+  .portalRow,
+  .endRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .rowButton {
+    justify-self: start;
+  }
+}

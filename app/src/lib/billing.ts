@@ -11,12 +11,30 @@ export type Subscription = {
   entitled: boolean
   /** A cancelled subscription that runs until currentPeriodEnd. */
   cancelAtPeriodEnd: boolean
+  /** Null for a subscription stored before the API kept it. */
+  currentPeriodStart: string | null
   currentPeriodEnd: string | null
+  /** The renewal, or the next retry of a failed payment; null when it won't renew. */
+  nextChargeAt: string | null
   canceledAt: string | null
+  /** When the member first subscribed, across every subscription they've had. */
+  memberSince: string
 }
 
 /** The member's billing state: their current subscription, or null if they've never subscribed. */
 export type Billing = { subscription: Subscription | null }
+
+/** One charge of the member's subscription, or one that was tried. Amount is in cents, VAT included. */
+export type Payment = {
+  id: string
+  date: string
+  amount: number
+  currency: string
+  /** paid, failed, refunded or pending; anything else reads as pending. */
+  status: string
+  periodStart: string | null
+  periodEnd: string | null
+}
 
 /** Where a visitor's Subscribe goes: sign up first, then the review before payment. */
 export const SUBSCRIBE_HREF = '/signup?redirect=/subscription/checkout'
@@ -28,10 +46,12 @@ export const SUBSCRIBE_HREF = '/signup?redirect=/subscription/checkout'
 // else's.
 const store = createRoot(() => {
   const [state, setState] = createSignal<{ userId: string; billing: Billing }>()
-  return { state, setState }
+  const [history, setHistory] = createSignal<{ userId: string; payments: Payment[] }>()
+  return { state, setState, history, setHistory }
 })
 
 let pending: { userId: string; request: Promise<Billing> } | undefined
+let pendingPayments: { userId: string; request: Promise<Payment[]> } | undefined
 
 /** The signed-in member's billing state, once loaded; undefined before that and when signed out. */
 export function billing(): Billing | undefined {
@@ -58,13 +78,36 @@ export async function loadBilling(fresh = false): Promise<Billing> {
   return value
 }
 
-/** Sends a billing change and keeps the state it answers with. */
+/** The signed-in member's payments, newest first, once loaded; undefined before that and when signed out. */
+export function payments(): Payment[] | undefined {
+  const history = store.history()
+  return history && history.userId === user()?.id ? history.payments : undefined
+}
+
+/** Loads the member's payments, asking the API once per page load unless `fresh`. */
+export async function loadPayments(fresh = false): Promise<Payment[]> {
+  const member = await session()
+  if (!member) throw new Error('Not signed in')
+  if (fresh || pendingPayments?.userId !== member.userId) {
+    const request = apiGet<{ payments: Payment[] }>('/v1/billing/payments', member.token).then((r) => r.payments)
+    pendingPayments = { userId: member.userId, request }
+    request.catch(() => {
+      if (pendingPayments?.request === request) pendingPayments = undefined
+    })
+  }
+  const value = await pendingPayments.request
+  store.setHistory({ userId: member.userId, payments: value })
+  return value
+}
+
+/** Sends a billing change and keeps the state it answers with. A checkout synced may have brought a payment, so payments are asked for again next time. */
 async function change(path: string, body?: unknown): Promise<Billing> {
   const member = await session()
   const value = await apiPost<Billing>(path, member?.token, body)
   if (member) {
     store.setState({ userId: member.userId, billing: value })
     pending = { userId: member.userId, request: Promise.resolve(value) }
+    pendingPayments = undefined
   }
   return value
 }
@@ -95,3 +138,41 @@ export async function openPortal() {
 /** A subscription date as the design writes dates: 3 November 2026. */
 export const formatBillingDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
+
+// Short months as the design writes them; en-GB would write September as "Sept".
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** A date in a fact or a payment row: 3 Nov 2026. */
+export const formatShortDate = (iso: string) => {
+  const d = new Date(iso)
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+/** A day of the period bar: 3 Nov. */
+export const formatDay = (date: Date | string) => {
+  const d = new Date(date)
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`
+}
+
+/** A day in a sentence: 3 November. */
+export const formatDayLong = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
+
+/** A month: Mar 2026, or March 2026 when `long`. */
+export const formatMonth = (iso: string, long = false) => {
+  const d = new Date(iso)
+  return long
+    ? d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    : `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+/** An amount in cents in its currency: $24.00. */
+export const formatAmount = (cents: number, currency: string) => {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
+  } catch {
+    return `${(cents / 100).toFixed(2)} ${currency}` // a currency code Intl doesn't know
+  }
+}
+
+/** Whole days from now until `iso`, never below 0. */
+export const daysUntil = (iso: string) => Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000))

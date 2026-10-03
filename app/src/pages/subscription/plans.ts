@@ -6,6 +6,8 @@ export type Feature = { label: string; meta?: string }
 
 export const PRICE = '$24'
 export const PERIOD = 'per month, VAT included'
+/** What each month's charge comes to, as a payment row writes it. */
+export const CHARGE = '$24.00'
 
 export const FREE_DESCRIPTION = `The full ${FREE_COURSE.title} course: ${FREE_COURSE.description.charAt(0).toLowerCase()}${FREE_COURSE.description.slice(1)}`
 

@@ -2,8 +2,10 @@ import { splitProps, type JSX } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 import styles from './Button.module.css'
 
-type Variant = 'primary' | 'outline' | 'ghost'
-type Size = 'sm' | 'md' | 'lg'
+/** `danger` and `dangerOutline` are for a step that ends something, such as cancelling a subscription. */
+type Variant = 'primary' | 'outline' | 'ghost' | 'danger' | 'dangerOutline'
+/** `xs` is the compact button of a settings row. */
+type Size = 'xs' | 'sm' | 'md' | 'lg'
 
 type ButtonProps = {
   variant?: Variant
