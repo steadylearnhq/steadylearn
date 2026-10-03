@@ -62,6 +62,17 @@ export function billing(): Billing | undefined {
 /** Whether the signed-in member has access through a subscription; false until their billing state has loaded. */
 export const subscribed = () => billing()?.subscription?.entitled ?? false
 
+/**
+ * Whether the signed-in member may take a course: a free one always, any other
+ * with a subscription that gives access. Undefined while their billing state
+ * is loading, so nothing shows locked before it's known.
+ */
+export const canTake = (course: { isFree: boolean }): boolean | undefined =>
+  course.isFree ? true : billing() && subscribed()
+
+/** Where a member's Subscribe goes: the review before payment. */
+export const CHECKOUT_HREF = '/subscription/checkout'
+
 /** Loads the member's billing state, asking the API once per page load unless `fresh`. */
 export async function loadBilling(fresh = false): Promise<Billing> {
   const member = await session()

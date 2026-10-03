@@ -205,6 +205,11 @@
   letter-spacing: -1px;
 }
 
+/* The locked band's title says more than a lesson's, so it wraps rather than cutting off. */
+.lockedTitle {
+  white-space: normal;
+}
+
 .resume {
   flex: none;
   margin-left: auto;
@@ -417,6 +422,11 @@
 
 .checkbox svg {
   opacity: 0;
+}
+
+/* Progress is read-only on a course the member can no longer take. */
+.checkbox:disabled {
+  cursor: default;
 }
 
 .checkbox.upNext {
