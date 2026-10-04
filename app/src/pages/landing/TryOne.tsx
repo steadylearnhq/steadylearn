@@ -14,7 +14,7 @@ const SAMPLE = {
 export default function TryOne() {
   return (
     <section class={styles.section}>
-      <div class={shared.split}>
+      <div class={`${shared.split} ${styles.split}`}>
         <div class={shared.intro}>
           <span class={shared.eyebrow}>try one</span>
           <h2 class={shared.h2}>Every answer comes with a confidence.</h2>

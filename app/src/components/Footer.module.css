@@ -8,8 +8,9 @@
   margin: 0 auto;
   padding: 28px var(--page-pad);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
+  gap: 16px 24px;
   font-size: 13px;
   color: var(--muted);
 }
@@ -22,7 +23,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 24px;
+  gap: 16px 24px;
 }
 
 .links a,
@@ -45,10 +46,10 @@
   color: var(--ink);
 }
 
-@media (max-width: 560px) {
-  .inner {
-    flex-direction: column;
-    align-items: flex-start;
+/* The logo takes a line of its own, with the links wrapping below it. */
+@media (max-width: 720px) {
+  .logo {
+    flex-basis: 100%;
   }
 
   .spacer {

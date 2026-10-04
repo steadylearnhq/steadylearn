@@ -1,7 +1,10 @@
+/* The label goes above the pills when they don't fit beside it. */
 .field {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
+  min-width: 0;
 }
 
 .label {
@@ -100,7 +103,6 @@
 
 @media (max-width: 720px) {
   .field {
-    min-width: 0;
     max-width: 100%;
   }
 
@@ -109,9 +111,5 @@
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
-  }
-
-  .option {
-    padding: 0 8px;
   }
 }

@@ -6,7 +6,7 @@ export default function Footer() {
   return (
     <footer class={styles.footer}>
       <div class={styles.inner}>
-        <Logo size="sm" />
+        <Logo size="sm" class={styles.logo} />
         <span class={styles.spacer} />
         <nav class={styles.links} aria-label="Footer">
           <a href="/catalog">Catalog</a>

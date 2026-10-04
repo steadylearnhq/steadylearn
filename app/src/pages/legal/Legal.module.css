@@ -8,8 +8,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 20px;
-  padding: 48px 0 40px;
+  gap: clamp(14px, 1.8vw, 20px);
+  padding: clamp(32px, 4vw, 48px) 0 clamp(28px, 3.4vw, 40px);
 }
 
 .eyebrow,
@@ -28,10 +28,10 @@
 
 .title {
   margin: 0;
-  font-size: 64px;
+  font-size: clamp(38px, 5vw, 64px);
   line-height: 1.02;
   font-weight: 800;
-  letter-spacing: -2.6px;
+  letter-spacing: -0.04em;
 }
 
 .lede {
@@ -101,7 +101,7 @@
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 12px;
-  padding: 28px 0;
+  padding: clamp(22px, 2.4vw, 28px) 0;
   border-top: 1px solid var(--line);
 }
 
@@ -138,7 +138,7 @@
   text-wrap: pretty;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1100px) {
   .body {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
@@ -150,19 +150,6 @@
 }
 
 @media (max-width: 720px) {
-  .intro {
-    padding: 40px 0 32px;
-  }
-
-  .title {
-    font-size: 40px;
-    letter-spacing: -1.6px;
-  }
-
-  .lede {
-    font-size: 17px;
-  }
-
   .section {
     grid-template-columns: 32px minmax(0, 1fr);
   }

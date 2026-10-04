@@ -3,6 +3,7 @@
   width: 520px;
   height: 460px;
   flex: none;
+  margin: 0 auto;
 }
 
 .link {
@@ -61,9 +62,11 @@
   color: var(--accentText);
 }
 
-/* The diagram is drawn in fixed px; shrink it as a whole on small screens. */
-@media (max-width: 600px) {
+/* The diagram shows only while it fits at full size beside 440px of copy:
+   the page's content box (100vw less 4vw of padding a side) must hold
+   440 + 64 + 520 = 1024px, which it does from 1114px. */
+@media (max-width: 1113px) {
   .cluster {
-    zoom: 0.62;
+    display: none;
   }
 }

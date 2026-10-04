@@ -12,8 +12,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 24px;
-  padding: 48px 0 56px;
+  gap: clamp(16px, 2vw, 24px);
+  padding: clamp(32px, 4vw, 48px) 0 clamp(40px, 5vw, 56px);
 }
 
 .eyebrow {
@@ -25,17 +25,17 @@
 .title {
   margin: 0;
   max-width: 980px;
-  font-size: 72px;
+  font-size: clamp(40px, 5.6vw, 72px);
   line-height: 1.02;
   font-weight: 800;
-  letter-spacing: -3.4px;
+  letter-spacing: -0.047em;
   text-wrap: balance;
 }
 
 .lede {
   margin: 4px 0 0;
   max-width: 640px;
-  font-size: 20px;
+  font-size: clamp(17px, 1.6vw, 20px);
   line-height: 1.5;
   color: var(--muted);
   text-wrap: pretty;
@@ -93,15 +93,16 @@
 
 .priceLine {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  gap: 4px 10px;
 }
 
 .price {
-  font-size: 88px;
+  font-size: clamp(64px, 7vw, 88px);
   line-height: 0.9;
   font-weight: 800;
-  letter-spacing: -4px;
+  letter-spacing: -0.045em;
 }
 
 .period {
@@ -148,46 +149,18 @@
   font-weight: 700;
 }
 
-@media (max-width: 1100px) {
-  .title {
-    font-size: 56px;
-    letter-spacing: -2.4px;
-  }
-}
-
-@media (max-width: 900px) {
+@media (max-width: 720px) {
   .plans {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .plan,
-  .plan + .plan {
-    padding: 36px 0 40px;
+  .plan {
+    padding: 32px 0 40px;
   }
 
   .plan + .plan {
+    padding: 32px 0 44px;
     border-left: 0;
     border-top: 1px solid var(--line);
-  }
-}
-
-@media (max-width: 720px) {
-  .intro {
-    padding: 40px 0 40px;
-  }
-
-  .title {
-    font-size: 40px;
-    letter-spacing: -1.8px;
-  }
-
-  .lede {
-    font-size: 17px;
-    text-wrap: wrap;
-  }
-
-  .price {
-    font-size: 64px;
-    letter-spacing: -3px;
   }
 }

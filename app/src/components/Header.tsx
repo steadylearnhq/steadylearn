@@ -70,8 +70,34 @@ export default function Header() {
   // Runs after the items' aria-current, and the items themselves on signing in or out, have been updated.
   createEffect(on([current, member], measure, { defer: true }))
 
+  // Below 860px the nav and the theme toggle fold into a menu under the bar.
+  // It closes on leaving the page, on Escape and on a click outside the header;
+  // above 860px it is hidden by CSS, so widening the window puts it away too.
+  let header!: HTMLElement
+  const [menuOpen, setMenuOpen] = createSignal(false)
+  createEffect(on(() => location.pathname, () => setMenuOpen(false), { defer: true }))
+  createEffect(() => {
+    if (!menuOpen()) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
+    const onPointer = (e: PointerEvent) => !header.contains(e.target as Node) && setMenuOpen(false)
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    onCleanup(() => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    })
+  })
+
+  const themeToggle = (cls?: string) => (
+    <button type="button" class={`${styles.themeToggle} ${cls ?? ''}`} onClick={toggleTheme}>
+      <span class={styles.themeIcon} aria-hidden="true" />
+      {theme() === 'dark' ? 'Light' : 'Dark'}
+      <span class="visually-hidden"> theme</span>
+    </button>
+  )
+
   return (
-    <header class={styles.header}>
+    <header ref={header} class={styles.header}>
       <div class={styles.inner}>
         <Logo />
         <nav ref={nav} class={styles.nav} aria-label="Main">
@@ -100,26 +126,62 @@ export default function Header() {
         </nav>
         <span class={styles.spacer} />
         <div class={styles.actions}>
-          <button type="button" class={styles.themeToggle} onClick={toggleTheme}>
-            <span class={styles.themeIcon} aria-hidden="true" />
-            <span class={styles.themeLabel}>{theme() === 'dark' ? 'Light' : 'Dark'}</span>
-            <span class="visually-hidden"> theme</span>
-          </button>
+          {themeToggle(styles.wide)}
           {/* Nothing until the stored session is read, so a signed-in visitor never sees the sign-up button flash. */}
           <Show when={authReady()}>
             <Show
               when={user()}
               fallback={
-                <Button variant="primary" size="sm" href="/login">
-                  Start for free →
-                </Button>
+                <>
+                  <Button variant="primary" size="sm" href="/login" class={styles.wide}>
+                    Start for free →
+                  </Button>
+                  <Button variant="primary" href="/login" class={`${styles.compact} ${styles.compactCta}`}>
+                    Start free
+                  </Button>
+                </>
               }
             >
               {(u) => <AccountMenu user={u()} onSignOut={() => void logOut()} />}
             </Show>
           </Show>
+          <button
+            type="button"
+            class={`${styles.compact} ${styles.menuButton}`}
+            classList={{ [styles.menuButtonOpen]: menuOpen() }}
+            aria-label="Menu"
+            aria-expanded={menuOpen()}
+            aria-controls="site-menu"
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            <span class={styles.bar} />
+            <span class={styles.bar} />
+          </button>
         </div>
       </div>
+      <Show when={menuOpen()}>
+        <div id="site-menu" class={styles.menu}>
+          <nav class={styles.menuNav} aria-label="Main">
+            <For each={items()}>
+              {(item) => (
+                <a
+                  href={item.href}
+                  class={styles.menuItem}
+                  aria-current={current() === item.href ? (location.pathname === item.href ? 'page' : 'true') : undefined}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                  <span class={styles.menuDot} aria-hidden="true" />
+                </a>
+              )}
+            </For>
+          </nav>
+          <div class={styles.menuRow}>
+            <span class={styles.menuLabel}>Appearance</span>
+            {themeToggle(styles.menuTheme)}
+          </div>
+        </div>
+      </Show>
     </header>
   )
 }
