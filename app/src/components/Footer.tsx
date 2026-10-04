@@ -1,3 +1,4 @@
+import { openCookieSettings } from '../lib/consent'
 import Logo from './Logo'
 import styles from './Footer.module.css'
 
@@ -12,6 +13,9 @@ export default function Footer() {
           <a href="/pricing">Pricing</a>
           <a href="/terms">Terms &amp; Conditions</a>
           <a href="/privacy">Privacy Policy</a>
+          <button type="button" onClick={openCookieSettings}>
+            Cookie settings
+          </button>
         </nav>
       </div>
     </footer>

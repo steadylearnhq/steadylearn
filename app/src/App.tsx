@@ -1,4 +1,5 @@
 import { Route, Router, type RouteSectionProps } from '@solidjs/router'
+import CookieBanner from './components/CookieBanner'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import { GuestOnArrival, GuestOnly, RequireAuth } from './components/RouteGuards'
@@ -25,9 +26,19 @@ function Layout(props: RouteSectionProps) {
   )
 }
 
+/** Wraps every route, so the cookie sheet covers the standalone pages too. */
+function Root(props: RouteSectionProps) {
+  return (
+    <>
+      {props.children}
+      <CookieBanner />
+    </>
+  )
+}
+
 function App() {
   return (
-    <Router>
+    <Router root={Root}>
       {/* Auth pages are standalone: no header or footer. */}
       <Route component={GuestOnArrival}>
         <Route path={['/login', '/signup']} component={Auth} />

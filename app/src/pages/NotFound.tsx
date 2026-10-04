@@ -1,10 +1,12 @@
 import Button from '../components/Button'
 import Critter from '../components/Critter'
+import { useNoCookieBanner } from '../lib/consent'
 import { usePageTitle } from '../lib/title'
 import styles from './NotFound.module.css'
 
 export default function NotFound() {
   usePageTitle('Page not found')
+  useNoCookieBanner()
 
   return (
     <main class={styles.page}>
