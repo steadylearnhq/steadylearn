@@ -8,6 +8,7 @@ import Catalog from './pages/catalog/Catalog'
 import CoursePage from './pages/course/Course'
 import Dashboard from './pages/dashboard/Dashboard'
 import Landing from './pages/landing/Landing'
+import MyCourses from './pages/my-courses/MyCourses'
 import NotFound from './pages/NotFound'
 import Pricing from './pages/pricing/Pricing'
 import Checkout from './pages/subscription/Checkout'
@@ -43,6 +44,7 @@ function App() {
         </Route>
         <Route component={RequireAuth}>
           <Route path="/dashboard" component={Dashboard} />
+          <Route path="/my-courses" component={MyCourses} />
           <Route path="/courses/:id" component={CoursePage} />
           <Route path="/subscription" component={Subscription} />
         </Route>

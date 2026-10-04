@@ -25,18 +25,6 @@ export const UP_NEXT: UpNext = {
   minutes: 4,
 }
 
-export type Enrollment = { course: Course; next: string; progress: number }
-
-export const CONTINUE: Enrollment[] = [
-  {
-    course: UP_NEXT.course,
-    next: `Next: ${UP_NEXT.code} ${UP_NEXT.title} · ${UP_NEXT.minutes} min`,
-    progress: 50,
-  },
-  { course: courseById('storage-engines')!, next: 'Next: 2.3 Page splits and merges · 6 min', progress: 20 },
-  { course: courseById('partitioning-rebalancing')!, next: 'Finished · review bet due Thursday', progress: 100 },
-]
-
 export type BoardEntry = { rank: number; initials: string; name: string; points: string; hue: number; you?: boolean }
 
 export const BOARDS: Record<'following' | 'all', BoardEntry[]> = {
