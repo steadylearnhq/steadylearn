@@ -25,13 +25,23 @@
   gap: 12px 24px;
 }
 
-.links a {
+.links a,
+.links button {
   font-weight: 600;
   color: var(--muted);
   text-decoration: none;
 }
 
-.links a:hover {
+.links button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.links a:hover,
+.links button:hover {
   color: var(--ink);
 }
 
