@@ -1,7 +1,11 @@
+/* The plans run down to the footer, their divider with them. */
 .page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: 0 var(--page-pad) 72px;
+  padding: 0 var(--page-pad);
 }
 
 .intro {
@@ -37,30 +41,23 @@
   text-wrap: pretty;
 }
 
-/* Two plans side by side, with hairlines that run the full viewport width. */
+/* Two plans side by side, under a hairline that runs the full viewport width. */
 .plans {
+  flex: 1;
   position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.plans::before,
-.plans::after {
+.plans::before {
   content: '';
   position: absolute;
+  top: 0;
   left: -100vw;
   right: -100vw;
   height: 1px;
   background: var(--line);
   pointer-events: none;
-}
-
-.plans::before {
-  top: 0;
-}
-
-.plans::after {
-  bottom: 0;
 }
 
 .plan {
@@ -79,7 +76,6 @@
   height: 44px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 
 .planName {
@@ -87,12 +83,6 @@
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.4px;
-}
-
-.critterRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .priceBlock {
@@ -140,25 +130,17 @@
 
 .feature {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: baseline;
   padding: 12px 0;
   border-top: 1px solid var(--line);
 }
 
-.plus,
 .featureMeta {
   font-family: var(--font-mono);
-  color: var(--muted);
-}
-
-.plus {
-  font-size: 13px;
-}
-
-.featureMeta {
   font-size: 12px;
+  color: var(--muted);
 }
 
 .featureLabel {

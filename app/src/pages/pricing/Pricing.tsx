@@ -1,6 +1,5 @@
 import { For, type JSX } from 'solid-js'
 import Button from '../../components/Button'
-import Critter from '../../components/Critter'
 import { COURSES, DOMAINS, TOTAL_LESSONS, formatLength, plural } from '../../data/catalog'
 import { SUBSCRIBE_HREF } from '../../lib/billing'
 import { usePageTitle } from '../../lib/title'
@@ -12,7 +11,6 @@ type Feature = { label: string; meta?: string }
 
 type Plan = {
   name: string
-  art: () => JSX.Element
   price: string
   period: string
   description: string
@@ -23,7 +21,6 @@ type Plan = {
 const PLANS: Plan[] = [
   {
     name: 'Base',
-    art: () => <Critter kind="die" hue={290} size={44} />,
     price: 'Free',
     period: 'forever',
     description: `The full ${FREE_COURSE.title} course: ${FREE_COURSE.description.charAt(0).toLowerCase()}${FREE_COURSE.description.slice(1)}`,
@@ -40,11 +37,6 @@ const PLANS: Plan[] = [
   },
   {
     name: 'Subscription',
-    art: () => (
-      <div class={styles.critterRow}>
-        <For each={DOMAINS}>{(d) => <Critter kind={d.kind} hue={d.hue} size={30} />}</For>
-      </div>
-    ),
     price: '$24',
     period: 'per month, VAT included',
     description: 'Every course in the catalog, including the ones we release next.',
@@ -57,7 +49,7 @@ const PLANS: Plan[] = [
       { label: `All ${COURSES.length} courses`, meta: `${DOMAINS.length} domains · ${TOTAL_LESSONS} lessons` },
       { label: 'New courses as they ship' },
       { label: 'Calibration across every topic' },
-      { label: 'Progress tracking' },
+      { label: 'Cancel anytime', meta: 'access runs to the end of the month' },
     ],
   },
 ]
@@ -83,7 +75,6 @@ export default function Pricing() {
             <div class={styles.plan}>
               <div class={styles.planHead}>
                 <h2 class={styles.planName}>{plan.name}</h2>
-                {plan.art()}
               </div>
               <div class={styles.priceBlock}>
                 <div class={styles.priceLine}>
@@ -97,9 +88,6 @@ export default function Pricing() {
                 <For each={plan.features}>
                   {(f) => (
                     <li class={styles.feature}>
-                      <span class={styles.plus} aria-hidden="true">
-                        +
-                      </span>
                       <span class={styles.featureLabel}>{f.label}</span>
                       <span class={styles.featureMeta}>{f.meta}</span>
                     </li>
