@@ -19,6 +19,7 @@ import { ApiError } from '../../lib/api'
 import { canTake, CHECKOUT_HREF, loadBilling } from '../../lib/billing'
 import { fetchCatalog, fetchCourse } from '../../lib/catalog'
 import { enroll, leaveFeedback, setLessonDone, type CourseEnrollment, type Feedback } from '../../lib/enrollments'
+import { useNavSection } from '../../lib/nav'
 import { usePageTitle } from '../../lib/title'
 import NotFound from '../NotFound'
 import styles from './Course.module.css'
@@ -80,6 +81,8 @@ export default function CoursePage() {
 
   // The course carries the member's enrollment, so it is known as soon as the page is.
   const enrolled = () => loaded()?.enrollment
+  // The header marks the course under My courses once the member is enrolled, under Catalog until then.
+  useNavSection(() => (loaded() ? (enrolled() ? '/my-courses' : '/catalog') : undefined))
 
   // A course that isn't free needs a subscription. Until the member's billing
   // state is known nothing shows locked; if it can't be had, the page offers

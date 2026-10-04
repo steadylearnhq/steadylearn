@@ -20,11 +20,30 @@
 }
 
 .nav {
+  position: relative;
   display: flex;
   gap: 2px;
 }
 
+/* The current page's pill, placed under its item by Header.tsx. */
+.pill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 9999px;
+  background: var(--fill);
+  pointer-events: none;
+}
+
+.pill.animated {
+  transition:
+    transform 240ms cubic-bezier(0.2, 0, 0, 1),
+    width 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
 .navItem {
+  position: relative;
   height: 32px;
   padding: 0 14px;
   display: inline-flex;
@@ -35,7 +54,7 @@
   white-space: nowrap;
   text-decoration: none;
   color: var(--muted);
-  transition: background-color 0.15s var(--ease), color 0.15s var(--ease);
+  transition: background-color 0.15s var(--ease), color 240ms;
 }
 
 .navItem:hover {
@@ -43,8 +62,9 @@
   color: var(--ink);
 }
 
-.navItem[aria-current='page'] {
-  background: var(--fill);
+/* The pill is the marked item's background. */
+.navItem[aria-current] {
+  background: transparent;
   color: var(--onFill);
 }
 
@@ -84,6 +104,13 @@
   border-radius: 9999px;
   border: 1.5px solid var(--stroke);
   background: linear-gradient(90deg, var(--ink) 50%, transparent 50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill.animated,
+  .navItem {
+    transition: none;
+  }
 }
 
 @media (max-width: 860px) {

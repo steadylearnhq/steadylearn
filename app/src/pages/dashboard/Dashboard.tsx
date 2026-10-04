@@ -1,11 +1,12 @@
 import { A } from '@solidjs/router'
-import { createSignal, For, Show } from 'solid-js'
+import { createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
 import Button from '../../components/Button'
 import Critter from '../../components/Critter'
 import { domainDot, domainName, domainStyle, formatLength, levelLabel } from '../../data/catalog'
-import { BOARDS, CONTINUE, KPIS, RECOMMENDED, UP_NEXT } from '../../data/dashboard'
+import { BOARDS, KPIS, RECOMMENDED, UP_NEXT } from '../../data/dashboard'
 import { STEP_BY_KEY } from '../../data/lessonSteps'
 import { user } from '../../lib/auth'
+import { loadMyCourses } from '../../lib/myCourses'
 import { usePageTitle } from '../../lib/title'
 import styles from './Dashboard.module.css'
 
@@ -30,6 +31,10 @@ export default function Dashboard() {
     const name = user()?.name ?? ''
     return name.includes('@') ? '' : name.split(' ')[0]
   }
+
+  // The courses the member has started and not finished, most recently enrolled first.
+  const [mine, { refetch }] = createResource(() => user()?.id, loadMyCourses)
+  const inProgress = () => (mine.state === 'ready' ? mine().filter((m) => !m.finished).slice(0, 3) : undefined)
 
   const [board, setBoard] = createSignal<'following' | 'all'>('following')
   const upNext = UP_NEXT
@@ -82,34 +87,53 @@ export default function Dashboard() {
         <div class={styles.continue}>
           <div class={styles.sectionHead}>
             <h2 class={styles.sectionTitle}>Continue learning</h2>
+            <A href="/my-courses" class={styles.more}>
+              My courses →
+            </A>
           </div>
-          <ul class={styles.continueList}>
-            <For each={CONTINUE}>
-              {(e) => {
-                const domain = domainStyle(e.course.domain)
-                const finished = e.progress === 100
+          <Switch>
+            <Match when={mine.error}>
+              <div class={styles.continueEmpty} role="alert">
+                <span>Your courses didn't load.</span>
+                <button type="button" class={styles.continueAction} onClick={() => void refetch()}>
+                  Try again
+                </button>
+              </div>
+            </Match>
+            <Match when={inProgress()?.length === 0}>
+              <div class={styles.continueEmpty}>
+                <span>Nothing in progress.</span>
+                <A href="/catalog" class={styles.continueAction}>
+                  Find a course →
+                </A>
+              </div>
+            </Match>
+          </Switch>
+          <ul class={styles.continueList} aria-busy={!inProgress() && !mine.error}>
+            <For each={inProgress()}>
+              {(m) => {
+                const domain = domainStyle(m.course.domain)
                 return (
                   <li class={styles.continueRow}>
-                    <Critter kind={domain.kind} hue={domain.hue} size={32} mood={finished ? 'happy' : 'awake'} />
+                    <Critter kind={domain.kind} hue={domain.hue} size={32} />
                     <div class={styles.continueText}>
-                      <span class={styles.continueTitle}>{e.course.title}</span>
-                      <span class={styles.continueNext}>{e.next}</span>
-                    </div>
-                    <div class={styles.progress}>
-                      <span
-                        class={styles.progressTrack}
-                        role="progressbar"
-                        aria-label={`${e.course.title} progress`}
-                        aria-valuenow={e.progress}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                      >
-                        <span class={styles.progressFill} style={{ width: `${e.progress}%` }} />
+                      <span class={styles.continueTitle}>{m.course.title}</span>
+                      <span class={styles.continueNext}>
+                        {m.next ? `Next: ${m.next.code} ${m.next.title} · ${m.next.minutes} min` : ''}
                       </span>
-                      <span class={styles.progressPct}>{e.progress}%</span>
                     </div>
-                    <Button variant="outline" size="sm" class={styles.continueCta} href={courseHref(e.course.id)}>
-                      {finished ? 'Review' : 'Resume'}
+                    <span
+                      class={styles.progressTrack}
+                      role="progressbar"
+                      aria-label={`${m.course.title} progress`}
+                      aria-valuenow={m.enrollment.progress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <span class={styles.progressFill} style={{ width: `${m.enrollment.progress}%` }} />
+                    </span>
+                    <Button variant="outline" size="sm" class={styles.continueCta} href={courseHref(m.course.id)}>
+                      {m.next ? `Resume ${m.next.code} →` : 'Resume →'}
                     </Button>
                   </li>
                 )

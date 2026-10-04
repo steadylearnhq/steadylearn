@@ -67,6 +67,30 @@
   outline-offset: 1px;
 }
 
+/* Off the filter bar, on the page itself. */
+.md .option {
+  height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.md .option:hover {
+  background: var(--hover);
+}
+
+.md .option[aria-checked='true'] {
+  background: transparent;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0.6;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .thumb.animated,
   .option {
