@@ -270,6 +270,10 @@ Creem exposes no card details or invoice PDFs; those stay in its portal.
 - Third-party services are reached only through interface-typed globals in `core`
   (`Cognito`, `Creem`), which `Init*` sets at boot and tests replace with mocks
 - Soft deletes via `deleted_at`; queries must filter `deleted_at IS NULL`
+- Every response is `Cache-Control: no-store` (`middleware.NoStore`), because
+  Render's edge caches whatever doesn't say otherwise, keyed on the URL alone.
+  A handler sets its own header only for a response every caller may share:
+  today the visitor's catalog and course
 - Redis is a read-through cache, never a system of record: go through `cached` in
   `src/services/cache.go`. Every key is namespaced and expires, and an unreachable
   cache falls back to the database rather than failing the request
