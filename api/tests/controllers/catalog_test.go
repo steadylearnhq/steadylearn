@@ -68,7 +68,7 @@ func TestGetCatalogServesAMemberTheirEnrollments(t *testing.T) {
 	require.NoError(t, err)
 
 	rec, visitor := getCatalog(t, uuid.Nil)
-	assert.Equal(t, "public, max-age=60", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, "public, max-age=60, s-maxage=3600", rec.Header().Get("Cache-Control"))
 	assert.NotEmpty(t, visitor.Courses)
 	assert.Nil(t, visitor.Enrollments)
 
@@ -89,7 +89,7 @@ func TestGetCourseServesAMemberTheFullSyllabus(t *testing.T) {
 	const slug = "storage-engines"
 
 	rec, visitor := getCourse(t, slug, uuid.Nil)
-	assert.Equal(t, "public, max-age=60", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, "public, max-age=60, s-maxage=3600", rec.Header().Get("Cache-Control"))
 	require.NotEmpty(t, visitor.Modules)
 	assert.Nil(t, visitor.Modules[0].Lessons)
 	assert.Nil(t, visitor.Enrollment)

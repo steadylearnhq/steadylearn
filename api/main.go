@@ -33,6 +33,7 @@ import (
 	"steadylearn-api/src/api/health"
 	routes "steadylearn-api/src/api/v1"
 	"steadylearn-api/src/core"
+	"steadylearn-api/src/middleware"
 )
 
 // shutdownBudget bounds the whole graceful shutdown: draining HTTP, closing
@@ -119,6 +120,7 @@ func main() {
 func newRouter() *gin.Engine {
 	engine := gin.Default()
 	engine.Use(otelgin.Middleware(core.Config.OtelServiceName))
+	engine.Use(middleware.NoStore())
 
 	allowedOrigins := []string{}
 	if core.Config.CORSAllowedOrigins != "" {

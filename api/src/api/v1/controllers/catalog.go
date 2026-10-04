@@ -12,10 +12,11 @@ import (
 	"steadylearn-api/src/services"
 )
 
-// publicCacheControl lets browsers and any CDN in front reuse a visitor's
-// catalog or course response for a minute. It is the same for every visitor,
-// so the response is safe to share.
-const publicCacheControl = "public, max-age=60"
+// publicCacheControl lets the edge reuse a visitor's catalog or course response
+// for an hour, and a browser for a minute: a deploy purges the edge but cannot
+// reach a browser. It is the same for every visitor, so the response is safe
+// to share.
+const publicCacheControl = "public, max-age=60, s-maxage=3600"
 
 // noCacheControl keeps a member's response, which carries their enrollments, to
 // their own browser, and has it ask again each time: the enrollments change
