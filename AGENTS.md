@@ -115,7 +115,8 @@ for Cognito auth. Paths in this section are relative to `app/`.
 - **Full-width rules and bands** are pseudo-elements that bleed out with
   `left: -100vw; right: -100vw` (see `.bleedRules` in
   `src/pages/landing/shared.module.css`); the page itself never scrolls
-  sideways because `body` clips `overflow-x`.
+  sideways because the page frame (`.shell` in `src/index.css`) clips
+  `overflow-x`.
 - **Routes** are guarded in `src/App.tsx`: public marketing pages sit under
   `GuestOnly` (signed-in visitors go to `/dashboard`), members-only pages
   under `RequireAuth`. Both render nothing until `authReady()`, so nothing

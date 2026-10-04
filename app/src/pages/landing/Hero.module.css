@@ -1,12 +1,15 @@
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 520px;
-  gap: 64px;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 64px;
+  row-gap: 48px;
   align-items: center;
-  padding: 88px 0 80px;
+  padding: clamp(40px, 7vw, 88px) 0 clamp(48px, 6vw, 80px);
 }
 
 .copy {
+  flex: 1 1 440px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -14,17 +17,17 @@
 
 .title {
   margin: 24px 0 0;
-  font-size: 84px;
+  font-size: clamp(62px, 16.5vw, 84px);
   line-height: 1.02;
   font-weight: 800;
-  letter-spacing: -2.2px;
+  letter-spacing: -0.026em;
   text-wrap: balance;
 }
 
 .lede {
-  margin: 28px 0 0;
+  margin: clamp(20px, 2.4vw, 28px) 0 0;
   max-width: 620px;
-  font-size: 20px;
+  font-size: clamp(17px, 1.6vw, 20px);
   line-height: 1.5;
   color: var(--muted);
   text-wrap: pretty;
@@ -34,38 +37,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 36px;
-}
-
-@media (max-width: 1100px) {
-  .hero {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-    gap: 48px;
-    padding: 64px 0 56px;
-  }
-
-  .copy {
-    justify-self: stretch;
-  }
-
-  .title {
-    font-size: 64px;
-    letter-spacing: -1.7px;
-  }
+  margin-top: clamp(28px, 3vw, 36px);
 }
 
 @media (max-width: 720px) {
-  .hero {
-    padding: 40px 0 40px;
-  }
-
   .title {
-    font-size: 44px;
-    letter-spacing: -1.2px;
-  }
-
-  .lede {
-    font-size: 17px;
+    line-height: 0.98;
   }
 }

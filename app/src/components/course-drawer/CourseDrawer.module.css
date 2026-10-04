@@ -9,6 +9,8 @@
 }
 
 .panel {
+  /* The panel's side padding, which the first KPI lines up with. */
+  --pad: clamp(20px, 4vw, 32px);
   width: 50vw;
   min-width: min(640px, 100vw);
   height: 100vh;
@@ -50,7 +52,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 28px 32px 22px;
+  padding: clamp(20px, 4vw, 28px) var(--pad) 22px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -143,7 +145,7 @@
 
 .title {
   margin: 0;
-  font-size: 34px;
+  font-size: clamp(26px, 3vw, 34px);
   line-height: 1.05;
   font-weight: 800;
   letter-spacing: -1.2px;
@@ -172,7 +174,7 @@
 }
 
 .kpi:first-child {
-  padding-left: 32px;
+  padding-left: var(--pad);
   border-left: 0;
 }
 
@@ -201,7 +203,7 @@
 .syllabus {
   display: flex;
   flex-direction: column;
-  padding: 20px 32px 28px;
+  padding: 20px var(--pad) 28px;
 }
 
 .sectionHead {
@@ -389,7 +391,7 @@ button.moduleHead:focus-visible {
 .aside {
   display: flex;
   flex-direction: column;
-  padding: 20px 32px 28px;
+  padding: 20px var(--pad) 28px;
   border-top: 1px solid var(--line);
 }
 
@@ -450,9 +452,10 @@ button.moduleHead:focus-visible {
 
 .foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  padding: 16px 32px;
+  padding: 16px var(--pad) max(16px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
 }
 
@@ -462,25 +465,12 @@ button.moduleHead:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .head,
-  .syllabus,
-  .aside,
-  .foot {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  .title {
-    font-size: 26px;
-  }
-
   .kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .kpi:first-child,
   .kpi:nth-child(3) {
-    padding-left: 20px;
+    padding-left: var(--pad);
     border-left: 0;
   }
 
@@ -492,24 +482,7 @@ button.moduleHead:focus-visible {
     grid-template-columns: 20px 32px minmax(0, 1fr) auto;
   }
 
-  .steps {
-    display: none;
-  }
-
-  .foot {
-    flex-wrap: wrap;
-  }
-
-  .foot .spacer {
-    display: none;
-  }
-
-  .access {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
+  .steps,
   .position {
     display: none;
   }
