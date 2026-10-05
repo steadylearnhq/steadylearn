@@ -306,11 +306,17 @@ export default function Auth() {
 
   return (
     <div class={styles.page}>
-      <button type="button" class={styles.themeToggle} onClick={toggleTheme}>
-        <span class={styles.themeIcon} aria-hidden="true" />
-        {theme() === 'dark' ? 'Light' : 'Dark'}
-        <span class="visually-hidden"> theme</span>
-      </button>
+      <header class={styles.top}>
+        <A href="/" class={`${styles.pill} ${styles.home}`} aria-label="Back to overview">
+          <ArrowLeft />
+          Home
+        </A>
+        <button type="button" class={`${styles.pill} ${styles.themeToggle}`} onClick={toggleTheme}>
+          <span class={styles.themeIcon} aria-hidden="true" />
+          {theme() === 'dark' ? 'Light' : 'Dark'}
+          <span class="visually-hidden"> theme</span>
+        </button>
+      </header>
 
       <main class={styles.main}>
         <div class={styles.card}>
@@ -583,6 +589,12 @@ export default function Auth() {
     </div>
   )
 }
+
+const ArrowLeft = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M19 12H5M11 6l-6 6 6 6" />
+  </svg>
+)
 
 function GoogleIcon() {
   return (
