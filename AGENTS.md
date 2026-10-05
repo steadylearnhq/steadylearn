@@ -11,7 +11,10 @@ catalog is public; everything about a learner needs a signed-in user.
 
 When opening a PR, write its description from `pr-template.md` at the repo
 root: fill in **Why**, **What** and **Risks** as bullet points (no prose
-paragraphs), and drop the guidance comments.
+paragraphs, at most 3 per section), link its Linear ticket under **Ticket**,
+and drop the guidance comments. A PR that changes what the app shows adds
+**Visual changes**, screenshots of the change as evidence; any other PR
+drops it.
 With `gh`, pass the filled-in text via `gh pr create --body-file <file>`.
 
 One PR does one job: it may change at most one of `.github/`, `api/` and
