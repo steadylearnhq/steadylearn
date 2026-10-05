@@ -12,6 +12,9 @@ Thumbs.db
 *.njsproj
 *.sln
 
+# Personal tool config
+.linear.toml
+
 # Environment files; api/env.sample and app/.env.example are the committed templates
 .env
 .env*.local
