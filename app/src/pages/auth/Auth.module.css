@@ -4,16 +4,17 @@
   flex-direction: column;
 }
 
-.themeToggle {
-  position: fixed;
-  top: 20px;
-  right: 24px;
-  z-index: 5;
+/* In the page's flow rather than fixed, so on a small screen it never covers the form. */
+.top {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.pill {
   height: 32px;
-  padding: 0 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
   border: 1.5px solid var(--line3);
   border-radius: 9999px;
   background: transparent;
@@ -21,11 +22,22 @@
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
 }
 
-.themeToggle:hover {
+.pill:hover {
   background: var(--hover);
+}
+
+.home {
+  padding: 0 14px 0 10px;
+  gap: 6px;
+}
+
+.themeToggle {
+  padding: 0 12px;
+  gap: 8px;
 }
 
 .themeIcon {
