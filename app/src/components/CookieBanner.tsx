@@ -15,6 +15,8 @@ export default function CookieBanner() {
 
   const [open, setOpen] = createSignal(false)
   const [analytics, setAnalytics] = createSignal(true)
+  // With a category switched off, the primary button accepts only what's on.
+  const selectedOnly = () => open() && !analytics()
 
   // Each showing starts folded, with the switch on the stored choice.
   createEffect(() => {
@@ -58,20 +60,18 @@ export default function CookieBanner() {
                   <path d="M9 6l6 6-6 6" />
                 </svg>
               </Button>
-              <Button
-                variant="outline"
-                class={styles.middle}
-                onClick={() => setConsent(open() && analytics() ? 'all' : 'essential')}
-              >
-                {open() ? 'Save choices' : 'Essential only'}
+              <Button variant="outline" class={styles.reject} onClick={() => setConsent('essential')}>
+                Reject all
               </Button>
-              <Button variant="primary" onClick={() => setConsent('all')}>
-                Accept all
+              <Button variant="primary" onClick={() => setConsent(selectedOnly() ? 'essential' : 'all')}>
+                {selectedOnly() ? 'Accept selected' : 'Accept all'}
               </Button>
             </div>
           </div>
-          <Show when={open()}>
-            <div class={styles.categories}>
+        </div>
+        <Show when={open()}>
+          <div class={styles.panel}>
+            <div class={`${styles.inner} ${styles.categories}`}>
               <div class={styles.category}>
                 <CategoryText
                   name="Essential"
@@ -102,8 +102,8 @@ export default function CookieBanner() {
                 <span class={styles.switch} classList={{ [styles.on]: analytics() }} aria-hidden="true" />
               </button>
             </div>
-          </Show>
-        </div>
+          </div>
+        </Show>
       </div>
     </Show>
   )

@@ -26,7 +26,7 @@
   --onSeg: #fcfbf8;
   --onFill: #fcfbf8;
   --stroke: #141311;
-  --bannerShadow: 0 -1px 0 rgba(0, 0, 0, 0.04), 0 -8px 24px rgba(0, 0, 0, 0.08), 0 -24px 64px rgba(0, 0, 0, 0.12);
+  --bannerShadow: 0 -8px 24px rgba(0, 0, 0, 0.08), 0 -24px 64px rgba(0, 0, 0, 0.12);
   color-scheme: light;
 }
 
@@ -56,7 +56,7 @@
   --onSeg: #161513;
   --onFill: #eeebe5;
   --stroke: #4d4943;
-  --bannerShadow: 0 -1px 0 rgba(255, 255, 255, 0.14), 0 -2px 16px rgba(255, 255, 255, 0.04), 0 -10px 28px rgba(0, 0, 0, 0.7), 0 -32px 80px rgba(0, 0, 0, 0.85);
+  --bannerShadow: 0 -2px 16px rgba(255, 255, 255, 0.04), 0 -16px 48px rgba(0, 0, 0, 0.5), 0 -48px 140px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
 
