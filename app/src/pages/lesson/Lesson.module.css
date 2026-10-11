@@ -8,47 +8,16 @@
   overflow-x: clip;
 }
 
-.header,
-.footer {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 0 var(--page-pad);
-}
-
-.header {
-  height: 64px;
-  border-bottom: 1px solid var(--line);
-}
-
-.footer {
-  height: 72px;
-  border-top: 1px solid var(--line);
-}
-
-.back {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.back:hover {
-  color: var(--ink);
-}
-
-.heading {
-  font-size: 15px;
-  font-weight: 800;
-}
-
 .body {
   overflow-y: auto;
-  padding: 48px var(--page-pad);
+}
+
+/* One element for the stage, so the scroll edges can watch its size. */
+.content {
+  padding: 48px 40px;
 }
 
 .kind,
-.position,
 .loading {
   margin: 0;
   font-family: var(--font-mono);
@@ -80,4 +49,10 @@
 
 .retry:hover {
   color: var(--ink);
+}
+
+@media (max-width: 860px) {
+  .content {
+    padding: 32px 20px;
+  }
 }

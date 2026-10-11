@@ -1,0 +1,88 @@
+/* The middle column takes what's left between the wordmark and the close
+   button when space runs short, so a long title is cut rather than pushed
+   out. With room to spare, the equal sides keep it centred. */
+.header {
+  height: 64px;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s var(--ease);
+}
+
+.edge {
+  border-bottom-color: var(--line);
+}
+
+.logo {
+  justify-self: start;
+}
+
+.place {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.course {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.slash {
+  margin: 0 14px;
+  font-size: 14px;
+  color: var(--line2);
+}
+
+.code {
+  margin-right: 10px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.close {
+  justify-self: end;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  color: var(--ink);
+  transition: background-color 0.15s var(--ease);
+}
+
+.close:hover {
+  background: var(--hover);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--accentText);
+  outline-offset: 2px;
+}
+
+/* The design is desktop only. Narrower, the header keeps just the lesson's title. */
+@media (max-width: 860px) {
+  .header {
+    padding: 0 20px;
+    gap: 16px;
+  }
+
+  .course,
+  .slash,
+  .code {
+    display: none;
+  }
+}

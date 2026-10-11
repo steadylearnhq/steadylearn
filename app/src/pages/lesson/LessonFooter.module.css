@@ -1,0 +1,125 @@
+.footer {
+  height: 72px;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  border-top: 1px solid transparent;
+  transition: border-color 0.2s var(--ease);
+}
+
+.edge {
+  border-top-color: var(--line);
+}
+
+.side {
+  display: flex;
+  min-width: 0;
+}
+
+.end {
+  justify-content: flex-end;
+}
+
+.prev,
+.next {
+  height: 44px;
+  font-size: 15px;
+}
+
+.prev {
+  padding: 0 26px;
+}
+
+.next {
+  padding: 0 32px;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+}
+
+.step {
+  height: 36px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.15s var(--ease);
+}
+
+.step:hover {
+  background: var(--hover);
+}
+
+.step:focus-visible {
+  outline: 2px solid var(--accentText);
+  outline-offset: 2px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 9999px;
+}
+
+.done .dot {
+  background: var(--tomato);
+}
+
+.done .label {
+  color: var(--accentText);
+}
+
+.current .dot {
+  background: var(--ink);
+}
+
+.current .label {
+  color: var(--ink);
+}
+
+.upcoming .dot {
+  background: var(--line2);
+}
+
+.upcoming .label {
+  color: var(--muted);
+}
+
+/* The design is desktop only. Narrower, the stages are dots alone, named for
+   screen readers, and the pills tighten. */
+@media (max-width: 860px) {
+  .footer {
+    padding: 0 20px;
+    gap: 12px;
+  }
+
+  .step {
+    padding: 0 8px;
+  }
+
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .prev {
+    padding: 0 16px;
+  }
+
+  .next {
+    padding: 0 18px;
+  }
+}
