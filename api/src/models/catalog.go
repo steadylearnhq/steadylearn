@@ -8,9 +8,10 @@ import (
 
 // The catalog is a tree: a domain holds courses, a course holds modules,
 // break-its and the copy its own page shows, a module holds lessons, and a
-// lesson is a sequence of steps. Every
-// ordered child carries a position, which is only ever compared, so gaps are
-// fine and an item can be moved in without renumbering its siblings.
+// lesson is a sequence of steps, which the syllabus lists, and of stages,
+// which the lesson page walks through. Every ordered child carries a
+// position, which is only ever compared, so gaps are fine and an item can be
+// moved in without renumbering its siblings.
 
 // Domain is a subject area the catalog groups courses under. The slug is its
 // public id, the one the app filters on and links to.
@@ -117,11 +118,12 @@ type CourseModule struct {
 
 type Lesson struct {
 	BaseModel
-	ModuleId uuid.UUID    `gorm:"type:uuid;not null;index"`
-	Position int          `gorm:"not null"`
-	Title    string       `gorm:"not null"`
-	Minutes  int          `gorm:"not null;check:minutes > 0"`
-	Steps    []LessonStep `gorm:"constraint:OnDelete:CASCADE"`
+	ModuleId uuid.UUID     `gorm:"type:uuid;not null;index"`
+	Position int           `gorm:"not null"`
+	Title    string        `gorm:"not null"`
+	Minutes  int           `gorm:"not null;check:minutes > 0"`
+	Steps    []LessonStep  `gorm:"constraint:OnDelete:CASCADE"`
+	Stages   []LessonStage `gorm:"constraint:OnDelete:CASCADE"`
 }
 
 // Lesson step kinds. The app owns how each one is drawn.
@@ -142,4 +144,23 @@ type LessonStep struct {
 	LessonId uuid.UUID `gorm:"type:uuid;not null;index"`
 	Position int       `gorm:"not null"`
 	Kind     string    `gorm:"not null;check:kind IN ('watch', 'read', 'build', 'trace', 'range', 'bet', 'break', 'postmortem')"`
+}
+
+// Lesson stage kinds. The app owns how each one is drawn.
+const (
+	StageLearn       = "learn"
+	StageInteractive = "interactive"
+	StageQuestions   = "questions"
+	StageReview      = "review"
+)
+
+// LessonStage is one screen of the lesson page. Content is JSON the API
+// passes through untouched: the app owns its shape for each kind, so it can be
+// replaced without a code change.
+type LessonStage struct {
+	BaseModel
+	LessonId uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_lesson_stages_lesson_position,where:deleted_at IS NULL"`
+	Position int       `gorm:"not null;uniqueIndex:idx_lesson_stages_lesson_position"`
+	Kind     string    `gorm:"not null;check:kind IN ('learn', 'interactive', 'questions', 'review')"`
+	Content  string    `gorm:"type:jsonb;not null;default:'{}'"`
 }
