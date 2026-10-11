@@ -19,6 +19,7 @@ import { ApiError } from '../../lib/api'
 import { canTake, CHECKOUT_HREF, loadBilling } from '../../lib/billing'
 import { fetchCatalog, fetchCourse } from '../../lib/catalog'
 import { enroll, leaveFeedback, setLessonDone, type CourseEnrollment, type Feedback } from '../../lib/enrollments'
+import { lessonHref } from '../../lib/lessons'
 import { useNavSection } from '../../lib/nav'
 import { usePageTitle } from '../../lib/title'
 import NotFound from '../NotFound'
@@ -418,7 +419,6 @@ export default function CoursePage() {
               </section>
             </Show>
 
-            {/* Resume opens the lesson once there is a lesson player; until then it does nothing. */}
             <Show when={enrolled() && !locked() && nextLesson()}>
               {(l) => (
                 <section class={styles.upNextBand}>
@@ -431,7 +431,7 @@ export default function CoursePage() {
                       {l().code} {l().title}
                     </span>
                   </div>
-                  <Button variant="primary" size="md" class={styles.resume}>
+                  <Button variant="primary" size="md" class={styles.resume} href={lessonHref(c().id, l().code)}>
                     Resume lesson →
                   </Button>
                 </section>
@@ -489,6 +489,7 @@ export default function CoursePage() {
                               {(l) => {
                                 const done = () => doneCodes().has(l.code)
                                 const next = () => upNext() === l.code
+                                const titleState = () => ({ [styles.doneTitle]: done(), [styles.nextTitle]: next() })
                                 return (
                                   <li class={styles.lesson} classList={{ [styles.enrolledLesson]: !!enrolled() }}>
                                     <span />
@@ -508,9 +509,23 @@ export default function CoursePage() {
                                     </Show>
                                     <span class={styles.code}>{l.code}</span>
                                     <span class={styles.lessonName}>
-                                      <span class={styles.lessonTitle} classList={{ [styles.doneTitle]: done(), [styles.nextTitle]: next() }}>
-                                        {l.title}
-                                      </span>
+                                      {/* Only a member who can take the course opens its lessons; the API turns anyone else away. */}
+                                      <Show
+                                        when={enrolled() && !locked()}
+                                        fallback={
+                                          <span class={styles.lessonTitle} classList={titleState()}>
+                                            {l.title}
+                                          </span>
+                                        }
+                                      >
+                                        <A
+                                          href={lessonHref(c().id, l.code)}
+                                          class={`${styles.lessonTitle} ${styles.lessonLink}`}
+                                          classList={titleState()}
+                                        >
+                                          {l.title}
+                                        </A>
+                                      </Show>
                                       <Show when={next()}>
                                         <span class={styles.upNextLabel}>Up next</span>
                                       </Show>
