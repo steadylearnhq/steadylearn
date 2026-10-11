@@ -477,7 +477,7 @@ func TestSeededLessonStages(t *testing.T) {
 
 	live := func(db *gorm.DB) *gorm.DB { return db.Where("deleted_at IS NULL").Order("position") }
 	var lessons []models.Lesson
-	require.NoError(t, core.DB.Preload("Steps", live).Preload("Stages", live).
+	require.NoError(t, core.DB.Preload("Stages", live).
 		Where("deleted_at IS NULL").Find(&lessons).Error)
 	require.NotEmpty(t, lessons)
 
@@ -488,23 +488,12 @@ func TestSeededLessonStages(t *testing.T) {
 		assert.Equal(t, models.StageReview, lesson.Stages[len(lesson.Stages)-1].Kind, "%s ends with review", name)
 
 		positions := map[int]bool{}
-		var steps []string
 		for _, stage := range lesson.Stages {
 			assert.False(t, positions[stage.Position], "%s: position %d is used once", name, stage.Position)
 			positions[stage.Position] = true
 
 			var content map[string]any
 			assert.NoError(t, json.Unmarshal([]byte(stage.Content), &content), "%s: %s content is a JSON object", name, stage.Kind)
-			steps = append(steps, stage.Steps...)
 		}
-
-		want := []string{models.StepRead}
-		if len(lesson.Steps) > 0 {
-			want = make([]string, len(lesson.Steps))
-			for i, s := range lesson.Steps {
-				want[i] = s.Kind
-			}
-		}
-		assert.Equal(t, want, steps, "%s: the stages hold the lesson's steps, in order", name)
 	}
 }

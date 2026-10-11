@@ -124,7 +124,6 @@ type Lesson struct {
 	Position int           `gorm:"not null"`
 	Title    string        `gorm:"not null"`
 	Minutes  int           `gorm:"not null;check:minutes > 0"`
-	Steps    []LessonStep  `gorm:"constraint:OnDelete:CASCADE"`
 	Stages   []LessonStage `gorm:"constraint:OnDelete:CASCADE"`
 }
 
@@ -139,14 +138,6 @@ const (
 	StepBreak      = "break"
 	StepPostmortem = "postmortem"
 )
-
-// LessonStep is one activity in a lesson: a video, a reading, a simulation.
-type LessonStep struct {
-	BaseModel
-	LessonId uuid.UUID `gorm:"type:uuid;not null;index"`
-	Position int       `gorm:"not null"`
-	Kind     string    `gorm:"not null;check:kind IN ('watch', 'read', 'build', 'trace', 'range', 'bet', 'break', 'postmortem')"`
-}
 
 // Lesson stage kinds. The app owns how each one is drawn.
 const (
