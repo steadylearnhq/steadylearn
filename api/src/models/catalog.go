@@ -157,9 +157,10 @@ const (
 )
 
 // LessonStage is one screen of the lesson page. Steps are the lesson's steps
-// the stage covers, which the syllabus shows as icons; a learn stage with both
-// watch and read lets the learner pick one. Kinds can repeat, so a lesson may
-// go learn, interactive, learn. Content is JSON the API passes through
+// the stage covers, which the syllabus shows as icons: a learn stage with both
+// watch and read lets the learner pick one, an interactive stage is one lab
+// (a postmortem included), and a review has none. Kinds can repeat, so a
+// lesson may go learn, interactive, learn. Content is JSON the API passes through
 // untouched: the app owns its shape for each kind, so it can be replaced
 // without a code change.
 type LessonStage struct {
@@ -167,7 +168,7 @@ type LessonStage struct {
 	LessonId uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_lesson_stages_lesson_position,where:deleted_at IS NULL"`
 	Position int       `gorm:"not null;uniqueIndex:idx_lesson_stages_lesson_position"`
 	Kind     string    `gorm:"not null;check:kind IN ('learn', 'interactive', 'questions', 'review')"`
-	Steps    StepList  `gorm:"type:text[];not null;default:'{}';check:chk_lesson_stages_steps,(kind = 'learn' AND steps IN ('{watch}', '{read}', '{watch,read}')) OR (kind = 'interactive' AND steps IN ('{build}', '{trace}', '{range}', '{break}')) OR (kind = 'questions' AND steps = '{bet}') OR (kind = 'review' AND steps IN ('{}', '{postmortem}'))"`
+	Steps    StepList  `gorm:"type:text[];not null;default:'{}';check:chk_lesson_stages_steps,(kind = 'learn' AND steps IN ('{watch}', '{read}', '{watch,read}')) OR (kind = 'interactive' AND steps IN ('{build}', '{trace}', '{range}', '{break}', '{postmortem}')) OR (kind = 'questions' AND steps = '{bet}') OR (kind = 'review' AND steps = '{}')"`
 	Content  string    `gorm:"type:jsonb;not null;default:'{}'"`
 }
 

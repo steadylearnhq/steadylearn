@@ -1,4 +1,4 @@
-h1:EdBRXPuBylr/DoIMBhLCvQZYd+em4p879r3gQzqXtUs=
+h1:kHhK/oSk144SdvRp5Brv+Kp5wEvm3XN9MwE6o3p3QqQ=
 20260929184017_init.sql h1:fxViAI7xCaka5wPZiYlrYBfvKYDbK5E7oxHFH+lgv0I=
 20260929191556_catalog.sql h1:+3JjzeAlbVEv03me3NWkqYqjsYmY5ebwWgFK+NASssI=
 20260929191613_seed_catalog.sql h1:/9tZr5xpjFzn/sg2pWUB71mQRKjzqxuR5t+lkFbaPfk=
@@ -10,4 +10,4 @@ h1:EdBRXPuBylr/DoIMBhLCvQZYd+em4p879r3gQzqXtUs=
 20261002160243_seed_enrolled_course_page.sql h1:UFkFR46oODQVUDD6QWlifnslhziZcUL8JsphP/fzaNA=
 20261003090136_billing.sql h1:lQRy0Pn/gpDYm3ywmkbVDrbqKnHFCB5Zv8a+YAAtHkU=
 20261003120941_subscription_billing_dates.sql h1:lBJGqNuhe0W90BYdmPq3r2naqDboECpIIBma0WzmBV8=
-20261011083210_lesson_stages.sql h1:LYN7gab243/m/hcKW1CxAUSVdwKYT5s45NigNtI91p4=
+20261011083612_lesson_stages.sql h1:Z1Zue6xNHGZEZV8xqG/YKkZYvBJmKorEeJ4orbfjuhs=

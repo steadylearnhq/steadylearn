@@ -60,7 +60,7 @@ func TestLessonStageSteps(t *testing.T) {
 		{"a lab", models.StageInteractive, models.StepList{models.StepRange}, true},
 		{"questions", models.StageQuestions, models.StepList{models.StepBet}, true},
 		{"a review", models.StageReview, nil, true},
-		{"a postmortem", models.StageReview, models.StepList{models.StepPostmortem}, true},
+		{"a postmortem", models.StageInteractive, models.StepList{models.StepPostmortem}, true},
 
 		{"learn with nothing to learn from", models.StageLearn, nil, false},
 		{"learn with a lab", models.StageLearn, models.StepList{models.StepBuild}, false},
@@ -69,6 +69,8 @@ func TestLessonStageSteps(t *testing.T) {
 		{"two labs", models.StageInteractive, models.StepList{models.StepBuild, models.StepBreak}, false},
 		{"questions with a lab", models.StageQuestions, models.StepList{models.StepTrace}, false},
 		{"a review with a bet", models.StageReview, models.StepList{models.StepBet}, false},
+		{"a review with a postmortem", models.StageReview, models.StepList{models.StepPostmortem}, false},
+		{"a lab and its postmortem", models.StageInteractive, models.StepList{models.StepBreak, models.StepPostmortem}, false},
 		{"an unknown step", models.StageReview, models.StepList{"nap"}, false},
 		{"an unknown kind", "quiz", models.StepList{models.StepBet}, false},
 	}
