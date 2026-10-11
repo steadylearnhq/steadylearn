@@ -79,6 +79,10 @@ services:
       # The sandbox's own URL, which Creem sends a member back to. Known only
       # once the proxy is exposed, so sandbox.yml starts the proxy first.
       - APP_URL=${SANDBOX_URL:-}
+      # Statsig's development tier. Without the secret Statsig is off and every
+      # flag reads its code default.
+      - STATSIG_SERVER_SECRET=${STATSIG_SERVER_SECRET:-}
+      - STATSIG_ENVIRONMENT=development
       - OTEL_SDK_DISABLED=true
       - DEPLOYMENT_ENVIRONMENT=${DEPLOYMENT_ENVIRONMENT:-sandbox}
     depends_on:
@@ -99,6 +103,9 @@ services:
       - VITE_USER_POOL_DOMAIN=
       - VITE_COGNITO_OAUTH_REDIRECT_SIGN_IN=
       - VITE_COGNITO_OAUTH_REDIRECT_SIGN_OUT=
+      # Statsig's development tier; without the key the app runs with it off.
+      - VITE_STATSIG_CLIENT_KEY=${VITE_STATSIG_CLIENT_KEY:-}
+      - VITE_STATSIG_ENVIRONMENT=development
 
 configs:
   caddyfile:

@@ -97,8 +97,10 @@ which also records the instance's id for the next run.
 - The `sandbox` environment holds `COGNITO_REGION`, `COGNITO_USER_POOL_ID`,
   `VITE_USER_POOL_CLIENT_ID` (a non-production pool), `AWS_ACCESS_KEY_ID` and
   `AWS_SECRET_ACCESS_KEY` (allowed only `cognito-idp:ListUsers` on that pool),
-  and the test-mode `CREEM_API_KEY`, `CREEM_WEBHOOK_SECRET` and
-  `CREEM_PRODUCT_ID`. Namespace is reached through GitHub OIDC federation, so
+  the test-mode `CREEM_API_KEY`, `CREEM_WEBHOOK_SECRET` and
+  `CREEM_PRODUCT_ID`, and Statsig's development-tier `STATSIG_SERVER_SECRET`
+  and `VITE_STATSIG_CLIENT_KEY`. Without them a sandbox starts with Statsig
+  off. Namespace is reached through GitHub OIDC federation, so
   it needs no secret.
 - `issue_comment` workflows run as they are on `main`, so a change to the
   workflow takes effect only once merged. A change to the compose file applies
