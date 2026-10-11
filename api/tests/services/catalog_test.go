@@ -22,7 +22,8 @@ import (
 func useEmptyCatalog(t *testing.T) {
 	t.Helper()
 	testutil.UseDB(t)
-	// Deleting a course cascades to its modules, lessons, steps and break-its.
+	// Deleting a course cascades to its modules, lessons, steps, stages and
+	// break-its.
 	require.NoError(t, core.DB.Exec("DELETE FROM courses").Error)
 	require.NoError(t, core.DB.Exec("DELETE FROM domains").Error)
 }
@@ -80,6 +81,9 @@ func addCourse(t *testing.T, domain models.Domain, course models.Course) models.
 			}
 			for k := range lesson.Steps {
 				lesson.Steps[k].BaseModel = base()
+			}
+			for k := range lesson.Stages {
+				lesson.Stages[k].BaseModel = base()
 			}
 		}
 	}
