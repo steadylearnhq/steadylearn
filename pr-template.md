@@ -47,6 +47,7 @@ If there is genuinely no meaningful risk, say so and why.
 Optional: only for a PR that changes what the app shows (`app/`). If the PR
 has no visible changes, remove this whole section, heading included.
 Screenshots of each changed screen as evidence, before and after where there
-is a before, at the widths and themes the change affects, with a short
-caption. Capture the visible screen at that size, not a full-page shot.
+is a before, at the widths the change affects, with a short caption. Light
+mode only, at normal resolution (device pixel ratio 1, not retina). Capture
+the visible screen at that size, not a full-page shot.
 -->

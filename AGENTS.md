@@ -16,12 +16,13 @@ a tool-specific copy.
 
 ## Pull requests
 
-When opening a PR, write its description from `pr-template.md` at the repo
-root: fill in **Why**, **What** and **Risks** as bullet points (no prose
-paragraphs, at most 3 per section), link its Linear ticket under **Ticket**,
-and drop the guidance comments. A PR that changes what the app shows adds
-**Visual changes**, screenshots of the change as evidence; any other PR
-drops it.
+When opening a PR, follow the `pull-requests` skill. A PR with a ticket is
+titled `ENG-XX: <summary>`. Its description comes from `pr-template.md` at the
+repo root: fill in **Why**, **What** and **Risks** as bullet points (no prose
+paragraphs, at most 3 per section, only what a reviewer needs), link its
+Linear ticket under **Ticket**, and drop the guidance comments. A PR that
+changes what the app shows adds **Visual changes**, light-mode screenshots of
+the change at normal resolution as evidence; any other PR drops it.
 With `gh`, pass the filled-in text via `gh pr create --body-file <file>`.
 
 One PR does one job: it may change at most one of `.github/`, `api/` and
