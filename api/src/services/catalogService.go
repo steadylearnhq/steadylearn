@@ -348,6 +348,7 @@ ORDER BY d.position, f.position`, map[string]any{"course": courseId, "now": now}
 }
 
 // loadLessons is every lesson of the course with its steps, grouped by module.
+// A lesson's steps are its stages' steps, in the order the lesson runs them.
 func loadLessons(ctx context.Context, courseId uuid.UUID, modules []moduleRow) (map[uuid.UUID][]schemas.LessonSchema, error) {
 	var rows []lessonRow
 	err := core.DB.WithContext(ctx).Raw(`
@@ -357,9 +358,10 @@ SELECT l.module_id, l.title, l.minutes,
 FROM lessons l
 JOIN course_modules m ON m.id = l.module_id AND m.deleted_at IS NULL
 LEFT JOIN LATERAL (
-	SELECT json_agg(ls.kind ORDER BY ls.position) AS steps
-	FROM lesson_steps ls
-	WHERE ls.lesson_id = l.id AND ls.deleted_at IS NULL
+	SELECT json_agg(step.kind ORDER BY st.position, step.n) AS steps
+	FROM lesson_stages st
+	CROSS JOIN LATERAL unnest(st.steps) WITH ORDINALITY AS step(kind, n)
+	WHERE st.lesson_id = l.id AND st.deleted_at IS NULL
 ) s ON true
 WHERE m.course_id = ? AND l.deleted_at IS NULL
 ORDER BY m.position, l.position`, courseId).Scan(&rows).Error

@@ -2,12 +2,15 @@ package services_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"steadylearn-api/src/core"
 	"steadylearn-api/src/models"
@@ -78,9 +81,6 @@ func addCourse(t *testing.T, domain models.Domain, course models.Course) models.
 			lesson.BaseModel = base()
 			if lesson.Minutes == 0 {
 				lesson.Minutes = 10
-			}
-			for k := range lesson.Steps {
-				lesson.Steps[k].BaseModel = base()
 			}
 			for k := range lesson.Stages {
 				lesson.Stages[k].BaseModel = base()
@@ -175,7 +175,8 @@ func TestGetCourseWithPublicSyllabus(t *testing.T) {
 	testutil.UseCache(t)
 	dist := addDomain(t, "dist", 1)
 
-	// Positions with gaps still number the lessons 1, 2, 3.
+	// Positions with gaps still number the lessons 1, 2, 3. A lesson's steps
+	// are its stages' steps, in stage order.
 	addCourse(t, dist, models.Course{
 		Slug:           "open",
 		PublishedAt:    ago(time.Hour),
@@ -183,9 +184,10 @@ func TestGetCourseWithPublicSyllabus(t *testing.T) {
 		Modules: []models.CourseModule{
 			{Position: 20, Title: "Second", Lessons: []models.Lesson{{Position: 1, Title: "Only", Minutes: 7}}},
 			{Position: 10, Title: "First", Lessons: []models.Lesson{
-				{Position: 9, Title: "Later", Minutes: 12, Steps: []models.LessonStep{
-					{Position: 2, Kind: models.StepBreak},
-					{Position: 1, Kind: models.StepWatch},
+				{Position: 9, Title: "Later", Minutes: 12, Stages: []models.LessonStage{
+					{Position: 20, Kind: models.StageInteractive, Steps: models.StepList{models.StepBreak}},
+					{Position: 10, Kind: models.StageLearn, Steps: models.StepList{models.StepWatch, models.StepRead}},
+					{Position: 30, Kind: models.StageReview},
 				}},
 				{Position: 5, Title: "Earlier", Minutes: 9},
 			}},
@@ -201,7 +203,7 @@ func TestGetCourseWithPublicSyllabus(t *testing.T) {
 	assert.Equal(t, []schemas.ModuleSchema{
 		{Title: "First", LessonCount: 2, Lessons: []schemas.LessonSchema{
 			{Code: "1.1", Title: "Earlier", Minutes: 9, Steps: []string{}},
-			{Code: "1.2", Title: "Later", Minutes: 12, Steps: []string{"watch", "break"}},
+			{Code: "1.2", Title: "Later", Minutes: 12, Steps: []string{"watch", "read", "break"}},
 		}},
 		{Title: "Second", LessonCount: 1, Lessons: []schemas.LessonSchema{
 			{Code: "2.1", Title: "Only", Minutes: 7, Steps: []string{}},
@@ -468,4 +470,41 @@ func TestSeededCatalog(t *testing.T) {
 	}
 	assert.Equal(t, []string{"2.2", "3.2", "4.2", "2.3"}, taughtIn)
 	assert.Equal(t, []string{"distributed-transactions", "crdts-local-first"}, course.FollowUps)
+}
+
+func TestSeededLessonStages(t *testing.T) {
+	testutil.UseDB(t)
+
+	live := func(db *gorm.DB) *gorm.DB { return db.Where("deleted_at IS NULL").Order("position") }
+	var lessons []models.Lesson
+	require.NoError(t, core.DB.Preload("Steps", live).Preload("Stages", live).
+		Where("deleted_at IS NULL").Find(&lessons).Error)
+	require.NotEmpty(t, lessons)
+
+	for _, lesson := range lessons {
+		name := fmt.Sprintf("%s (%s)", lesson.Title, lesson.Id)
+		require.NotEmpty(t, lesson.Stages, "%s has stages", name)
+		assert.Equal(t, models.StageLearn, lesson.Stages[0].Kind, "%s starts with learn", name)
+		assert.Equal(t, models.StageReview, lesson.Stages[len(lesson.Stages)-1].Kind, "%s ends with review", name)
+
+		positions := map[int]bool{}
+		var steps []string
+		for _, stage := range lesson.Stages {
+			assert.False(t, positions[stage.Position], "%s: position %d is used once", name, stage.Position)
+			positions[stage.Position] = true
+
+			var content map[string]any
+			assert.NoError(t, json.Unmarshal([]byte(stage.Content), &content), "%s: %s content is a JSON object", name, stage.Kind)
+			steps = append(steps, stage.Steps...)
+		}
+
+		want := []string{models.StepRead}
+		if len(lesson.Steps) > 0 {
+			want = make([]string, len(lesson.Steps))
+			for i, s := range lesson.Steps {
+				want[i] = s.Kind
+			}
+		}
+		assert.Equal(t, want, steps, "%s: the stages hold the lesson's steps, in order", name)
+	}
 }
