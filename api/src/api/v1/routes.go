@@ -22,6 +22,9 @@ func RegisterV1Routes(router *gin.Engine) {
 		v1.GET("/catalog", middleware.OptionalAuth(), controllers.GetCatalog)
 		v1.GET("/courses/:id", middleware.OptionalAuth(), controllers.GetCourse)
 
+		// A lesson's page is only for a member taking its course.
+		v1.GET("/courses/:id/lessons/:code", middleware.RequireAuth(), controllers.GetLesson)
+
 		// Enrollments are the caller's own.
 		v1.PUT("/courses/:id/enrollment", middleware.RequireAuth(), controllers.Enroll)
 		v1.DELETE("/courses/:id/enrollment", middleware.RequireAuth(), controllers.Unenroll)

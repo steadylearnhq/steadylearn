@@ -282,6 +282,62 @@ definitions:
         example: ok
         type: string
     type: object
+  schemas.LessonCourseSchema:
+    properties:
+      id:
+        example: replication-consensus
+        type: string
+      title:
+        example: Replication & consensus
+        type: string
+    type: object
+  schemas.LessonLinkSchema:
+    properties:
+      code:
+        example: "2.2"
+        type: string
+      title:
+        example: Read and write quorums
+        type: string
+    type: object
+  schemas.LessonPageSchema:
+    properties:
+      code:
+        description: |-
+          Code is the lesson's place in the syllabus: 2.3 is the third lesson of
+          the second module.
+        example: "2.3"
+        type: string
+      course:
+        $ref: '#/definitions/schemas.LessonCourseSchema'
+      done:
+        description: |-
+          Done is whether the caller has completed the lesson. It is never cached
+          with the rest.
+        example: false
+        type: boolean
+      minutes:
+        example: 15
+        type: integer
+      next:
+        $ref: '#/definitions/schemas.LessonLinkSchema'
+      prev:
+        allOf:
+        - $ref: '#/definitions/schemas.LessonLinkSchema'
+        description: |-
+          Prev and Next are the lessons either side of this one in syllabus order,
+          across module boundaries, or null at the start and end of the course.
+      stages:
+        description: |-
+          Stages are the lesson's screens, in order. Kinds can repeat, so the app
+          names a stage by its place in this list, counting from 1.
+        items:
+          $ref: '#/definitions/schemas.StageSchema'
+        type: array
+      title:
+        example: Sizing replicated storage
+        type: string
+    type: object
   schemas.LessonSchema:
     properties:
       code:
@@ -414,6 +470,38 @@ definitions:
       title:
         example: Networks drop and reorder messages
         type: string
+    type: object
+  schemas.StageSchema:
+    properties:
+      content:
+        description: |-
+          Content is the stage's own JSON, whose shape the app owns for each kind.
+          The API passes it through untouched.
+        type: object
+      kind:
+        enum:
+        - learn
+        - interactive
+        - questions
+        - review
+        example: learn
+        type: string
+      steps:
+        example:
+        - watch
+        - read
+        items:
+          enum:
+          - watch
+          - read
+          - build
+          - trace
+          - range
+          - bet
+          - break
+          - postmortem
+          type: string
+        type: array
     type: object
   schemas.SubscriptionSchema:
     properties:
@@ -1120,6 +1208,69 @@ paths:
       summary: Leave feedback on a course
       tags:
       - enrollments
+  /v1/courses/{id}/lessons/{code}:
+    get:
+      description: 'A lesson of a course the caller is taking, as its page shows it:
+        its stages in order, the lessons either side of it in the syllabus, and whether
+        the caller has completed it. A 402 means the course is not free and the caller
+        has no subscription that gives access, a 409 that they are not enrolled in
+        it. The lesson is served from a cache for up to ten minutes; whether it is
+        done never is.'
+      parameters:
+      - description: Course slug
+        example: replication-consensus
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Lesson code, as the syllabus numbers it
+        example: "2.3"
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/schemas.LessonPageSchema'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "402":
+          description: Payment Required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get a lesson
+      tags:
+      - lessons
   /v1/courses/{id}/lessons/{code}/completion:
     delete:
       description: Mark a lesson of a course the caller is enrolled in as not done,
