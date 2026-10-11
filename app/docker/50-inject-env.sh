@@ -11,7 +11,9 @@ for name in \
   VITE_USER_POOL_CLIENT_ID \
   VITE_USER_POOL_DOMAIN \
   VITE_COGNITO_OAUTH_REDIRECT_SIGN_IN \
-  VITE_COGNITO_OAUTH_REDIRECT_SIGN_OUT
+  VITE_COGNITO_OAUTH_REDIRECT_SIGN_OUT \
+  VITE_STATSIG_CLIENT_KEY \
+  VITE_STATSIG_ENVIRONMENT
 do
   value=$(printenv "$name" || true)
   [ -n "$value" ] || echo "$0: warning: $name is not set" >&2

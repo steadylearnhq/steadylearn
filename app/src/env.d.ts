@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_USER_POOL_DOMAIN: string
   readonly VITE_COGNITO_OAUTH_REDIRECT_SIGN_IN: string
   readonly VITE_COGNITO_OAUTH_REDIRECT_SIGN_OUT: string
+  readonly VITE_STATSIG_CLIENT_KEY?: string
+  readonly VITE_STATSIG_ENVIRONMENT?: string
 }
 
 interface ImportMeta {
