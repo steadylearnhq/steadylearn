@@ -910,6 +910,94 @@
                 }
             }
         },
+        "/v1/courses/{id}/lessons/{code}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "A lesson of a course the caller is taking, as its page shows it: its stages in order, the lessons either side of it in the syllabus, and whether the caller has completed it. A 402 means the course is not free and the caller has no subscription that gives access, a 409 that they are not enrolled in it. The lesson is served from a cache for up to ten minutes; whether it is done never is.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "lessons"
+                ],
+                "summary": "Get a lesson",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "replication-consensus",
+                        "description": "Course slug",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "2.3",
+                        "description": "Lesson code, as the syllabus numbers it",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/schemas.LessonPageSchema"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/courses/{id}/lessons/{code}/completion": {
             "put": {
                 "security": [
@@ -1621,6 +1709,76 @@
                 }
             }
         },
+        "schemas.LessonCourseSchema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "replication-consensus"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Replication \u0026 consensus"
+                }
+            }
+        },
+        "schemas.LessonLinkSchema": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "2.2"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Read and write quorums"
+                }
+            }
+        },
+        "schemas.LessonPageSchema": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Code is the lesson's place in the syllabus: 2.3 is the third lesson of\nthe second module.",
+                    "type": "string",
+                    "example": "2.3"
+                },
+                "course": {
+                    "$ref": "#/definitions/schemas.LessonCourseSchema"
+                },
+                "done": {
+                    "description": "Done is whether the caller has completed the lesson. It is never cached\nwith the rest.",
+                    "type": "boolean",
+                    "example": false
+                },
+                "minutes": {
+                    "type": "integer",
+                    "example": 15
+                },
+                "next": {
+                    "$ref": "#/definitions/schemas.LessonLinkSchema"
+                },
+                "prev": {
+                    "description": "Prev and Next are the lessons either side of this one in syllabus order,\nacross module boundaries, or null at the start and end of the course.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.LessonLinkSchema"
+                        }
+                    ]
+                },
+                "stages": {
+                    "description": "Stages are the lesson's screens, in order. Kinds can repeat, so the app\nnames a stage by its place in this list, counting from 1.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/schemas.StageSchema"
+                    }
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Sizing replicated storage"
+                }
+            }
+        },
         "schemas.LessonSchema": {
             "type": "object",
             "properties": {
@@ -1791,6 +1949,45 @@
                 "title": {
                     "type": "string",
                     "example": "Networks drop and reorder messages"
+                }
+            }
+        },
+        "schemas.StageSchema": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "Content is the stage's own JSON, whose shape the app owns for each kind.\nThe API passes it through untouched.",
+                    "type": "object"
+                },
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "learn",
+                        "interactive",
+                        "questions",
+                        "review"
+                    ],
+                    "example": "learn"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "watch",
+                            "read",
+                            "build",
+                            "trace",
+                            "range",
+                            "bet",
+                            "break",
+                            "postmortem"
+                        ]
+                    },
+                    "example": [
+                        "watch",
+                        "read"
+                    ]
                 }
             }
         },
