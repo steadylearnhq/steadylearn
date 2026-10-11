@@ -9,6 +9,7 @@ import Catalog from './pages/catalog/Catalog'
 import CoursePage from './pages/course/Course'
 import Dashboard from './pages/dashboard/Dashboard'
 import Landing from './pages/landing/Landing'
+import Lesson from './pages/lesson/Lesson'
 import MyCourses from './pages/my-courses/MyCourses'
 import NotFound from './pages/NotFound'
 import Pricing from './pages/pricing/Pricing'
@@ -44,9 +45,10 @@ function App() {
         <Route path={['/login', '/signup']} component={Auth} />
       </Route>
       <Route path="/external-auth" component={ExternalAuth} />
-      {/* The review before payment stands alone too. */}
+      {/* The review before payment stands alone too, and so does a lesson, with its own header and footer. */}
       <Route component={RequireAuth}>
         <Route path="/subscription/checkout" component={Checkout} />
+        <Route path="/courses/:id/lessons/:code/:stage?" component={Lesson} />
       </Route>
       <Route component={Layout}>
         <Route component={GuestOnly}>
