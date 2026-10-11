@@ -7,6 +7,13 @@ how to run them; `app/README.md` carries the app's layout map.
 Both sides authenticate against the same AWS Cognito user pool. The course
 catalog is public; everything about a learner needs a signed-in user.
 
+## Agent skills
+
+Skills shared by every coding agent live in `.agents/skills/`, one folder per
+skill with its `SKILL.md`. Codex and Cursor read that directory; Claude Code
+reads `.claude/skills`, a symlink to it. Add or edit a skill there, never in
+a tool-specific copy.
+
 ## Pull requests
 
 When opening a PR, write its description from `pr-template.md` at the repo
