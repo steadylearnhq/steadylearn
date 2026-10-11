@@ -4,6 +4,7 @@ import Button from '../../components/Button'
 import Critter from '../../components/Critter'
 import { domainDot, domainStyle, levelLabel } from '../../data/catalog'
 import { user } from '../../lib/auth'
+import { lessonHref } from '../../lib/lessons'
 import { loadMyCourses, type MyCourse } from '../../lib/myCourses'
 import { usePageTitle } from '../../lib/title'
 import Segmented from '../catalog/Segmented'
@@ -100,6 +101,8 @@ export default function MyCourses() {
 
 function Row(props: MyCourse) {
   const href = () => `/courses/${props.course.id}`
+  // Resuming opens the lesson the member is up to; a finished course is reviewed from its page.
+  const ctaHref = () => (!props.finished && props.next ? lessonHref(props.course.id, props.next.code) : href())
   const domain = () => domainStyle(props.course.domain)
   const nextLine = () => {
     if (props.finished) return 'Finished'
@@ -139,7 +142,7 @@ function Row(props: MyCourse) {
           <span class={styles.fill} style={{ width: `${props.enrollment.progress}%` }} />
         </span>
       </div>
-      <Button variant="outline" size="xs" class={styles.cta} href={href()}>
+      <Button variant="outline" size="xs" class={styles.cta} href={ctaHref()}>
         {props.finished ? 'Review' : props.next ? `Resume ${props.next.code} →` : 'Resume →'}
       </Button>
     </li>

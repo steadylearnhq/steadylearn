@@ -6,6 +6,7 @@ import { domainDot, domainName, domainStyle, formatLength, levelLabel } from '..
 import { BOARDS, KPIS, RECOMMENDED, UP_NEXT } from '../../data/dashboard'
 import { STEP_BY_KEY } from '../../data/lessonSteps'
 import { user } from '../../lib/auth'
+import { lessonHref } from '../../lib/lessons'
 import { loadMyCourses } from '../../lib/myCourses'
 import { usePageTitle } from '../../lib/title'
 import styles from './Dashboard.module.css'
@@ -132,7 +133,12 @@ export default function Dashboard() {
                     >
                       <span class={styles.progressFill} style={{ width: `${m.enrollment.progress}%` }} />
                     </span>
-                    <Button variant="outline" size="sm" class={styles.continueCta} href={courseHref(m.course.id)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class={styles.continueCta}
+                      href={m.next ? lessonHref(m.course.id, m.next.code) : courseHref(m.course.id)}
+                    >
                       {m.next ? `Resume ${m.next.code} →` : 'Resume →'}
                     </Button>
                   </li>
