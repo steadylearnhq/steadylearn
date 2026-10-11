@@ -21,7 +21,6 @@ func main() {
 		&models.CoursePrerequisite{},
 		&models.CourseModule{},
 		&models.Lesson{},
-		&models.LessonStep{},
 		&models.LessonStage{},
 		&models.Enrollment{},
 		&models.LessonCompletion{},
