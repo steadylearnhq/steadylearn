@@ -1,0 +1,39 @@
+/* The lab's frame is a little wider than the learning before it, and the
+   review after it starts on the same left edge. */
+.stage {
+  max-width: 1032px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 64px;
+  align-items: start;
+}
+
+.side {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+}
+
+.panel {
+  padding: 32px;
+  border-radius: 20px;
+  background: var(--hover);
+}
+
+@media (max-width: 860px) {
+  .stage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .panel {
+    padding: 20px;
+  }
+}

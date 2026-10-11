@@ -1,0 +1,13 @@
+.box {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: repeating-linear-gradient(-45deg, var(--stripe) 0 1px, transparent 1px 8px);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+}

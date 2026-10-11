@@ -17,7 +17,6 @@
   padding: 48px 40px;
 }
 
-.kind,
 .loading {
   margin: 0;
   font-family: var(--font-mono);

@@ -8,7 +8,11 @@ import NotFound from '../NotFound'
 import LessonFooter, { type LessonAction, type LessonStep } from './LessonFooter'
 import LessonHeader from './LessonHeader'
 import { createScrollEdges } from './scrollEdges'
-import { STAGE_LABELS } from './stages'
+import InteractiveStage from './stages/InteractiveStage'
+import { STAGE_LABELS } from './stages/labels'
+import LearnStage from './stages/LearnStage'
+import QuestionsStage from './stages/QuestionsStage'
+import ReviewStage from './stages/ReviewStage'
 import styles from './Lesson.module.css'
 
 /**
@@ -134,7 +138,23 @@ export default function Lesson() {
             />
             <main ref={setBody} class={styles.body}>
               <div class={styles.content}>
-                <Show when={stage()}>{(s) => <p class={styles.kind}>{s().kind}</p>}</Show>
+                {/* Keyed, so moving between two stages of one kind starts the second afresh. */}
+                <Show when={stage()} keyed>
+                  {(s) => (
+                    <Switch>
+                      <Match when={s.kind === 'learn' && s}>
+                        {(learn) => <LearnStage title={l().title} stage={learn()} />}
+                      </Match>
+                      <Match when={s.kind === 'interactive' && s}>
+                        {(lab) => <InteractiveStage stage={lab()} />}
+                      </Match>
+                      <Match when={s.kind === 'questions' && s}>
+                        {(questions) => <QuestionsStage stage={questions()} />}
+                      </Match>
+                      <Match when={s.kind === 'review' && s}>{(review) => <ReviewStage stage={review()} />}</Match>
+                    </Switch>
+                  )}
+                </Show>
               </div>
             </main>
             <LessonFooter prev={prev(l())} next={next(l())} steps={steps(l())} more={edges.below()} />

@@ -30,6 +30,9 @@ export type LessonStage =
   | { kind: 'questions'; steps: Extract<LessonStepKey, 'bet'>[]; content: QuestionsContent }
   | { kind: 'review'; steps: []; content: ReviewContent }
 
+/** The stage of one kind. */
+export type StageOf<K extends LessonStage['kind']> = Extract<LessonStage, { kind: K }>
+
 /** A lesson next to another in the syllabus. */
 export type LessonLink = { code: string; title: string }
 

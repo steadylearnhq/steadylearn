@@ -1,4 +1,4 @@
-import type { LessonStage } from '../../lib/lessons'
+import type { LessonStage } from '../../../lib/lessons'
 
 /** How the footer names each kind of stage, and the next button that leads into one. */
 export const STAGE_LABELS: Record<LessonStage['kind'], { label: string; lead: string }> = {
