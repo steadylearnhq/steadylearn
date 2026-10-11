@@ -18,7 +18,7 @@ const catalogs = new Map<string, Promise<Catalog>>()
 const courses = new Map<string, Promise<CourseDetail>>()
 
 /** Answers from `cache` under `key`, or asks once and keeps the answer unless it fails. */
-function shared<T>(cache: Map<string, Promise<T>>, key: string, ask: () => Promise<T>): Promise<T> {
+export function shared<T>(cache: Map<string, Promise<T>>, key: string, ask: () => Promise<T>): Promise<T> {
   let request = cache.get(key)
   if (!request) {
     request = ask().catch((error: unknown) => {

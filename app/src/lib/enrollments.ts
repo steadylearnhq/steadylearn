@@ -1,6 +1,7 @@
 import { apiDelete, apiPut } from './api'
 import { accessToken } from './auth'
 import { forgetEnrollment } from './catalog'
+import { forgetLessons } from './lessons'
 
 /** A course the member is enrolled in, and how far through it they are; the catalog lists them. */
 export type Enrollment = {
@@ -28,6 +29,7 @@ const coursePath = (courseId: string) => `/v1/courses/${encodeURIComponent(cours
 const change = async (courseId: string, send: (token?: string) => Promise<CourseEnrollment>) => {
   const enrollment = await send(await accessToken())
   forgetEnrollment(courseId)
+  forgetLessons(courseId)
   return enrollment
 }
 
