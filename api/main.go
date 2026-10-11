@@ -37,7 +37,7 @@ import (
 )
 
 // shutdownBudget bounds the whole graceful shutdown: draining HTTP, closing
-// the cache and flushing telemetry. Render sends SIGKILL 30s after SIGTERM, so
+// the cache, flushing Statsig's events and flushing telemetry. Render sends SIGKILL 30s after SIGTERM, so
 // this stays under that.
 const shutdownBudget = 25 * time.Second
 
@@ -84,6 +84,14 @@ func main() {
 		slog.WarnContext(ctx, "billing is off: set CREEM_API_KEY, CREEM_WEBHOOK_SECRET, CREEM_PRODUCT_ID and APP_URL to turn it on")
 	}
 
+	// Statsig is optional too: without it every flag reads its code default.
+	core.InitStatsig(ctx)
+	if core.Statsig != nil {
+		slog.InfoContext(ctx, "statsig is on", "environment", core.Config.StatsigEnvironment)
+	} else if !core.Config.StatsigEnabled() {
+		slog.WarnContext(ctx, "statsig is off: set STATSIG_SERVER_SECRET to turn it on")
+	}
+
 	srv := &http.Server{
 		Addr:    ":" + core.Config.Port,
 		Handler: newRouter(),
@@ -110,6 +118,12 @@ func main() {
 
 	if err := core.CloseCache(); err != nil {
 		slog.ErrorContext(shutdownCtx, "cache shutdown failed", "error", err)
+	}
+
+	if core.Statsig != nil {
+		if err := core.Statsig.Shutdown(shutdownCtx); err != nil {
+			slog.ErrorContext(shutdownCtx, "statsig shutdown failed", "error", err)
+		}
 	}
 
 	if err := shutdown(shutdownCtx); err != nil {

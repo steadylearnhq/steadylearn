@@ -26,6 +26,12 @@ type config struct {
 	// checkout.
 	AppURL string
 
+	// Feature flags and experiments run through Statsig. It is optional:
+	// without a secret the API boots with Statsig off, see StatsigEnabled.
+	StatsigServerSecret string
+	// StatsigEnvironment is the Statsig tier the API evaluates against.
+	StatsigEnvironment string
+
 	OtelSDKDisabled          bool
 	OtelServiceName          string
 	OtelExporterOTLPEndpoint string
@@ -39,6 +45,10 @@ const defaultPort = "8080"
 // defaultCreemAPIURL is Creem's test mode. Live is https://api.creem.io/v1,
 // and each mode has its own API key.
 const defaultCreemAPIURL = "https://test-api.creem.io/v1"
+
+// defaultStatsigEnvironment is the only tier the Statsig project has keys for
+// so far.
+const defaultStatsigEnvironment = "development"
 
 const (
 	defaultOtelServiceName          = "steadylearn-api"
@@ -71,6 +81,12 @@ func LoadConfig() error {
 		Config.CreemAPIURL = defaultCreemAPIURL
 	}
 	Config.AppURL = strings.TrimRight(os.Getenv("APP_URL"), "/")
+
+	Config.StatsigServerSecret = os.Getenv("STATSIG_SERVER_SECRET")
+	Config.StatsigEnvironment = os.Getenv("STATSIG_ENVIRONMENT")
+	if Config.StatsigEnvironment == "" {
+		Config.StatsigEnvironment = defaultStatsigEnvironment
+	}
 
 	// OTEL_SDK_DISABLED is the OpenTelemetry spec's own name for the
 	// kill-switch; reused here rather than inventing a project-specific var.
@@ -115,4 +131,10 @@ func LoadConfig() error {
 // its endpoints answer 503, and the rest of the API is unaffected.
 func (c *config) BillingEnabled() bool {
 	return c.CreemAPIKey != "" && c.CreemWebhookSecret != "" && c.CreemProductId != "" && c.AppURL != ""
+}
+
+// StatsigEnabled reports whether Statsig has its secret. Without it Statsig is
+// off: core.Statsig stays nil and every flag reads its code default.
+func (c *config) StatsigEnabled() bool {
+	return c.StatsigServerSecret != ""
 }

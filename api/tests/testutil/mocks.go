@@ -108,6 +108,46 @@ func SignCreem(body []byte) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
+// MockStatsig stands in for Statsig.
+type MockStatsig struct{ mock.Mock }
+
+func (m *MockStatsig) CheckGate(ctx context.Context, user core.FlagUser, name string) bool {
+	args := m.Called(ctx, user, name)
+	return args.Bool(0)
+}
+
+func (m *MockStatsig) GetDynamicConfig(ctx context.Context, user core.FlagUser, name string) map[string]any {
+	args := m.Called(ctx, user, name)
+	out, _ := args.Get(0).(map[string]any)
+	return out
+}
+
+func (m *MockStatsig) GetExperiment(ctx context.Context, user core.FlagUser, name string) core.FlagExperiment {
+	args := m.Called(ctx, user, name)
+	out, _ := args.Get(0).(core.FlagExperiment)
+	return out
+}
+
+func (m *MockStatsig) LogExperimentExposure(ctx context.Context, user core.FlagUser, name string) {
+	m.Called(ctx, user, name)
+}
+
+func (m *MockStatsig) Shutdown(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+// UseStatsig turns Statsig on for the length of the test, with core.Statsig
+// pointed at a mock.
+func UseStatsig(t *testing.T) *MockStatsig {
+	t.Helper()
+	swap(t, &core.Config.StatsigServerSecret, "secret-test")
+	m := &MockStatsig{}
+	swap(t, &core.Statsig, core.FeatureFlags(m))
+	t.Cleanup(func() { m.AssertExpectations(t) })
+	return m
+}
+
 // UseCache points core.Cache at an in-memory Redis for the length of the test.
 // The returned server lets the test inspect keys, fast-forward TTLs, or Close it
 // to play an unreachable cache.
