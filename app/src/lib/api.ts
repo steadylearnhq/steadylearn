@@ -1,3 +1,5 @@
+import { stableId } from './statsig'
+
 /** The API's base URL, without a trailing slash. */
 const BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
 
@@ -20,6 +22,11 @@ export class ApiError extends Error {
 async function request<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, token?: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
+  // The visitor's Statsig stableID, so the API buckets them as the app does.
+  // stableId() is set only with analytics consent, so the header also tells
+  // the API it may count them in an experiment.
+  const stable = stableId()
+  if (stable) headers['X-Statsig-Stable-ID'] = stable
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
