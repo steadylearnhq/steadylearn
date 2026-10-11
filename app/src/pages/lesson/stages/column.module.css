@@ -1,0 +1,32 @@
+/* A text column for the stages after a lab: as wide as the review in the
+   design, starting on the lab's left edge rather than centred. */
+.frame {
+  max-width: 1032px;
+  margin: 0 auto;
+}
+
+.column {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.title {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -1.6px;
+}
+
+@media (max-width: 860px) {
+  .column {
+    gap: 28px;
+  }
+
+  .title {
+    font-size: 32px;
+    letter-spacing: -1.2px;
+  }
+}
