@@ -219,7 +219,8 @@ that touches the database.
   `testutil.Run(m)` to stop its container (see `tests/services/main_test.go`).
 - **Third-party services are faked.** `testutil.UseCognito(t)` swaps
   `core.Cognito` for a testify mock, `testutil.UseCreem(t)` turns billing on
-  with `core.Creem` mocked (`testutil.SignCreem` signs a webhook body), and
+  with `core.Creem` mocked (`testutil.SignCreem` signs a webhook body),
+  `testutil.UseStatsig(t)` turns Statsig on with `core.Statsig` mocked, and
   `testutil.UseCache(t)` points `core.Cache` at an in-memory miniredis.
   `tests/core/` checks the hand-written Creem client against a fake server.
 
@@ -280,7 +281,11 @@ Creem exposes no card details or invoice PDFs; those stay in its portal.
 - Controllers never touch `core.DB`; services never write HTTP responses
 - Model to DTO conversion goes through a `toXSchema` helper in the service
 - Third-party services are reached only through interface-typed globals in `core`
-  (`Cognito`, `Creem`), which `Init*` sets at boot and tests replace with mocks
+  (`Cognito`, `Creem`, `Statsig`), which `Init*` sets at boot and tests replace with mocks
+- Statsig's Go SDK (`statsig-go-core`) needs no cgo: it writes its native library
+  to `/tmp` and loads it at runtime. `core.Statsig` speaks `core.FlagUser`, never
+  the SDK's types, since building those loads the library; the image adds
+  `libgcc`, which the library needs
 - Soft deletes via `deleted_at`; queries must filter `deleted_at IS NULL`
 - Every response is `Cache-Control: no-store` (`middleware.NoStore`), because
   Render's edge caches whatever doesn't say otherwise, keyed on the URL alone.
@@ -292,7 +297,9 @@ Creem exposes no card details or invoice PDFs; those stay in its portal.
 - Config is validated at boot: a missing required env var is a fatal error. Billing
   is the exception: without `CREEM_API_KEY`, `CREEM_WEBHOOK_SECRET`,
   `CREEM_PRODUCT_ID` and `APP_URL` it is off, `core.Creem` stays nil, and the
-  billing endpoints answer 503 (reading a subscription still works)
+  billing endpoints answer 503 (reading a subscription still works). Statsig is
+  optional the same way: without `STATSIG_SERVER_SECRET`, `core.Statsig` stays nil
+  and every flag reads its code default
 - OpenTelemetry (traces, metrics, logs) is wired in `src/core/telemetry.go` and exported
   via OTLP/HTTP. It is opt-out (`OTEL_SDK_DISABLED=true`), and any exporter failure
   degrades to a no-op rather than failing boot. Log with `slog.InfoContext` /

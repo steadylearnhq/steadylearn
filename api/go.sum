@@ -1167,6 +1167,14 @@ github.com/spf13/afero v1.6.0/go.mod h1:Ai8FlHk4v/PARR026UzYexafAt9roJ7LcLMAmO6Z
 github.com/spf13/afero v1.9.2/go.mod h1:iUV7ddyEEZPO5gA3zD4fJt6iStLlL+Lg4m2cihcDf8Y=
 github.com/spiffe/go-spiffe/v2 v2.7.0 h1:uXe1MflJoHw58wAUvxVlcM7WpKtijWG7I1UidcGh6g4=
 github.com/spiffe/go-spiffe/v2 v2.7.0/go.mod h1:47Q0Q9/AqGha8QLHp+kxpH4Wca7X7EnOtlIJy3mxZ3U=
+github.com/statsig-io/go-server-core-binaries-linux-gnu v0.23.1 h1:eAF0FiIDuEVDtmNQSjtvSm5Pd87dWeM0CHE2bWLh+R8=
+github.com/statsig-io/go-server-core-binaries-linux-gnu v0.23.1/go.mod h1:m4N50tANNr1HPESMSyf5xJ3aW1UQBSi2+HW70H8V4g4=
+github.com/statsig-io/go-server-core-binaries-linux-musl v0.23.1 h1:NoixhhY91uXQ77FGH0AXgviQq65C+lvzyNISGb0dBlQ=
+github.com/statsig-io/go-server-core-binaries-linux-musl v0.23.1/go.mod h1:5TalRG/lt7BYH8XL7MRCJ5WEYfmpPFmshj/lUI/UBKc=
+github.com/statsig-io/go-server-core-binaries-macos v0.23.1 h1:ivmbUuREl5+0z6gBD8I0HyKxdFIM9MhAlYJiJc2EN+4=
+github.com/statsig-io/go-server-core-binaries-macos v0.23.1/go.mod h1:V/ycNDCNy0dLXU2089Lsv2oybH2M+DtBnoJq6p4n5p0=
+github.com/statsig-io/statsig-go-core v0.23.1 h1:JM0dpYpyLXZregmljQ4LLG0qIHIXSiXXGRG2LkE8+j4=
+github.com/statsig-io/statsig-go-core v0.23.1/go.mod h1:dqFCfYXAs9VuZzgv1qzgDTcxCack8VqlkooCjfFBZYM=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
