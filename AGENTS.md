@@ -132,6 +132,9 @@ for Cognito auth. Paths in this section are relative to `app/`.
   `GuestOnly` (signed-in visitors go to `/dashboard`), members-only pages
   under `RequireAuth`. Both render nothing until `authReady()`, so nothing
   flashes before a redirect.
+- **Feature flags and experiments** are read only through `gate`, `config`
+  and `experiment` in `src/lib/statsig.ts`, never through `@statsig/js-client`
+  directly: that module owns consent, identity and exposure logging.
 - **Page titles** come from `usePageTitle` in `src/lib/title.ts`, never by
   setting `document.title` directly.
 - **API calls** go through `apiGet` / `apiPut` in `src/lib/api.ts`, which
