@@ -32,6 +32,7 @@ import (
 	_ "steadylearn-api/docs"
 	"steadylearn-api/src/api/health"
 	routes "steadylearn-api/src/api/v1"
+	"steadylearn-api/src/api/v1/controllers"
 	"steadylearn-api/src/core"
 	"steadylearn-api/src/middleware"
 )
@@ -149,7 +150,7 @@ func newRouter() *gin.Engine {
 		engine.Use(cors.New(cors.Config{
 			AllowOrigins:     allowedOrigins,
 			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", controllers.StableIDHeader},
 			ExposeHeaders:    []string{"Content-Length"},
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,

@@ -287,6 +287,15 @@ Creem exposes no card details or invoice PDFs; those stay in its portal.
   the SDK's types, since building those loads the library; the image adds
   `libgcc`, which the library needs
 - Soft deletes via `deleted_at`; queries must filter `deleted_at IS NULL`
+- Feature flags and experiments are read only through `src/services/flags.go`
+  (`Gate`, `Config`, `Experiment`), with the `core.FlagUser` a handler builds with
+  `controllers.FlagUser(c)`. Reads never log an exposure and fall back to the
+  caller's defaults when Statsig is off or the caller has no id. Call
+  `LogExposure` where the variant is actually used; it counts only callers who
+  sent `X-Statsig-Stable-ID`, which the app sends only with analytics consent. A
+  response that depends on a variant must not be shared: not behind
+  `Cache-Control: public` and not in a Redis key that leaves out the variant or
+  the user
 - Every response is `Cache-Control: no-store` (`middleware.NoStore`), because
   Render's edge caches whatever doesn't say otherwise, keyed on the URL alone.
   A handler sets its own header only for a response every caller may share:
