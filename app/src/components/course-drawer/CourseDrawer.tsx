@@ -47,6 +47,16 @@ export default function CourseDrawer(props: CourseDrawerProps) {
   // preview go with it.
   const trailer = () => (gate('course_previews') ? props.course.trailer : undefined)
   const [previewing, setPreviewing] = createSignal(false)
+  // A visitor gets it in the footer, beside signing up; a member, who has no
+  // footer, in the header bar.
+  const PreviewButton = (p: { class?: string }) => (
+    <button type="button" class={[styles.preview, p.class].filter(Boolean).join(' ')} onClick={() => setPreviewing(true)}>
+      <span class={styles.previewGlyph} aria-hidden="true">
+        ▶
+      </span>
+      Preview
+    </button>
+  )
   // A preview belongs to the course it was opened for.
   createEffect(on(() => props.course.id, () => setPreviewing(false), { defer: true }))
 
@@ -145,13 +155,8 @@ export default function CourseDrawer(props: CourseDrawerProps) {
               </Show>
               <span class={styles.spacer} />
               <span class={styles.position}>{props.position}</span>
-              <Show when={trailer()}>
-                <button type="button" class={styles.preview} onClick={() => setPreviewing(true)}>
-                  <span class={styles.previewGlyph} aria-hidden="true">
-                    ▶
-                  </span>
-                  Preview
-                </button>
+              <Show when={trailer() && user()}>
+                <PreviewButton />
               </Show>
               <button type="button" class={styles.iconButton} aria-label="Previous course" onClick={props.onPrev}>
                 ←
@@ -339,9 +344,14 @@ export default function CourseDrawer(props: CourseDrawerProps) {
                 {props.course.isFree ? 'Free course. Sign up to start.' : 'Included with the subscription.'}
               </span>
               <span class={styles.spacer} />
-              <Button variant="primary" size="md" href={props.course.isFree ? '/login' : SUBSCRIBE_HREF}>
-                {props.course.isFree ? 'Start for free →' : 'Subscribe →'}
-              </Button>
+              <div class={styles.footActions}>
+                <Show when={trailer()}>
+                  <PreviewButton class={styles.previewFoot} />
+                </Show>
+                <Button variant="primary" size="md" href={props.course.isFree ? '/login' : SUBSCRIBE_HREF}>
+                  {props.course.isFree ? 'Start for free →' : 'Subscribe →'}
+                </Button>
+              </div>
             </div>
           </Show>
         </div>
