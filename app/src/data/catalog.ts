@@ -63,6 +63,17 @@ export type Course = {
   isFree: boolean
   /** Failure modes the learner triggers in the course's simulations. */
   breakIts: string[]
+  /** The course's preview video; null from the API when it has none, and absent from the app's own copy of the catalog. */
+  trailer?: Trailer | null
+}
+
+/** A short video anyone can watch before enrolling. `url` is an HLS manifest or a plain video file. */
+export type Trailer = {
+  url: string
+  /** Its length, shown before the video has loaded. */
+  seconds: number
+  /** The still shown before play, or null; the preview shows a placeholder without one. */
+  posterUrl: string | null
 }
 
 export type Catalog = {
