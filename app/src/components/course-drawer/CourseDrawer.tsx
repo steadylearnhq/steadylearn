@@ -5,7 +5,9 @@ import { LESSON_STEPS, STEP_BY_KEY, type LessonStepKey } from '../../data/lesson
 import { user } from '../../lib/auth'
 import { SUBSCRIBE_HREF } from '../../lib/billing'
 import { fetchCourse } from '../../lib/catalog'
+import { gate } from '../../lib/statsig'
 import Button from '../Button'
+import CoursePreview from '../course-preview/CoursePreview'
 import Critter from '../Critter'
 import StepIcon from '../StepIcon'
 import styles from './CourseDrawer.module.css'
@@ -40,6 +42,13 @@ export default function CourseDrawer(props: CourseDrawerProps) {
   let body!: HTMLDivElement
 
   const domain = () => domainStyle(props.course.domain)
+
+  // The trailer, while the course_previews gate is on; the button and the
+  // preview go with it.
+  const trailer = () => (gate('course_previews') ? props.course.trailer : undefined)
+  const [previewing, setPreviewing] = createSignal(false)
+  // A preview belongs to the course it was opened for.
+  createEffect(on(() => props.course.id, () => setPreviewing(false), { defer: true }))
 
   // Everything but the syllabus comes with the catalog, so the drawer opens
   // at once and only the syllabus waits on the course's own request.
@@ -136,6 +145,14 @@ export default function CourseDrawer(props: CourseDrawerProps) {
               </Show>
               <span class={styles.spacer} />
               <span class={styles.position}>{props.position}</span>
+              <Show when={trailer()}>
+                <button type="button" class={styles.preview} onClick={() => setPreviewing(true)}>
+                  <span class={styles.previewGlyph} aria-hidden="true">
+                    ▶
+                  </span>
+                  Preview
+                </button>
+              </Show>
               <button type="button" class={styles.iconButton} aria-label="Previous course" onClick={props.onPrev}>
                 ←
               </button>
@@ -329,6 +346,17 @@ export default function CourseDrawer(props: CourseDrawerProps) {
           </Show>
         </div>
       </div>
+      <Show when={previewing() && trailer()}>
+        {(t) => (
+          <CoursePreview
+            title={props.course.title}
+            domain={props.domainName}
+            dot={domainDot(props.course.domain)}
+            trailer={t()}
+            onClose={() => setPreviewing(false)}
+          />
+        )}
+      </Show>
     </Portal>
   )
 }
