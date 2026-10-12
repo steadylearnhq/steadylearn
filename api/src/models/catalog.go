@@ -56,12 +56,19 @@ type Course struct {
 	SyllabusPublic bool `gorm:"not null;default:false"`
 	// PublishedAt is when the course went live. A course without one, or with
 	// one in the future, is not in the catalog.
-	PublishedAt   *time.Time
-	Modules       []CourseModule       `gorm:"constraint:OnDelete:CASCADE"`
-	BreakIts      []CourseBreakIt      `gorm:"constraint:OnDelete:CASCADE"`
-	Requirements  []CourseRequirement  `gorm:"constraint:OnDelete:CASCADE"`
-	Outcomes      []CourseOutcome      `gorm:"constraint:OnDelete:CASCADE"`
-	Prerequisites []CoursePrerequisite `gorm:"foreignKey:CourseId;constraint:OnDelete:CASCADE"`
+	PublishedAt *time.Time
+	// The trailer is a short video anyone can watch before enrolling. A course
+	// has one when TrailerUrl is set: an HLS manifest, or a plain video file.
+	// TrailerSeconds is its length, shown before the video loads, and comes
+	// with it; the poster is the still shown before play, and is optional.
+	TrailerUrl       *string
+	TrailerSeconds   *int `gorm:"check:chk_courses_trailer,(trailer_url IS NULL AND trailer_seconds IS NULL AND trailer_poster_url IS NULL) OR (trailer_url IS NOT NULL AND trailer_seconds IS NOT NULL AND trailer_seconds > 0)"`
+	TrailerPosterUrl *string
+	Modules          []CourseModule       `gorm:"constraint:OnDelete:CASCADE"`
+	BreakIts         []CourseBreakIt      `gorm:"constraint:OnDelete:CASCADE"`
+	Requirements     []CourseRequirement  `gorm:"constraint:OnDelete:CASCADE"`
+	Outcomes         []CourseOutcome      `gorm:"constraint:OnDelete:CASCADE"`
+	Prerequisites    []CoursePrerequisite `gorm:"foreignKey:CourseId;constraint:OnDelete:CASCADE"`
 }
 
 // CourseBreakIt is a failure mode the learner triggers in one of the course's

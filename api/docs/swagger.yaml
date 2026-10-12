@@ -177,6 +177,10 @@ definitions:
       title:
         example: Replication & consensus
         type: string
+      trailer:
+        allOf:
+        - $ref: '#/definitions/schemas.TrailerSchema'
+        description: Trailer is the course's preview video, or null when it has none.
     type: object
   schemas.CourseSummarySchema:
     properties:
@@ -223,6 +227,10 @@ definitions:
       title:
         example: Replication & consensus
         type: string
+      trailer:
+        allOf:
+        - $ref: '#/definitions/schemas.TrailerSchema'
+        description: Trailer is the course's preview video, or null when it has none.
     type: object
   schemas.DomainSchema:
     properties:
@@ -551,6 +559,20 @@ definitions:
         type: string
     required:
     - subscriptionId
+    type: object
+  schemas.TrailerSchema:
+    properties:
+      posterUrl:
+        description: PosterUrl is the still shown before play, or null without one.
+        example: https://videos.example.com/replication-consensus/poster.jpg
+        type: string
+      seconds:
+        example: 95
+        type: integer
+      url:
+        description: Url is an HLS manifest, or a plain video file.
+        example: https://videos.example.com/replication-consensus/manifest.m3u8
+        type: string
     type: object
   schemas.UserProfileSchema:
     properties:

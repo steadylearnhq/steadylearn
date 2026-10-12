@@ -1,4 +1,4 @@
-h1:hJ/1lMRJuFi5mT8praJPdbnK27LylkuhgPB+Bd1iinM=
+h1:TtBIpfbfQ+wa44YYokRDr+dnLPO7gU3/6TkTvsTZK5Y=
 20260929184017_init.sql h1:fxViAI7xCaka5wPZiYlrYBfvKYDbK5E7oxHFH+lgv0I=
 20260929191556_catalog.sql h1:+3JjzeAlbVEv03me3NWkqYqjsYmY5ebwWgFK+NASssI=
 20260929191613_seed_catalog.sql h1:/9tZr5xpjFzn/sg2pWUB71mQRKjzqxuR5t+lkFbaPfk=
@@ -13,3 +13,4 @@ h1:hJ/1lMRJuFi5mT8praJPdbnK27LylkuhgPB+Bd1iinM=
 20261011083612_lesson_stages.sql h1:Z1Zue6xNHGZEZV8xqG/YKkZYvBJmKorEeJ4orbfjuhs=
 20261011084005_seed_lesson_stages.sql h1:HdgzMADX7wjgP44JEfVGlxU71QdunnOmb6nvcahIzW0=
 20261011122832_drop_lesson_steps.sql h1:9ssBHD/aVGJeX8XvlyTWcobOOLjWrgraHnTkfFctOEo=
+20261012083059_course_trailers.sql h1:Bk+YvwGEFRfW3/5ZWUosf8cCF7tJ/ZKBqu2+nuBOILg=

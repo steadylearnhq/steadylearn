@@ -170,6 +170,58 @@ func TestGetCatalogWhenEmpty(t *testing.T) {
 	assert.Equal(t, schemas.CatalogSchema{Domains: []schemas.DomainSchema{}, Courses: []schemas.CourseSummarySchema{}}, catalog)
 }
 
+func TestCourseTrailer(t *testing.T) {
+	useEmptyCatalog(t)
+	testutil.UseCache(t)
+	ctx := context.Background()
+	dist := addDomain(t, "dist", 1)
+
+	url := "https://videos.example.com/trailer.m3u8"
+	poster := "https://videos.example.com/poster.jpg"
+	seconds := 95
+	addCourse(t, dist, models.Course{
+		Slug: "with-poster", Position: 1, PublishedAt: ago(time.Hour),
+		TrailerUrl: &url, TrailerSeconds: &seconds, TrailerPosterUrl: &poster,
+	})
+	addCourse(t, dist, models.Course{
+		Slug: "without-poster", Position: 2, PublishedAt: ago(time.Hour),
+		TrailerUrl: &url, TrailerSeconds: &seconds,
+	})
+	addCourse(t, dist, models.Course{Slug: "without", Position: 3, PublishedAt: ago(time.Hour)})
+
+	want := map[string]*schemas.TrailerSchema{
+		"with-poster":    {Url: url, Seconds: 95, PosterUrl: &poster},
+		"without-poster": {Url: url, Seconds: 95},
+		"without":        nil,
+	}
+
+	catalog, err := services.GetCatalog(ctx)
+	require.NoError(t, err)
+	require.Len(t, catalog.Courses, 3)
+	for _, c := range catalog.Courses {
+		assert.Equal(t, want[c.Id], c.Trailer, "catalog: %s", c.Id)
+	}
+
+	for slug, trailer := range want {
+		for _, member := range []bool{false, true} {
+			course, err := services.GetCourse(ctx, slug, member)
+			require.NoError(t, err)
+			assert.Equal(t, trailer, course.Trailer, "course: %s, member %v", slug, member)
+		}
+	}
+
+	encoded, err := json.Marshal(catalog.Courses[2])
+	require.NoError(t, err)
+	assert.Contains(t, string(encoded), `"trailer":null`, "no trailer is sent as null")
+
+	// The length comes with the URL, and a poster only with both.
+	err = core.DB.Create(&models.Course{
+		BaseModel: base(), DomainId: dist.Id, Slug: "no-length", Title: "No length",
+		Level: models.LevelIntermediate, DurationMinutes: 60, TrailerUrl: &url,
+	}).Error
+	assert.ErrorContains(t, err, "chk_courses_trailer")
+}
+
 func TestGetCourseWithPublicSyllabus(t *testing.T) {
 	useEmptyCatalog(t)
 	testutil.UseCache(t)

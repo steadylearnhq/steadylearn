@@ -23,6 +23,17 @@ type CourseSummarySchema struct {
 	IsFree      bool `json:"isFree" example:"false"`
 	// BreakIts are the failure modes the learner triggers in the simulations.
 	BreakIts []string `json:"breakIts" example:"Lost write,Stale read,Split brain"`
+	// Trailer is the course's preview video, or null when it has none.
+	Trailer *TrailerSchema `json:"trailer"`
+}
+
+// TrailerSchema is a short video anyone can watch before enrolling.
+type TrailerSchema struct {
+	// Url is an HLS manifest, or a plain video file.
+	Url     string `json:"url" example:"https://videos.example.com/replication-consensus/manifest.m3u8"`
+	Seconds int    `json:"seconds" example:"95"`
+	// PosterUrl is the still shown before play, or null without one.
+	PosterUrl *string `json:"posterUrl" example:"https://videos.example.com/replication-consensus/poster.jpg"`
 }
 
 type CatalogSchema struct {
