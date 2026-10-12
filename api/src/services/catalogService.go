@@ -30,7 +30,7 @@ const catalogCacheTTL = 10 * time.Minute
 // into the new one.
 
 func CatalogCacheKey() string {
-	return core.CacheKey("catalog", "v1")
+	return core.CacheKey("catalog", "v2")
 }
 
 // CourseCacheKey holds one view of a course: a member's, with every lesson, or
@@ -40,7 +40,7 @@ func CourseCacheKey(slug string, member bool) string {
 	if member {
 		view = "member"
 	}
-	return core.CacheKey("course", "v3", slug, view)
+	return core.CacheKey("course", "v4", slug, view)
 }
 
 // GetCatalog is every published course, with the domains they belong to,
@@ -107,6 +107,7 @@ const courseSummaries = `
 SELECT c.id, c.slug, d.slug AS domain, c.title, c.description, c.level,
 	c.duration_minutes AS minutes, c.is_free, c.syllabus_public,
 	c.published_at > @new_since AS is_new,
+	c.trailer_url, c.trailer_seconds, c.trailer_poster_url,
 	lc.lesson_count,
 	COALESCE(b.break_its, '[]') AS break_its
 FROM courses c
@@ -138,6 +139,10 @@ type courseSummaryRow struct {
 	IsNew          bool
 	LessonCount    int
 	BreakIts       []byte
+	// The trailer's columns are all null for a course without one.
+	TrailerUrl       *string
+	TrailerSeconds   *int
+	TrailerPosterUrl *string
 }
 
 func (r courseSummaryRow) schema() (schemas.CourseSummarySchema, error) {
@@ -157,7 +162,17 @@ func (r courseSummaryRow) schema() (schemas.CourseSummarySchema, error) {
 		IsNew:       r.IsNew,
 		IsFree:      r.IsFree,
 		BreakIts:    breakIts,
+		Trailer:     r.trailer(),
 	}, nil
+}
+
+// trailer is the course's trailer, or nil when it has none. The database keeps
+// the length set whenever the URL is.
+func (r courseSummaryRow) trailer() *schemas.TrailerSchema {
+	if r.TrailerUrl == nil || r.TrailerSeconds == nil {
+		return nil
+	}
+	return &schemas.TrailerSchema{Url: *r.TrailerUrl, Seconds: *r.TrailerSeconds, PosterUrl: r.TrailerPosterUrl}
 }
 
 func loadCatalog(ctx context.Context, now time.Time) (schemas.CatalogSchema, error) {

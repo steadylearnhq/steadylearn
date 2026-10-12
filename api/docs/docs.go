@@ -1572,6 +1572,14 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "example": "Replication \u0026 consensus"
+                },
+                "trailer": {
+                    "description": "Trailer is the course's preview video, or null when it has none.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.TrailerSchema"
+                        }
+                    ]
                 }
             }
         },
@@ -1631,6 +1639,14 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "example": "Replication \u0026 consensus"
+                },
+                "trailer": {
+                    "description": "Trailer is the course's preview video, or null when it has none.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/schemas.TrailerSchema"
+                        }
+                    ]
                 }
             }
         },
@@ -2045,6 +2061,25 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100,
                     "example": "sub_6pC2lNB6joCRQIZ1aMrTpi"
+                }
+            }
+        },
+        "schemas.TrailerSchema": {
+            "type": "object",
+            "properties": {
+                "posterUrl": {
+                    "description": "PosterUrl is the still shown before play, or null without one.",
+                    "type": "string",
+                    "example": "https://videos.example.com/replication-consensus/poster.jpg"
+                },
+                "seconds": {
+                    "type": "integer",
+                    "example": 95
+                },
+                "url": {
+                    "description": "Url is an HLS manifest, or a plain video file.",
+                    "type": "string",
+                    "example": "https://videos.example.com/replication-consensus/manifest.m3u8"
                 }
             }
         },
