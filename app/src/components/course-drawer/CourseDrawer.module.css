@@ -150,6 +150,18 @@
   font-size: 9px;
 }
 
+/* In the footer it matches the sign-up button beside it. */
+.previewFoot {
+  gap: 8px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+
+.previewFoot .previewGlyph {
+  font-size: 10px;
+}
+
 .preview:focus-visible,
 .iconButton:focus-visible,
 .close:focus-visible {
@@ -484,6 +496,13 @@ button.moduleHead:focus-visible {
   gap: 12px;
   padding: 16px var(--pad) max(16px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
+}
+
+/* The footer's buttons wrap as one, below the text when it doesn't fit beside them. */
+.footActions {
+  display: flex;
+  flex: none;
+  gap: 8px;
 }
 
 .access {
