@@ -22,7 +22,7 @@ import { canTake, CHECKOUT_HREF, loadBilling } from '../../lib/billing'
 import { fetchCatalog, fetchCourse } from '../../lib/catalog'
 import { enroll, leaveFeedback, setLessonDone, type CourseEnrollment, type Feedback } from '../../lib/enrollments'
 import { lessonHref } from '../../lib/lessons'
-import { gate } from '../../lib/statsig'
+import { gate, track } from '../../lib/statsig'
 import { useNavSection } from '../../lib/nav'
 import { usePageTitle } from '../../lib/title'
 import NotFound from '../NotFound'
@@ -145,6 +145,7 @@ export default function CoursePage() {
     setEnrollFailed(false)
     try {
       const made = await enroll(courseId)
+      track('course_enroll', { course_id: courseId })
       if (courseId === params.id) setEnrollment(made)
     } catch (error) {
       if (paymentRequired(error)) refreshBilling(true)
@@ -407,6 +408,8 @@ export default function CoursePage() {
                 <Show when={previewing() && trailer()}>
                   {(t) => (
                     <CoursePreview
+                      courseId={c().id}
+                      source="course_page"
                       title={c().title}
                       domain={domainName(c().domain) || ownDomainName(c().domain)}
                       dot={domainDot(c().domain)}

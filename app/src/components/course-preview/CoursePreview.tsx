@@ -1,13 +1,23 @@
 import { createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import type { Trailer } from '../../data/catalog'
+import { track } from '../../lib/statsig'
 import styles from './CoursePreview.module.css'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
 /** How far ← and → move the timeline. */
 const SEEK_STEP = 5
+/** How much of the trailer has played, as preview_progress counts it. */
+const MARKS = [25, 50, 75, 100]
+
+/** How a preview was closed, as preview_close reports it; `other` is the page unmounting it. */
+type Via = 'button' | 'backdrop' | 'esc' | 'other'
 
 type Props = {
+  /** The course's slug, which every preview event carries. */
+  courseId: string
+  /** Where the preview was opened from. */
+  source: 'sheet' | 'course_page'
   title: string
   /** The domain's name and dot colour, as the course sheet shows them. */
   domain: string
@@ -53,6 +63,26 @@ export default function CoursePreview(props: Props) {
   // The trailer's stated length until the video reports its own.
   const total = () => duration() || props.trailer.seconds
   const percent = () => `${Math.min(100, (position() / total()) * 100).toFixed(2)}%`
+
+  // Analytics: each event once per opening, the marks as playback first passes
+  // them, a seek past one included.
+  const base = () => ({ course_id: props.courseId, source: props.source })
+  let played = false
+  let reached = 0
+  let via: Via = 'other'
+  const logged = new Set<number>()
+  const progress = (percent: number) => {
+    reached = Math.max(reached, Math.min(100, Math.round(percent)))
+    for (const mark of MARKS) {
+      if (percent < mark || logged.has(mark)) continue
+      logged.add(mark)
+      track('preview_progress', { ...base(), percent: String(mark) })
+    }
+  }
+  const close = (how: Via) => {
+    via = how
+    props.onClose()
+  }
 
   const toggle = () => {
     if (failed()) return
@@ -109,13 +139,14 @@ export default function CoursePreview(props: Props) {
     document.body.style.overflow = 'hidden'
     panel.focus()
     void load()
+    track('preview_open', base())
 
     const onKey = (e: KeyboardEvent) => {
       const key = e.key
       if (!['Escape', ' ', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
       e.stopPropagation()
 
-      if (key === 'Escape') return props.onClose()
+      if (key === 'Escape') return close('esc')
       if (key === ' ') {
         // A focused button already takes Space as a press.
         if (document.activeElement instanceof HTMLButtonElement) return
@@ -147,6 +178,7 @@ export default function CoursePreview(props: Props) {
 
     onCleanup(() => {
       closed = true
+      track('preview_close', { ...base(), via, max_percent: String(reached) })
       window.removeEventListener('keydown', onKey, true)
       hls?.destroy()
       video.pause()
@@ -159,7 +191,7 @@ export default function CoursePreview(props: Props) {
 
   return (
     <Portal>
-      <div class={styles.scrim} onClick={() => props.onClose()}>
+      <div class={styles.scrim} onClick={() => close('backdrop')}>
         <div
           ref={panel}
           class={styles.panel}
@@ -181,7 +213,7 @@ export default function CoursePreview(props: Props) {
                 {props.title}
               </h2>
             </div>
-            <button type="button" class={styles.close} aria-label="Close preview" onClick={() => props.onClose()}>
+            <button type="button" class={styles.close} aria-label="Close preview" onClick={() => close('button')}>
               ✕
             </button>
           </div>
@@ -193,10 +225,20 @@ export default function CoursePreview(props: Props) {
               preload="metadata"
               playsinline
               poster={props.trailer.posterUrl ?? undefined}
-              onPlay={() => setPlaying(true)}
+              onPlay={() => {
+                setPlaying(true)
+                if (!played) track('preview_play', base())
+                played = true
+              }}
               onPause={() => setPlaying(false)}
-              onEnded={() => setPlaying(false)}
-              onTimeUpdate={() => setPosition(video.currentTime)}
+              onEnded={() => {
+                setPlaying(false)
+                progress(100)
+              }}
+              onTimeUpdate={() => {
+                setPosition(video.currentTime)
+                if (played) progress((video.currentTime / total()) * 100)
+              }}
               onLoadedData={() => setFramed(true)}
               onDurationChange={() => setDuration(Number.isFinite(video.duration) ? video.duration : 0)}
               onVolumeChange={() => setMuted(video.muted)}

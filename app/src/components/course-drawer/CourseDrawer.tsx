@@ -349,6 +349,8 @@ export default function CourseDrawer(props: CourseDrawerProps) {
       <Show when={previewing() && trailer()}>
         {(t) => (
           <CoursePreview
+            courseId={props.course.id}
+            source="sheet"
             title={props.course.title}
             domain={props.domainName}
             dot={domainDot(props.course.domain)}

@@ -137,6 +137,22 @@ export function stableId(): string | undefined {
   }
 }
 
+/**
+ * Logs the custom event name with its metadata, adding the caller's
+ * auth_state (`anonymous` or `signed_in`). Without analytics consent, or with
+ * Statsig off, the event is dropped: the SDK would otherwise keep it and send
+ * it once the visitor consents.
+ */
+export function track(name: string, metadata: Record<string, string> = {}) {
+  const current = store.client()
+  if (!current || !analyticsAllowed()) return
+  try {
+    current.logEvent({ eventName: name, metadata: { ...metadata, auth_state: user() ? 'signed_in' : 'anonymous' } })
+  } catch {
+    // An event is never worth breaking a screen for.
+  }
+}
+
 // Readers. Each tracks the client and its values, so a component re-renders
 // when values load or the user changes. Without a client they return the
 // caller's defaults, which are always the control.
