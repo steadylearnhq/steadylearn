@@ -1,10 +1,12 @@
 import { A, useParams } from '@solidjs/router'
 import { createEffect, createMemo, createResource, createSignal, For, Match, on, onMount, Show, Switch } from 'solid-js'
 import Button from '../../components/Button'
+import CoursePreview from '../../components/course-preview/CoursePreview'
 import Critter from '../../components/Critter'
 import StepIcon from '../../components/StepIcon'
 import {
   domainDot,
+  domainName as ownDomainName,
   formatLength,
   levelLabel,
   plural,
@@ -20,6 +22,7 @@ import { canTake, CHECKOUT_HREF, loadBilling } from '../../lib/billing'
 import { fetchCatalog, fetchCourse } from '../../lib/catalog'
 import { enroll, leaveFeedback, setLessonDone, type CourseEnrollment, type Feedback } from '../../lib/enrollments'
 import { lessonHref } from '../../lib/lessons'
+import { gate } from '../../lib/statsig'
 import { useNavSection } from '../../lib/nav'
 import { usePageTitle } from '../../lib/title'
 import NotFound from '../NotFound'
@@ -195,6 +198,10 @@ export default function CoursePage() {
   }
 
   const domainName = (id: string) => listed()?.domains.find((d) => d.id === id)?.name ?? ''
+
+  // The trailer, before enrolling and while the course_previews gate is on.
+  const trailer = () => (gate('course_previews') && !enrolled() ? loaded()?.trailer : undefined)
+  const [previewing, setPreviewing] = createSignal(false)
   const findCourse = (id: string) => listed()?.courses.find((c) => c.id === id)
   const prerequisites = () =>
     (loaded()?.prerequisites ?? []).flatMap((p) => {
@@ -364,24 +371,49 @@ export default function CoursePage() {
               </div>
               <div class={styles.cta}>
                 <Show when={!enrolled()}>
-                  <Switch>
-                    <Match when={access() === true}>
-                      <Button variant="primary" size="md" disabled={enrolling()} onClick={() => void startCourse()}>
-                        {enrolling() ? 'Enrolling…' : 'Enroll →'}
-                      </Button>
-                      <Show when={enrollFailed()}>
-                        <span class={styles.ctaNote} role="alert">
-                          That didn't go through. Try again.
+                  <div class={styles.ctaRow}>
+                    <Show when={trailer()}>
+                      <button type="button" class={styles.preview} onClick={() => setPreviewing(true)}>
+                        <span class={styles.previewGlyph} aria-hidden="true">
+                          ▶
                         </span>
-                      </Show>
+                        Preview
+                      </button>
+                    </Show>
+                    <Switch>
+                      <Match when={access() === true}>
+                        <Button variant="primary" size="md" disabled={enrolling()} onClick={() => void startCourse()}>
+                          {enrolling() ? 'Enrolling…' : 'Enroll →'}
+                        </Button>
+                      </Match>
+                      <Match when={locked()}>
+                        <Button variant="primary" size="md" href={CHECKOUT_HREF}>
+                          Subscribe →
+                        </Button>
+                      </Match>
+                    </Switch>
+                  </div>
+                  <Switch>
+                    <Match when={access() === true && enrollFailed()}>
+                      <span class={styles.ctaNote} role="alert">
+                        That didn't go through. Try again.
+                      </span>
                     </Match>
                     <Match when={locked()}>
-                      <Button variant="primary" size="md" href={CHECKOUT_HREF}>
-                        Subscribe →
-                      </Button>
                       <span class={styles.ctaNote}>Included with the subscription.</span>
                     </Match>
                   </Switch>
+                </Show>
+                <Show when={previewing() && trailer()}>
+                  {(t) => (
+                    <CoursePreview
+                      title={c().title}
+                      domain={domainName(c().domain) || ownDomainName(c().domain)}
+                      dot={domainDot(c().domain)}
+                      trailer={t()}
+                      onClose={() => setPreviewing(false)}
+                    />
+                  )}
                 </Show>
               </div>
             </section>

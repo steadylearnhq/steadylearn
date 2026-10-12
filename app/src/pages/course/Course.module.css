@@ -108,6 +108,41 @@
   min-height: 40px;
 }
 
+/* Preview sits left of the course's main action. */
+.ctaRow {
+  display: flex;
+  gap: 8px;
+}
+
+.preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 20px;
+  border: 1.5px solid var(--stroke);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.preview:hover {
+  background: var(--hover);
+}
+
+.preview:focus-visible {
+  outline: 2px solid var(--accentText);
+  outline-offset: 2px;
+}
+
+.previewGlyph {
+  font-size: 10px;
+}
+
 .ctaNote {
   font-family: var(--font-mono);
   font-size: 12px;
