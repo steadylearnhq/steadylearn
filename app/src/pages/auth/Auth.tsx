@@ -14,6 +14,7 @@ import Button from '../../components/Button'
 import Critter from '../../components/Critter'
 import { HOME, safeRedirect } from '../../components/RouteGuards'
 import { authMessage, errorName, rememberRedirect, user } from '../../lib/auth'
+import { track } from '../../lib/statsig'
 import { theme, toggleTheme } from '../../lib/theme'
 import { usePageTitle } from '../../lib/title'
 import styles from './Auth.module.css'
@@ -216,6 +217,13 @@ export default function Auth() {
     setFailure('This account needs a sign-in step we don’t support yet.')
   }
 
+  // A new account, counted for the sign-up funnel. Google sign-ups come back
+  // through a redirect that looks like any other sign-in, so only email ones count.
+  const finishSignUp = () => {
+    track('sign_up', { method: 'email' })
+    setSignedUp(true)
+  }
+
   const register = async () => {
     const { nextStep } = await signUp({
       username: username(),
@@ -225,7 +233,7 @@ export default function Auth() {
     if (nextStep.signUpStep === 'CONFIRM_SIGN_UP') return goTo('confirm', '')
     if (nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') await autoSignIn()
     else await signIn({ username: username(), password: password() })
-    setSignedUp(true)
+    finishSignUp()
   }
 
   const confirm = async () => {
@@ -233,7 +241,7 @@ export default function Auth() {
     // Sign-up arms auto sign-in; an unconfirmed login attempt doesn't, but its password is still here.
     if (nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') await autoSignIn()
     else await signIn({ username: username(), password: password() })
-    setSignedUp(true)
+    finishSignUp()
   }
 
   const saveNewPassword = async () => {

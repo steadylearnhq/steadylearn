@@ -39,6 +39,10 @@ ships today.
     renders, e.g. only once a dialog opens, so people who never see it aren't
     counted.
 
+- `track(name, metadata)`: a custom event, such as `preview_open`. It adds
+  the caller's `auth_state` (`anonymous` or `signed_in`) to the metadata.
+  Without consent the event is dropped, not kept for later.
+
 Readers are reactive: they update when values load or the user signs in or
 out. Flags are evaluated with or without analytics consent, but without it
 Statsig stores nothing and logs nothing, exposures included; they start once
