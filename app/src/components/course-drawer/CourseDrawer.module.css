@@ -124,6 +124,33 @@
   font-size: 13px;
 }
 
+/* Opens the course's trailer, from the bar like the buttons beside it. */
+.preview {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1.5px solid var(--stroke);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.preview:hover {
+  background: var(--hover);
+}
+
+.previewGlyph {
+  font-size: 9px;
+}
+
+.preview:focus-visible,
 .iconButton:focus-visible,
 .close:focus-visible {
   outline: 2px solid var(--accentText);
